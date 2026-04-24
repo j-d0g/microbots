@@ -1,0 +1,23 @@
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:v2
+    container_name: microbots-surrealdb
+    restart: unless-stopped
+    ports:
+      - "${SURREAL_PORT:-8000}:8000"
+    volumes:
+      - surrealdb-data:/data
+    command:
+      - start
+      - --log=info
+      - --user=${SURREAL_USER:-root}
+      - --pass=${SURREAL_PASS:-root}
+      - file:/data/database.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  surrealdb-data:
