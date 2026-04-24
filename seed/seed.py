@@ -876,12 +876,20 @@ async def seed(db: AsyncSurreal):
             }};
         """)
 
+    def extract_count(result) -> int:
+        try:
+            row = result[0]
+            if isinstance(row, list):
+                row = row[0]
+            return row.get("count", 0) if isinstance(row, dict) else 0
+        except (KeyError, IndexError, TypeError):
+            return 0
+
     print("\nSeed complete. Verifying record counts...")
     tables = ["user_profile", "integration", "entity", "chat", "memory", "skill", "workflow", "layer_index"]
     for table in tables:
         result = await db.query(f"SELECT count() FROM {table} GROUP ALL;")
-        count = result[0][0].get("count", 0) if result and result[0] else 0
-        print(f"  {table}: {count}")
+        print(f"  {table}: {extract_count(result)}")
 
     edge_tables = [
         "uses_integration", "appears_in", "co_used_with", "related_to_entity",
@@ -892,8 +900,7 @@ async def seed(db: AsyncSurreal):
     print("\nEdge counts:")
     for table in edge_tables:
         result = await db.query(f"SELECT count() FROM {table} GROUP ALL;")
-        count = result[0][0].get("count", 0) if result and result[0] else 0
-        print(f"  {table}: {count}")
+        print(f"  {table}: {extract_count(result)}")
 
 
 async def main():

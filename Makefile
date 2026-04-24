@@ -10,11 +10,7 @@ install:
 
 db-up: install
 	docker compose up -d
-	@echo "Waiting for SurrealDB container health..."
-	@until docker inspect microbots-surrealdb --format='{{.State.Health.Status}}' 2>/dev/null | grep -q healthy; do \
-		sleep 1; \
-	done
-	@echo "Waiting for SurrealDB to accept connections on host..."
+	@echo "Waiting for SurrealDB to accept connections..."
 	@until curl -sf http://localhost:$(SURREAL_PORT)/health > /dev/null 2>&1; do \
 		sleep 1; \
 	done

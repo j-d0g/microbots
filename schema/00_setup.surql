@@ -1,12 +1,12 @@
 -- Namespace and database
-DEFINE NAMESPACE IF NOT EXISTS microbots;
-DEFINE DATABASE IF NOT EXISTS memory;
+DEFINE NAMESPACE OVERWRITE microbots;
+DEFINE DATABASE OVERWRITE memory;
 
 -- Full-text search analyzers
-DEFINE ANALYZER chat_analyzer
+DEFINE ANALYZER OVERWRITE chat_analyzer
     TOKENIZERS blank, class
     FILTERS lowercase, snowball(english);
 
-DEFINE ANALYZER memory_analyzer
+DEFINE ANALYZER OVERWRITE memory_analyzer
     TOKENIZERS blank, class
     FILTERS lowercase, snowball(english);
