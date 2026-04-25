@@ -10,7 +10,7 @@ from surrealdb import AsyncSurreal
 from surrealdb.data.types.record_id import RecordID
 
 from config import Config
-from enrich.llm import resolve_enrich_model
+from enrich.llm import enrich_model_settings, resolve_enrich_model
 from enrich.prompts import entity as entity_prompt
 from enrich.writers.entity_writer import write_entity_resolution
 from ingest.db import unwrap_surreal_rows
@@ -61,6 +61,7 @@ def build_entity_agent(config: Config) -> Agent[None, EntityResolutionResult]:
     return Agent(
         model=model_str,
         output_type=EntityResolutionResult,
+        model_settings=enrich_model_settings(),
         system_prompt=entity_prompt.SYSTEM,
         retries=config.pipeline.max_retries,
     )

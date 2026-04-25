@@ -9,7 +9,7 @@ from pydantic_ai import Agent
 from surrealdb import AsyncSurreal
 
 from config import Config
-from enrich.llm import resolve_enrich_model
+from enrich.llm import enrich_model_settings, resolve_enrich_model
 from enrich.prompts import workflow as workflow_prompt
 from enrich.writers.workflow_writer import write_workflow
 from ingest.db import unwrap_surreal_rows
@@ -61,6 +61,7 @@ def build_workflow_agent(config: Config) -> Agent[None, WorkflowCompositionResul
     return Agent(
         model=model_str,
         output_type=WorkflowCompositionResult,
+        model_settings=enrich_model_settings(),
         system_prompt=workflow_prompt.SYSTEM,
         retries=config.pipeline.max_retries,
     )
