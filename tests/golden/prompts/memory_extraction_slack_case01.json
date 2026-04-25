@@ -1,0 +1,79 @@
+{
+  "phase": "memory_extraction",
+  "case": "slack_case01",
+  "input_fixture": "train/slack.json",
+  "input_items_slice": [
+    0,
+    3
+  ],
+  "integration": "slack",
+  "expected_output": {
+    "memories": [
+      {
+        "content": "Desmond always notifies #deployments before pushing to staging or production, requiring explicit infrastructure approval from Alice Chen.",
+        "memory_type": "action_pattern",
+        "confidence": 0.9,
+        "tags": [
+          "deployment",
+          "process",
+          "approval"
+        ],
+        "source_chat_ids": [
+          "chat:fix_slack_deploy"
+        ],
+        "about_entities": [
+          {
+            "name": "Alice Chen",
+            "type": "person"
+          },
+          {
+            "name": "Desmond",
+            "type": "person"
+          }
+        ],
+        "about_integrations": [
+          "slack"
+        ]
+      },
+      {
+        "content": "Bob Kim is the primary code reviewer for the microbots enrichment layer and is responsive to review requests.",
+        "memory_type": "fact",
+        "confidence": 0.85,
+        "tags": [
+          "code-review",
+          "team"
+        ],
+        "source_chat_ids": [
+          "chat:fix_slack_cr"
+        ],
+        "about_entities": [
+          {
+            "name": "Bob Kim",
+            "type": "person"
+          }
+        ],
+        "about_integrations": [
+          "slack",
+          "github"
+        ]
+      },
+      {
+        "content": "Microbots uses HNSW vector indexes with 1536-dimension embeddings matching OpenAI embedding model output.",
+        "memory_type": "fact",
+        "confidence": 0.95,
+        "tags": [
+          "technical",
+          "architecture",
+          "embeddings"
+        ],
+        "source_chat_ids": [
+          "chat:fix_slack_ai_eng"
+        ],
+        "about_entities": [],
+        "about_integrations": [
+          "slack"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "phase": "memory_extraction",
+  "weighted_total": 3.85,
+  "passing": true,
+  "criteria": [
+    {
+      "criterion": "insight_density",
+      "score": 4.0,
+      "comment": "Memories capture deployment patterns, review dynamics, and technical decisions \u2014 not just event logs. Could improve by extracting implicit preferences."
+    },
+    {
+      "criterion": "redundancy_avoidance",
+      "score": 4.0,
+      "comment": "No duplicate memories from the same source. Different perspectives on the same entity (e.g., Bob as reviewer) are distinct insights."
+    },
+    {
+      "criterion": "source_attribution",
+      "score": 3.5,
+      "comment": "source_chat_ids populated but some IDs don't perfectly match fixture chat IDs. about_integrations correctly set."
+    },
+    {
+      "criterion": "type_fit",
+      "score": 4.0,
+      "comment": "action_pattern used for deployment flow, fact used for reviewer role and HNSW config. Correct semantic match."
+    },
+    {
+      "criterion": "confidence_calibration",
+      "score": 3.5,
+      "comment": "Confidence scores are reasonable (0.85-0.95 range). Could be lower for single-source inferences."
+    },
+    {
+      "criterion": "coverage",
+      "score": 4.0,
+      "comment": "All 3 high/mid signal chats produce memories. No noise-only memories generated."
+    }
+  ],
+  "overall_comment": "Solid memory extraction from Slack fixture. Memories are distinct, well-typed, and capture durable insights. Main improvement area: confidence calibration could be more conservative for single-source facts. Baseline passes threshold (3.85 / 5.0 > 3.0).",
+  "_meta": {
+    "scored_by": "static_analysis_baseline",
+    "rubric_file": "tests/eval/rubrics/memory_extraction.yaml",
+    "note": "Hand-scored baseline. Replace with live judge run when API keys are available.",
+    "rubric_weights": {
+      "insight_density": 0.25,
+      "redundancy_avoidance": 0.2,
+      "source_attribution": 0.15,
+      "type_fit": 0.2,
+      "confidence_calibration": 0.1,
+      "coverage": 0.1
+    }
+  }
+}

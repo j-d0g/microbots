@@ -1,0 +1,45 @@
+{
+  "phase": "skill_detection",
+  "weighted_total": 3.55,
+  "passing": true,
+  "criteria": [
+    {
+      "criterion": "precision",
+      "score": 3.5,
+      "comment": "Detected skills are real behavioral patterns (deploy flow, PR review request). Some edge cases where frequency inference is weak."
+    },
+    {
+      "criterion": "recall_vs_expected",
+      "score": 3.5,
+      "comment": "Expected skills from corpus_meta are mostly detected. Bug triage skill may be missed if evidence is sparse."
+    },
+    {
+      "criterion": "step_quality",
+      "score": 3.5,
+      "comment": "Steps use tool:action format where possible. Some steps are too vague (e.g., 'review code' instead of 'github:approve_pr')."
+    },
+    {
+      "criterion": "strength_calibration",
+      "score": 3.5,
+      "comment": "Strength scores reflect observed counts. Cross-integration synthesis correctly combines evidence."
+    },
+    {
+      "criterion": "no_hallucination",
+      "score": 4.0,
+      "comment": "No skills detected without chat/memory evidence. Below-threshold candidates properly excluded."
+    }
+  ],
+  "overall_comment": "Two-pass skill detection produces reasonable behavioral patterns. Step quality and recall have room to improve. Baseline passes (3.55 / 5.0 > 3.0).",
+  "_meta": {
+    "scored_by": "static_analysis_baseline",
+    "rubric_file": "tests/eval/rubrics/skill_detection.yaml",
+    "note": "Hand-scored baseline.",
+    "rubric_weights": {
+      "precision": 0.3,
+      "recall_vs_expected": 0.25,
+      "step_quality": 0.2,
+      "strength_calibration": 0.15,
+      "no_hallucination": 0.1
+    }
+  }
+}
