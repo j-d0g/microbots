@@ -90,13 +90,11 @@ intent: ${intent}`,
       ...graphTools(ctx),
       ...activeWindowTools(ctx, intent),
     },
-    stopWhen: stepCountIs(4),
-    temperature: 0.3,
+    stopWhen: stepCountIs(3),
+    temperature: 0.2,
   });
 
-  for await (const _chunk of result.textStream) {
-    void _chunk;
-  }
+  await result.steps;
 
   return `content-agent finished.`;
 }

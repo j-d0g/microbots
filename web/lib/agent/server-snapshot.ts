@@ -337,6 +337,10 @@ export interface ToolApplyResult {
   snapshot: CanvasSnapshot;
   /** Brief, human-readable for the agent's tool-result message. */
   message: string;
+  /** Whether the tool succeeded — mirrors the `ok` recorded in
+   *  `recentActions`. Consumers (e.g. `applyAndEmit`) forward this
+   *  into `agent.tool.done` so the recovery metric is truthful. */
+  ok: boolean;
 }
 
 /** Top-level dispatcher. Each branch returns a fresh snapshot reflecting
@@ -372,6 +376,7 @@ export function applyToolToSnapshot(
         return {
           snapshot: withFocus(next),
           message: `Brought existing ${kind} to front at ${mount}.`,
+          ok: true,
         };
       }
       const id = nextServerId();
@@ -394,6 +399,7 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Opened ${kind} at ${mount}.`,
+        ok: true,
       };
     }
 
@@ -409,6 +415,7 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "No window matched the close request.",
+          ok: false,
         };
       }
       const next: CanvasSnapshot = {
@@ -419,6 +426,7 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Closed ${target.kind}.`,
+        ok: true,
       };
     }
 
@@ -435,6 +443,7 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "move_window needs an existing window and a mount.",
+          ok: false,
         };
       }
       const next: CanvasSnapshot = {
@@ -447,6 +456,7 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Moved ${target.kind} to ${mount}.`,
+        ok: true,
       };
     }
 
@@ -462,6 +472,7 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "No window matched the focus request.",
+          ok: false,
         };
       }
       const z = nextZ(snap);
@@ -475,6 +486,7 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Focused ${target.kind}.`,
+        ok: true,
       };
     }
 
@@ -488,6 +500,7 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: `arrange_windows: unknown preset or empty canvas.`,
+          ok: false,
         };
       }
       const rects = builder(snap.windows.length);
@@ -511,6 +524,7 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Arranged ${snap.windows.length} windows as ${layout} (gutter ${GUTTER}%, outer ${OUTER}%).`,
+        ok: true,
       };
     }
 
@@ -521,7 +535,7 @@ export function applyToolToSnapshot(
         focusedId: null,
         recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
       };
-      return { snapshot: next, message: "Canvas cleared." };
+      return { snapshot: next, message: "Canvas cleared.", ok: true };
     }
 
     case "set_window_rect": {
@@ -539,6 +553,7 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "set_window_rect needs an existing window and a rect.",
+          ok: false,
         };
       }
       const next: CanvasSnapshot = {
@@ -553,6 +568,7 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Resized ${target.kind} to ${rectPct.w.toFixed(0)}×${rectPct.h.toFixed(0)} at (${rectPct.x.toFixed(0)},${rectPct.y.toFixed(0)}).`,
+        ok: true,
       };
     }
 
@@ -579,6 +595,7 @@ export function applyToolToSnapshot(
           recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
         },
         message: `${tool} dispatched.`,
+        ok: true,
       };
 
     default:
@@ -588,6 +605,7 @@ export function applyToolToSnapshot(
           recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
         },
         message: `Unknown tool ${tool}.`,
+        ok: false,
       };
   }
 }

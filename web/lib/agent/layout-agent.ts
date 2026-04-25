@@ -91,15 +91,13 @@ export async function runLayoutAgent(
 
 intent: ${intent}`,
     tools: layoutTools(ctx),
-    stopWhen: stepCountIs(4),
+    stopWhen: stepCountIs(3),
     temperature: 0.2,
   });
 
-  // Drain so all tool calls execute. We don't surface the layout-agent's
-  // text — only the orchestrator speaks to the user.
-  for await (const _chunk of result.textStream) {
-    void _chunk;
-  }
+  // Wait for all steps (tool calls) to complete. We don't surface the
+  // layout-agent's text — only the orchestrator speaks to the user.
+  await result.steps;
 
   return `layout-agent finished. canvas now has ${ctx.snapshot.windows.length} window(s).`;
 }
