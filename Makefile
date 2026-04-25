@@ -3,7 +3,7 @@ export
 
 PYTHON := uv run python
 
-.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export
+.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest composio-ingest composio-auth
 
 install:
 	uv sync
@@ -38,6 +38,20 @@ db-query:
 		--password $(SURREAL_PASS) \
 		--namespace $(SURREAL_NS) \
 		--database $(SURREAL_DB)
+
+# Composio → triage → SurrealDB (requires .env + CLI-connected apps; see README "Prerequisite")
+ingest composio-ingest: install
+	$(PYTHON) -m ingest
+
+# One-time: print Composio CLI connection steps (run in your shell before first ingest)
+composio-auth:
+	@echo "Run once per machine (or for your COMPOSIO_USER_ID) before make ingest / composio-ingest."
+	@echo "Per https://docs.composio.dev/docs/cli use \`composio link\` (not \`composio add\`):"
+	@echo "  composio login"
+	@echo "  composio link slack   # then: github, gmail, linear, notion, perplexityai as needed"
+	@echo "  composio whoami"
+	@echo "Discovery: composio tools list github   |   composio search \"...\" --toolkits github"
+	@echo "See README → Composio ingestion → Prerequisite"
 
 db-export:
 	docker exec microbots-surrealdb surreal export \

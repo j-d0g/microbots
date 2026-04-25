@@ -17,7 +17,7 @@
 | memory:linear_before_pr | action_pattern | 0.92 | Always create a Linear ticket before opening a GitHub PR |
 | memory:python_type_hints | preference | 0.90 | All Python functions must have type hints; mypy + black enforced |
 | memory:bob_reviewer | fact | 0.88 | Bob Kim is primary reviewer: focuses on type safety, SCHEMAFULL, HNSW dimensions |
-| memory:surrealdb_hnsw | fact | 0.95 | HNSW DIMENSION must match embedding model (1536); mismatch causes silent failures |
+| memory:surrealdb_hnsw | fact | 0.95 | HNSW DIMENSION must match embedding model (1536); mismatch causes silent failures (reinforced by Perplexity research) |
 
 ## By memory type
 
@@ -36,7 +36,7 @@
 ## What memories inform
 
 - **deploy_pipeline workflow** ← notify_deployments, alice_infra
-- **pr_review_cycle workflow** ← linear_before_pr, bob_reviewer
+- **pr_review_cycle workflow** ← linear_before_pr, bob_reviewer, surrealdb_hnsw
 - **deploy_to_staging skill** ← notify_deployments
 - **create_linear_from_slack skill** ← linear_before_pr
-- **review_pr_checklist skill** ← surrealdb_hnsw
+- **review_pr_checklist skill** ← surrealdb_hnsw (Perplexity supports API/library checks during review)

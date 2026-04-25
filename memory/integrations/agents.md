@@ -6,7 +6,7 @@
 
 ## Overview
 
-5 integrations seeded. Desmond uses all of them daily except Notion (weekly).
+6 integrations seeded. Desmond uses all of them daily except Notion (weekly).
 
 | Integration | Slug | Category | Frequency | Sub-index |
 |-------------|------|----------|-----------|-----------|
@@ -15,6 +15,7 @@
 | Linear | linear | project_mgmt | daily | [linear/agents.md](linear/agents.md) |
 | Gmail | gmail | communication | daily | [gmail/agents.md](gmail/agents.md) |
 | Notion | notion | knowledge | weekly | [notion/agents.md](notion/agents.md) |
+| Perplexity | perplexity | knowledge | daily | [perplexity/agents.md](perplexity/agents.md) |
 
 ## Co-usage patterns
 
@@ -27,6 +28,9 @@ Integrations most frequently used together:
 | Slack ↔ GitHub | Deploy coordination and PR review pings | 120 |
 | Slack ↔ Notion | Sharing docs in Slack for context | 40 |
 | Linear ↔ Notion | Linking specs to tickets | 30 |
+| Slack ↔ Perplexity | Research links in threads | 35 |
+| GitHub ↔ Perplexity | Research before implementation | 25 |
+| Perplexity ↔ Notion | Citations in ADRs and specs | 20 |
 
 ## Behavioral summary per integration
 
@@ -39,3 +43,5 @@ Integrations most frequently used together:
 **Gmail** — External only. Investor updates, vendor coordination, legal. Check once daily.
 
 **Notion** — Long-form docs. Architecture decisions, meeting notes, product specs. Link specs in Linear tickets.
+
+**Perplexity** — Web-grounded research with citations; async Sonar for long jobs. Share results in Slack and cite in Notion ADRs when decisions depend on external sources.

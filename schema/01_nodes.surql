@@ -8,7 +8,7 @@ DEFINE FIELD OVERWRITE context_window  ON user_profile TYPE int DEFAULT 4000;
 DEFINE FIELD OVERWRITE created_at      ON user_profile TYPE datetime DEFAULT time::now();
 DEFINE FIELD OVERWRITE updated_at      ON user_profile TYPE datetime DEFAULT time::now();
 
--- integration: One node per tool (Slack, GitHub, Linear, Gmail, Notion)
+-- integration: One node per tool (Slack, GitHub, Linear, Gmail, Notion, Perplexity, …)
 DEFINE TABLE OVERWRITE integration SCHEMAFULL;
 DEFINE FIELD OVERWRITE name            ON integration TYPE string;
 DEFINE FIELD OVERWRITE slug            ON integration TYPE string;
