@@ -70,7 +70,7 @@ The user already mirrors this for microbots (`agent-workspace/v0/v1/...`). The R
 | Reminder rules engine over tool-call history | Tiny pydantic-ai middleware that inspects the `ModelMessage` trace, fires named rules with ≤12-word imperative messages | Cheap to add (~50 LoC), high ROI for behavioral correction without bloating system prompt |
 | Tool docstrings as LLM-visible API | Strict template: When to use / Usage Tips / Examples / Returns. Pydantic `Field(description=...)` on every param | Cody's tools are unusually well-described and it shows in tool-call quality |
 | Hooks as deterministic guardrails | `block-secrets-edit`, `block-push-without-approval`, `stop-guard` style hooks for the founder-facing harness | Founders will run untrusted prompts; deterministic blocks are safer than relying on the LLM to refuse |
-| Persistence contract for sub-agents | Every sub-agent must write its findings to `docs/research/<lane>.md` before returning (this report is the live example) | Prevents context loss when the parent agent compacts |
+| Persistence contract for sub-agents | Every sub-agent must write its findings to `<lane>.md` before returning (this report is the live example) | Prevents context loss when the parent agent compacts |
 | `prompt.changelog` discipline | A `CHANGELOG.md` next to the system prompt, every change with a one-line rationale + before/after | Foundation for sponsor demo: "look, we A/B tested every prompt change against real traces in Logfire" |
 
 ## 8. Patterns to SKIP for v0

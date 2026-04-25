@@ -32,6 +32,19 @@ def resolve_enrich_model(config: Config) -> str:
         return model if model.startswith("anthropic:") else f"anthropic:{model}"
     return "openai:gpt-4.1-mini"
 
+
+def enrich_model_settings() -> dict:
+    """ModelSettings dict shared by every enrichment / wiki Agent.
+
+    Caps ``max_tokens`` so requests fit within OpenRouter's free-tier
+    per-request budget. Free accounts get a small floating ceiling
+    (~10–12k tokens depending on remaining credit). 8000 leaves headroom
+    while staying generous enough for the structured JSON outputs we
+    produce. Override via ``ENRICH_MAX_TOKENS`` env var if you've added
+    paid credit.
+    """
+    return {"max_tokens": int(os.getenv("ENRICH_MAX_TOKENS", "8000"))}
+
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*\n?(.*?)\n?```$", re.DOTALL | re.IGNORECASE)
 
 

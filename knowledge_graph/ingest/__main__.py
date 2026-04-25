@@ -22,6 +22,8 @@ from ingest.dedup import dedup
 from ingest.db import surreal_session
 from ingest.e2e_smoke import run_smoke, smoke_should_run_llm
 from ingest.pullers import enabled_integrations, get_puller
+from ingest.pullers.base import BasePuller
+from ingest.pullers.fixture import FixturePuller
 from ingest.triage import chunk, parallel_triage
 from ingest.writers.chat_records import write_chat_record
 from ingest.writers.integration_metadata import write_integration_metadata
@@ -65,7 +67,96 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run end-to-end smoke test (mock pull, triage+write, verify)",
     )
+    p.add_argument(
+        "--from-fixtures",
+        action="store_true",
+        help=(
+            "Skip Composio entirely; pull raw items from "
+            "knowledge_graph/tests/fixtures/train/<integration>.json. "
+            "Still runs full triage + enrich + wiki against real LLM. "
+            "Requires OPENROUTER_API_KEY (or ANTHROPIC_API_KEY). "
+            "Composio API key is NOT required."
+        ),
+    )
     return p.parse_args()
+
+
+async def _run_from_fixtures(integration_names: list[str], config: Config) -> dict[str, int]:
+    """Same as ``_run`` but uses ``FixturePuller`` and skips Composio preflight.
+
+    Useful for end-to-end testing without OAuth-connected accounts. Real LLM
+    triage + enrichment + wiki still run against the cloud SurrealDB.
+    """
+    if not (config.openrouter_api_key or config.anthropic_api_key):
+        log.error("--from-fixtures still needs an LLM key. Set OPENROUTER_API_KEY or ANTHROPIC_API_KEY.")
+        return {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
+
+    results = {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
+    new_chat_ids = []
+
+    async with surreal_session(config) as db:
+        for name in integration_names:
+            log.info("\u25b6 Loading fixture for %s\u2026", name)
+            puller: BasePuller = FixturePuller(name)
+            try:
+                # composio is None — fixtures don't need it.
+                raw_items = await puller.pull(config, None)  # type: ignore[arg-type]
+            except Exception:  # noqa: BLE001
+                log.exception("Fixture load failed for %s", name)
+                results["failed"] += 1
+                continue
+
+            log.info("  Fetched %d raw items", len(raw_items))
+            new_items = await dedup(raw_items, db)
+            results["skipped_dedup"] += len(raw_items) - len(new_items)
+            log.info("  %d new after dedup", len(new_items))
+
+            if not new_items:
+                continue
+
+            batches = chunk(new_items, config.pipeline.batch_size)
+            log.info("  Triage: %d batch(es) (parallel up to %d)", len(batches), config.pipeline.parallel_llm_calls)
+            triage_results = await parallel_triage(batches, name, config)
+
+            for tr in triage_results:
+                if tr is None:
+                    results["failed"] += 1
+                    log.warning("  A triage batch failed (see logs above)")
+                    continue
+                await write_integration_metadata(name, tr["integration_metadata"], db)
+                for chat in tr.get("chat_records", []):
+                    if str(chat.get("signal_level", "mid")).lower() == "low":
+                        continue
+                    chat_rec_id = await write_chat_record(chat, name, db)
+                    new_chat_ids.append(chat_rec_id)
+                    results["success"] += 1
+                results["dropped"] += len(tr.get("items_dropped", []))
+
+    if results["success"] > 0:
+        log.info("\u25b6 Starting enrichment layer (%d new chats)\u2026", results["success"])
+        from enrich.orchestrator import run_enrichment
+        enrich_results = await run_enrichment(new_chat_ids, config)
+        log.info(
+            "  Enrichment: %d memories, %d entities resolved, %d skills, %d workflows",
+            enrich_results["memories"],
+            enrich_results["entities_resolved"],
+            enrich_results["skills"],
+            enrich_results["workflows"],
+        )
+        log.info("\u25b6 Starting wiki agent (Phase 4)\u2026")
+        try:
+            from wiki.orchestrator import run_wiki
+            wiki_results = await run_wiki(config)
+            log.info(
+                "  Wiki: %d files updated, %d unchanged, %d failed",
+                wiki_results.updated,
+                wiki_results.unchanged,
+                wiki_results.failed,
+            )
+        except Exception as e:  # noqa: BLE001
+            log.error("  Wiki agent failed (non-fatal): %s", e)
+
+    return results
 
 
 async def _run(integration_names: list[str], config: Config) -> dict[str, int]:
@@ -200,8 +291,12 @@ def main() -> None:
         sys.exit(1)
         return
 
-    log.info("Ingest: integrations=%s (LLM=%s)", names, config.llm.provider)
-    r = asyncio.run(_run(names, config))
+    if args.from_fixtures:
+        log.info("Ingest [fixtures]: integrations=%s (LLM=%s)", names, config.llm.provider)
+        r = asyncio.run(_run_from_fixtures(names, config))
+    else:
+        log.info("Ingest: integrations=%s (LLM=%s)", names, config.llm.provider)
+        r = asyncio.run(_run(names, config))
     log.info(
         "Done. Wrote %d chat record(s), failed batch(es)=%d, "
         "skipped (dedup)=%d, dropped (low signal)=%d",

@@ -36,18 +36,11 @@
 
 ## Pointers (not duplicated here)
 
-The broader overnight research (10 files, ~13.8k words on Agemo, sponsors, kaig, ralph loop, atomic, etc.) lives on the `research/2026-04-25-overnight` branch at:
+The broader overnight research (10 files, ~13.8k words on Agemo, sponsors, kaig, ralph loop, atomic, etc.) now lives in `agent/research/`:
 
-- `.worktrees/research-overnight/SKIMPLE.md` — distilled overview
-- `.worktrees/research-overnight/docs/research/*.md` — per-topic deep dives
-- `.worktrees/research-overnight/docs/specs/2026-04-25-microbots-design.md` — formal design doc
-- `.worktrees/research-overnight/docs/plans/2026-04-25-mvp-implementation-plan.md` — Friday→Sunday plan
+- `../planning/skimple.md` — distilled overview
+- `*.md` — per-topic deep dives
+- `../planning/design-v1.md` — formal design doc
+- `../planning/plan-v1.md` — Friday→Sunday plan
 
-To pull onto main if useful:
-
-```bash
-git -C /Users/jordantran/Agemo/microbots checkout main
-git -C /Users/jordantran/Agemo/microbots merge --no-ff research/2026-04-25-overnight
-```
-
-Otherwise the worktree at `/Users/jordantran/Agemo/microbots/.worktrees/research-overnight/` keeps it accessible without merging.
+See [`../README.md`](../README.md) for the full index.
