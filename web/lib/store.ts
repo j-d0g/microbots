@@ -51,6 +51,21 @@ export interface WindowState {
   zIndex: number;
   minimized: boolean;
   payload?: Record<string, unknown>;
+  /** ms since canvas mount when the window was opened. Powers the
+   *  `openedAt` field in `CanvasSnapshot.windows[]`. */
+  openedAt: number;
+}
+
+/** Mirrors `lib/agent/types.ts#ToolCallRecord`. Local copy avoids a
+ *  circular import — `snapshot.ts` imports the store, so the store
+ *  cannot import `snapshot.ts` types. */
+export interface ActionRecord {
+  /** Absolute ms timestamp when the action ran (snapshot translates
+   *  this to a relative "ms ago" before sending to the agent). */
+  t: number;
+  tool: string;
+  args: Record<string, unknown>;
+  ok: boolean;
 }
 
 export type LayoutPreset = "focus" | "split" | "grid" | "stack-right";
@@ -110,6 +125,14 @@ export interface AgentStoreState {
   /* --- Stage Manager: windows --- */
   windows: WindowState[];
   nextZ: number;
+  /** ms-since-mount origin used for relative `openedAt`. Set lazily
+   *  on the first window open or by `resetCanvasClock()`. */
+  canvasT0: number;
+  /** Ring buffer of recent agent tool calls. Capped by `pushAction`
+   *  to keep the snapshot payload bounded. */
+  recentActions: ActionRecord[];
+  pushAction: (record: ActionRecord, cap?: number) => void;
+  clearActions: () => void;
   openWindow: (kind: RoomKind, opts?: { rect?: Partial<WindowRect>; payload?: Record<string, unknown> }) => string;
   closeWindow: (id: string) => void;
   moveWindow: (id: string, x: number, y: number) => void;
@@ -242,6 +265,17 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   /* --- Stage Manager: windows --- */
   windows: [],
   nextZ: 1,
+  canvasT0: 0,
+  recentActions: [],
+
+  pushAction: (record, cap = 6) =>
+    set((s) => {
+      const next = [...s.recentActions, record];
+      // Keep most-recent `cap` entries.
+      const trimmed = next.length > cap ? next.slice(next.length - cap) : next;
+      return { recentActions: trimmed };
+    }),
+  clearActions: () => set({ recentActions: [] }),
 
   openWindow: (kind, opts) => {
     const s = get();
@@ -261,6 +295,11 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
 
     const id = `win-${++_modalId}`;
     const z = s.nextZ;
+    const now =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    // Lazily anchor the canvas clock on first window so `openedAt`
+    // values stay small and human-readable.
+    const t0 = s.canvasT0 || now;
     const win: WindowState = {
       id,
       kind,
@@ -268,15 +307,41 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       zIndex: z,
       minimized: false,
       payload: opts?.payload,
+      openedAt: now,
     };
-    set({ windows: [...s.windows, win], nextZ: z + 1, room: kind });
+    set({
+      windows: [...s.windows, win],
+      nextZ: z + 1,
+      room: kind,
+      canvasT0: t0,
+      recentActions: [
+        ...s.recentActions,
+        { t: now, tool: "open_window", args: { kind }, ok: true },
+      ].slice(-6),
+    });
     return id;
   },
 
   closeWindow: (id) =>
     set((s) => {
+      const target = s.windows.find((w) => w.id === id);
       const next = s.windows.filter((w) => w.id !== id);
-      return { windows: next };
+      const now =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+      return {
+        windows: next,
+        recentActions: target
+          ? [
+              ...s.recentActions,
+              {
+                t: now,
+                tool: "close_window",
+                args: { kind: target.kind, id },
+                ok: true,
+              },
+            ].slice(-6)
+          : s.recentActions,
+      };
     }),
 
   moveWindow: (id, x, y) =>
@@ -356,6 +421,12 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
 
   arrangeWindows: (layout) =>
     set((s) => {
+      const now =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+      const recentActions = [
+        ...s.recentActions,
+        { t: now, tool: "arrange_windows", args: { layout }, ok: true },
+      ].slice(-6);
       const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
       const vh = typeof window !== "undefined" ? window.innerHeight : 768;
       const usable = vh - DOCK_HEIGHT;
@@ -450,7 +521,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
           arranged = s.windows;
       }
 
-      return { windows: arranged };
+      return { windows: arranged, recentActions };
     }),
 
   room: "brief",

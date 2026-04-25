@@ -10,7 +10,7 @@ import {
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAgentStore } from "@/lib/store";
-import { applyAgentEvent } from "@/lib/agent-client";
+import { AgentFallback, applyAgentEvent, sendQuery } from "@/lib/agent-client";
 import { routeIntent } from "@/lib/agent-router";
 import { cn } from "@/lib/cn";
 
@@ -88,9 +88,22 @@ export function CommandBar() {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
-        for await (const evt of routeIntent(q)) {
-          if (ctrl.signal.aborted) break;
-          applyAgentEvent(evt);
+        // Try the real orchestrator first. It posts a fresh snapshot
+        // and streams back layout + content tool calls plus the reply.
+        await sendQuery(q, ctrl.signal);
+      } catch (err) {
+        if (ctrl.signal.aborted) return;
+        if (err instanceof AgentFallback) {
+          // No API key (or the orchestrate route is otherwise
+          // unavailable) → fall back to the scripted keyword router so
+          // the demo keeps working.
+          for await (const evt of routeIntent(q)) {
+            if (ctrl.signal.aborted) break;
+            applyAgentEvent(evt);
+          }
+        } else {
+          // eslint-disable-next-line no-console
+          console.error("[command-bar] sendQuery failed:", err);
         }
       } finally {
         setBusy(false);
