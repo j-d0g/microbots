@@ -1,12 +1,21 @@
 [
   {
-    "source_id": "slack-1-cr-b2a4ece0e48f05a9",
+    "source_id": "adv-slack-noise-holiday",
     "source_type": "slack_thread",
-    "title": "PR review request: week 1 changes",
-    "content": "Desmond: @bob PR #5 is ready for review — microbots enrichment layer.\nBob Kim: On it. Will review today.",
-    "channel": "#code-review",
-    "signal_level": "mid",
-    "occurred_at": "2025-01-06T13:00:00+00:00"
+    "title": "Holiday greetings",
+    "content": "Desmond: Happy Friday everyone! Enjoy the long weekend.\nAlice Chen: You too! Any fun plans?\nDesmond: Just grilling and relaxing.\n",
+    "signal_level": "low",
+    "occurred_at": "2025-01-22T12:00:00+00:00",
+    "channel": "#general"
+  },
+  {
+    "source_id": "slack-2-deploy-00047e045d7acd4d",
+    "source_type": "slack_thread",
+    "title": "Deploy: microbots v0.2 to staging",
+    "content": "Desmond: Deploying microbots v0.2 to staging now. Linear: MIC-20.\nAlice Chen: Looks good from infra side. Green light.\nDesmond: Deployed. All smoke tests passing.",
+    "channel": "#deployments",
+    "signal_level": "high",
+    "occurred_at": "2025-01-15T18:00:00+00:00"
   },
   {
     "source_id": "slack-3-deploy-964a24370480e04b",
@@ -18,6 +27,42 @@
     "occurred_at": "2025-01-21T18:00:00+00:00"
   },
   {
+    "source_id": "slack-2-ai-eng-32ed5df067a29f96",
+    "source_type": "slack_thread",
+    "title": "Week 2: microbots SurrealDB progress",
+    "content": "Desmond: Pushed schema updates for week 2. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
+    "channel": "#ai-engineering",
+    "signal_level": "high",
+    "occurred_at": "2025-01-13T17:00:00+00:00"
+  },
+  {
+    "source_id": "slack-1-cr-b2a4ece0e48f05a9",
+    "source_type": "slack_thread",
+    "title": "PR review request: week 1 changes",
+    "content": "Desmond: @bob PR #5 is ready for review — microbots enrichment layer.\nBob Kim: On it. Will review today.",
+    "channel": "#code-review",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-06T13:00:00+00:00"
+  },
+  {
+    "source_id": "adv-slack-deploy-rule-w4",
+    "source_type": "slack_thread",
+    "title": "Deploy cadence update (week 4)",
+    "content": "Desmond: Actually, we're switching deploys to Thursdays starting next sprint. Tuesday is too tight after standup.\nAlice Chen: Fine by me. I'll update the runbook.\nBob Kim: Thursday it is. Less context-switching.\n",
+    "signal_level": "high",
+    "occurred_at": "2025-01-29T12:00:00+00:00",
+    "channel": "#deployments"
+  },
+  {
+    "source_id": "adv-slack-cross-intg",
+    "source_type": "slack_thread",
+    "title": "Deploy pipeline shipped",
+    "content": "Desmond: Deploy pipeline (MIC-99, PR #99) is live. Notion runbook updated.\nAlice Chen: Confirmed. All green.\n",
+    "signal_level": "high",
+    "occurred_at": "2025-01-22T12:00:00+00:00",
+    "channel": "#deployments"
+  },
+  {
     "source_id": "slack-1-ai-eng-31211503a11510a9",
     "source_type": "slack_thread",
     "title": "Week 1: microbots SurrealDB progress",
@@ -27,13 +72,22 @@
     "occurred_at": "2025-01-07T12:00:00+00:00"
   },
   {
-    "source_id": "slack-4-ai-eng-aca2c6eba3d7cef3",
+    "source_id": "adv-slack-noise-gif",
     "source_type": "slack_thread",
-    "title": "Week 4: microbots SurrealDB progress",
-    "content": "Desmond: Pushed schema updates for week 4. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
-    "channel": "#ai-engineering",
+    "title": "Friday vibes",
+    "content": "Carol Diaz: [GIF: dancing cat]\nBob Kim: lol\nDesmond: haha classic\n",
+    "signal_level": "low",
+    "occurred_at": "2025-01-29T12:00:00+00:00",
+    "channel": "#general"
+  },
+  {
+    "source_id": "adv-slack-alice-park-intro",
+    "source_type": "slack_thread",
+    "title": "New hire: Alice Park (Design)",
+    "content": "Alice Park: Hey everyone! I'm Alice, just joined the design team.\nDesmond: Welcome Alice! Excited to have you.\nAlice Park: Thanks! My email is alice.park@company.com and I'm @alice-park on Slack.\n",
     "signal_level": "high",
-    "occurred_at": "2025-01-30T11:00:00+00:00"
+    "occurred_at": "2025-01-15T12:00:00+00:00",
+    "channel": "#general"
   },
   {
     "source_id": "slack-4-deploy-5b54cc5478034e53",
@@ -45,12 +99,12 @@
     "occurred_at": "2025-01-30T09:00:00+00:00"
   },
   {
-    "source_id": "slack-2-ai-eng-32ed5df067a29f96",
+    "source_id": "slack-3-ai-eng-1981fb903a2cbbbc",
     "source_type": "slack_thread",
-    "title": "Week 2: microbots SurrealDB progress",
-    "content": "Desmond: Pushed schema updates for week 2. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
+    "title": "Week 3: microbots SurrealDB progress",
+    "content": "Desmond: Pushed schema updates for week 3. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
     "channel": "#ai-engineering",
     "signal_level": "high",
-    "occurred_at": "2025-01-13T17:00:00+00:00"
+    "occurred_at": "2025-01-25T14:00:00+00:00"
   }
 ]

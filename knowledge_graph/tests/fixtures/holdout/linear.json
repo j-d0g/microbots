@@ -1,19 +1,19 @@
 [
   {
-    "source_id": "linear-8",
+    "source_id": "linear-17",
     "source_type": "linear_ticket",
-    "title": "MIC-8: Agent Memory task (week 1)",
-    "content": "Project: Agent Memory\nAssignee: Bob Kim\nStatus: In Progress → Done\nDescription: Week 1 implementation task. PR linked: #16.",
+    "title": "MIC-17: Platform task (week 3)",
+    "content": "Project: Platform\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 3 implementation task. PR linked: #34.",
     "signal_level": "curated",
-    "occurred_at": "2025-01-12T00:00:00+00:00"
+    "occurred_at": "2025-01-24T00:00:00+00:00"
   },
   {
-    "source_id": "linear-15",
+    "source_id": "linear-22",
     "source_type": "linear_ticket",
-    "title": "MIC-15: Agent Memory task (week 3)",
-    "content": "Project: Agent Memory\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 3 implementation task. PR linked: #30.",
+    "title": "MIC-22: Agent Memory task (week 4)",
+    "content": "Project: Agent Memory\nAssignee: Bob Kim\nStatus: In Progress → Done\nDescription: Week 4 implementation task. PR linked: #44.",
     "signal_level": "curated",
-    "occurred_at": "2025-01-26T00:00:00+00:00"
+    "occurred_at": "2025-02-01T00:00:00+00:00"
   },
   {
     "source_id": "linear-6",
@@ -24,11 +24,19 @@
     "occurred_at": "2025-01-11T00:00:00+00:00"
   },
   {
-    "source_id": "linear-17",
+    "source_id": "linear-12",
     "source_type": "linear_ticket",
-    "title": "MIC-17: Platform task (week 3)",
-    "content": "Project: Platform\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 3 implementation task. PR linked: #34.",
+    "title": "MIC-12: Agent Memory task (week 2)",
+    "content": "Project: Agent Memory\nAssignee: Carol Diaz\nStatus: In Progress → Done\nDescription: Week 2 implementation task. PR linked: #24.",
     "signal_level": "curated",
-    "occurred_at": "2025-01-24T00:00:00+00:00"
+    "occurred_at": "2025-01-17T00:00:00+00:00"
+  },
+  {
+    "source_id": "linear-21",
+    "source_type": "linear_ticket",
+    "title": "MIC-21: Agent Memory task (week 4)",
+    "content": "Project: Agent Memory\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 4 implementation task. PR linked: #42.",
+    "signal_level": "curated",
+    "occurred_at": "2025-01-31T00:00:00+00:00"
   }
 ]

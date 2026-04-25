@@ -1,19 +1,35 @@
 [
   {
-    "source_id": "linear-16",
+    "source_id": "linear-7",
     "source_type": "linear_ticket",
-    "title": "MIC-16: Agent Memory task (week 3)",
-    "content": "Project: Agent Memory\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 3 implementation task. PR linked: #32.",
+    "title": "MIC-7: Platform task (week 1)",
+    "content": "Project: Platform\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 1 implementation task. PR linked: #14.",
     "signal_level": "curated",
-    "occurred_at": "2025-01-25T00:00:00+00:00"
+    "occurred_at": "2025-01-08T00:00:00+00:00"
   },
   {
-    "source_id": "linear-22",
+    "source_id": "adv-linear-cross-intg",
     "source_type": "linear_ticket",
-    "title": "MIC-22: Agent Memory task (week 4)",
-    "content": "Project: Agent Memory\nAssignee: Bob Kim\nStatus: In Progress → Done\nDescription: Week 4 implementation task. PR linked: #44.",
+    "title": "MIC-99: Cross-integration deploy pipeline",
+    "content": "Project: Agent Memory\nAssignee: Desmond\nStatus: In Progress -> Done\nDescription: Implement the full deploy pipeline. Steps:\n1. Create Linear ticket for the release.\n2. Open GitHub PR with the changes.\n3. Post deploy notification to #deployments on Slack.\n4. Update the deploy runbook in Notion.\nPR linked: #99.\n",
     "signal_level": "curated",
-    "occurred_at": "2025-02-01T00:00:00+00:00"
+    "occurred_at": "2025-01-22T12:00:00+00:00"
+  },
+  {
+    "source_id": "linear-8",
+    "source_type": "linear_ticket",
+    "title": "MIC-8: Agent Memory task (week 1)",
+    "content": "Project: Agent Memory\nAssignee: Bob Kim\nStatus: In Progress → Done\nDescription: Week 1 implementation task. PR linked: #16.",
+    "signal_level": "curated",
+    "occurred_at": "2025-01-12T00:00:00+00:00"
+  },
+  {
+    "source_id": "linear-10",
+    "source_type": "linear_ticket",
+    "title": "MIC-10: Platform task (week 2)",
+    "content": "Project: Platform\nAssignee: Carol Diaz\nStatus: In Progress → Done\nDescription: Week 2 implementation task. PR linked: #20.",
+    "signal_level": "curated",
+    "occurred_at": "2025-01-18T00:00:00+00:00"
   },
   {
     "source_id": "linear-5",
@@ -24,20 +40,36 @@
     "occurred_at": "2025-01-12T00:00:00+00:00"
   },
   {
-    "source_id": "linear-21",
+    "source_id": "linear-20",
     "source_type": "linear_ticket",
-    "title": "MIC-21: Agent Memory task (week 4)",
-    "content": "Project: Agent Memory\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 4 implementation task. PR linked: #42.",
+    "title": "MIC-20: Platform task (week 4)",
+    "content": "Project: Platform\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 4 implementation task. PR linked: #40.",
     "signal_level": "curated",
-    "occurred_at": "2025-01-31T00:00:00+00:00"
+    "occurred_at": "2025-01-28T00:00:00+00:00"
   },
   {
-    "source_id": "linear-12",
+    "source_id": "linear-15",
     "source_type": "linear_ticket",
-    "title": "MIC-12: Agent Memory task (week 2)",
-    "content": "Project: Agent Memory\nAssignee: Carol Diaz\nStatus: In Progress → Done\nDescription: Week 2 implementation task. PR linked: #24.",
+    "title": "MIC-15: Agent Memory task (week 3)",
+    "content": "Project: Agent Memory\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 3 implementation task. PR linked: #30.",
     "signal_level": "curated",
-    "occurred_at": "2025-01-17T00:00:00+00:00"
+    "occurred_at": "2025-01-26T00:00:00+00:00"
+  },
+  {
+    "source_id": "linear-13",
+    "source_type": "linear_ticket",
+    "title": "MIC-13: Agent Memory task (week 2)",
+    "content": "Project: Agent Memory\nAssignee: Bob Kim\nStatus: In Progress → Done\nDescription: Week 2 implementation task. PR linked: #26.",
+    "signal_level": "curated",
+    "occurred_at": "2025-01-14T00:00:00+00:00"
+  },
+  {
+    "source_id": "linear-16",
+    "source_type": "linear_ticket",
+    "title": "MIC-16: Agent Memory task (week 3)",
+    "content": "Project: Agent Memory\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 3 implementation task. PR linked: #32.",
+    "signal_level": "curated",
+    "occurred_at": "2025-01-25T00:00:00+00:00"
   },
   {
     "source_id": "linear-18",
@@ -56,43 +88,11 @@
     "occurred_at": "2025-01-17T00:00:00+00:00"
   },
   {
-    "source_id": "linear-7",
-    "source_type": "linear_ticket",
-    "title": "MIC-7: Platform task (week 1)",
-    "content": "Project: Platform\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 1 implementation task. PR linked: #14.",
-    "signal_level": "curated",
-    "occurred_at": "2025-01-08T00:00:00+00:00"
-  },
-  {
-    "source_id": "linear-20",
-    "source_type": "linear_ticket",
-    "title": "MIC-20: Platform task (week 4)",
-    "content": "Project: Platform\nAssignee: Alice Chen\nStatus: In Progress → Done\nDescription: Week 4 implementation task. PR linked: #40.",
-    "signal_level": "curated",
-    "occurred_at": "2025-01-28T00:00:00+00:00"
-  },
-  {
-    "source_id": "linear-13",
-    "source_type": "linear_ticket",
-    "title": "MIC-13: Agent Memory task (week 2)",
-    "content": "Project: Agent Memory\nAssignee: Bob Kim\nStatus: In Progress → Done\nDescription: Week 2 implementation task. PR linked: #26.",
-    "signal_level": "curated",
-    "occurred_at": "2025-01-14T00:00:00+00:00"
-  },
-  {
     "source_id": "linear-23",
     "source_type": "linear_ticket",
     "title": "MIC-23: Agent Memory task (week 4)",
     "content": "Project: Agent Memory\nAssignee: Carol Diaz\nStatus: In Progress → Done\nDescription: Week 4 implementation task. PR linked: #46.",
     "signal_level": "curated",
     "occurred_at": "2025-02-02T00:00:00+00:00"
-  },
-  {
-    "source_id": "linear-10",
-    "source_type": "linear_ticket",
-    "title": "MIC-10: Platform task (week 2)",
-    "content": "Project: Platform\nAssignee: Carol Diaz\nStatus: In Progress → Done\nDescription: Week 2 implementation task. PR linked: #20.",
-    "signal_level": "curated",
-    "occurred_at": "2025-01-18T00:00:00+00:00"
   }
 ]

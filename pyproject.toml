@@ -31,4 +31,4 @@ markers = [
     "live_llm: tests that make real LLM API calls",
 ]
 testpaths = ["knowledge_graph/tests"]
-pythonpath = ["knowledge_graph"]
+pythonpath = [".", "knowledge_graph"]

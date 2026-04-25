@@ -1,13 +1,5 @@
 [
   {
-    "source_id": "gmail-3-0",
-    "source_type": "gmail_thread",
-    "title": "Week 3: Investor update request",
-    "content": "Investor relations: please send the monthly update by end of week.",
-    "signal_level": "mid",
-    "occurred_at": "2025-01-24T00:00:00+00:00"
-  },
-  {
     "source_id": "gmail-2-0",
     "source_type": "gmail_thread",
     "title": "Week 2: Investor update request",
@@ -16,23 +8,7 @@
     "occurred_at": "2025-01-15T00:00:00+00:00"
   },
   {
-    "source_id": "gmail-4-1",
-    "source_type": "gmail_thread",
-    "title": "Week 4: Contract renewal: Anthropic API",
-    "content": "Anthropic API contract up for renewal. Negotiated 15% discount for annual plan.",
-    "signal_level": "mid",
-    "occurred_at": "2025-01-30T00:00:00+00:00"
-  },
-  {
-    "source_id": "gmail-2-1",
-    "source_type": "gmail_thread",
-    "title": "Week 2: Contract renewal: Anthropic API",
-    "content": "Anthropic API contract up for renewal. Negotiated 15% discount for annual plan.",
-    "signal_level": "mid",
-    "occurred_at": "2025-01-18T00:00:00+00:00"
-  },
-  {
-    "source_id": "gmail-3-1",
+    "source_id": "gmail-3-0",
     "source_type": "gmail_thread",
     "title": "Week 3: Investor update request",
     "content": "Investor relations: please send the monthly update by end of week.",
@@ -46,5 +22,29 @@
     "content": "AWS sent the monthly usage report. Compute costs up 12% due to SurrealDB instances.",
     "signal_level": "mid",
     "occurred_at": "2025-01-06T00:00:00+00:00"
+  },
+  {
+    "source_id": "gmail-2-1",
+    "source_type": "gmail_thread",
+    "title": "Week 2: Contract renewal: Anthropic API",
+    "content": "Anthropic API contract up for renewal. Negotiated 15% discount for annual plan.",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-18T00:00:00+00:00"
+  },
+  {
+    "source_id": "adv-gmail-bob-alias",
+    "source_type": "gmail_thread",
+    "title": "Re: API contract renewal",
+    "content": "From: bob@company.com\nTo: desmond@company.com\nBob K. here. I've reviewed the Anthropic contract. Looks good to renew.\n- Bob K.\n",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-22T12:00:00+00:00"
+  },
+  {
+    "source_id": "gmail-4-0",
+    "source_type": "gmail_thread",
+    "title": "Week 4: Vendor update: AWS usage report",
+    "content": "AWS sent the monthly usage report. Compute costs up 12% due to SurrealDB instances.",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-28T00:00:00+00:00"
   }
 ]

@@ -29,7 +29,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
+ROOT = Path(__file__).resolve().parent.parent.parent  # = knowledge_graph/
 FIXTURES = ROOT / "tests" / "fixtures"
 SYNTH_DIR = ROOT / "tests" / "synth"
 PERSONA_FILE = SYNTH_DIR / "persona.yaml"
@@ -393,7 +393,7 @@ def generate(seed: int = 42, split: float = 0.75) -> None:
 
     # corpus_meta.json with ground-truth annotations
     corpus_meta = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": base_dt.isoformat(),
         "seed": seed,
         "persona": persona.get("persona", {}),
         "total_items": {k: len(v) for k, v in all_items.items()},
