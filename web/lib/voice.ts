@@ -62,7 +62,20 @@ export function useVoiceConfig(): VoiceConfig {
   return cfg;
 }
 
-/* ---------- Web Speech (native) ----------------------------------------- */
+/* ---------- STT session interface --------------------------------------
+ *
+ * Both providers fit the same shape:
+ *   start() resolves when capture is live (mic permission granted, etc).
+ *   stop() resolves with the FINAL transcript — meaning all in-flight
+ *   audio has been transcribed. Critically this means the call site can
+ *   release `.` mid-word and we still capture everything spoken while
+ *   the key was held.
+ * --------------------------------------------------------------------- */
+
+interface SttSession {
+  start: () => Promise<void>;
+  stop: () => Promise<string>;
+}
 
 interface SpeechRecognitionLike {
   continuous: boolean;
@@ -81,6 +94,7 @@ interface SpeechRecognitionLike {
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
+  abort?: () => void;
 }
 
 function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
@@ -91,12 +105,74 @@ function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
   return (SR as new () => SpeechRecognitionLike) ?? null;
 }
 
-/* ---------- ElevenLabs (MediaRecorder ↑ /api/stt) ----------------------- */
+/* ---------- Web Speech session (browser native) ----------------------- */
 
-async function recordAndTranscribe(): Promise<{
-  start: () => Promise<void>;
-  stop: () => Promise<string>;
-}> {
+function makeBrowserSttSession(opts: {
+  onInterim?: (text: string) => void;
+}): SttSession {
+  let rec: SpeechRecognitionLike | null = null;
+  let buffer = "";
+  let endPromise: Promise<void> | null = null;
+
+  return {
+    async start() {
+      const SR = getSpeechRecognition();
+      if (!SR) {
+        // Unsupported runtime — pre-fill with a deterministic dev sample
+        // so the rest of the pipeline can still flow.
+        buffer =
+          "every morning I end up triaging the same product bugs from Slack into Linear";
+        opts.onInterim?.(buffer);
+        return;
+      }
+      rec = new SR();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = "en-US";
+
+      let resolveEnd: (() => void) | null = null;
+      endPromise = new Promise<void>((res) => {
+        resolveEnd = res;
+      });
+
+      rec.onresult = (event) => {
+        let final = "";
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const r = event.results[i];
+          const txt = r[0].transcript;
+          if (r.isFinal) final += txt + " ";
+          else interim += txt;
+        }
+        if (final) buffer += final;
+        opts.onInterim?.((buffer + interim).trim());
+      };
+      rec.onerror = () => resolveEnd?.();
+      rec.onend = () => resolveEnd?.();
+
+      rec.start();
+    },
+    async stop(): Promise<string> {
+      if (!rec) return buffer.trim();
+      try {
+        rec.stop();
+      } catch {
+        /* already stopped — onend may already have fired */
+      }
+      // Wait for `onend` so any results that were in flight at release
+      // time get appended to `buffer`. Safety timeout caps the wait.
+      await Promise.race([
+        endPromise ?? Promise.resolve(),
+        new Promise<void>((res) => setTimeout(res, 1800)),
+      ]);
+      return buffer.trim();
+    },
+  };
+}
+
+/* ---------- ElevenLabs Scribe session (MediaRecorder ↑ /api/stt) ----- */
+
+function makeElevenSttSession(): SttSession {
   let stream: MediaStream | null = null;
   let recorder: MediaRecorder | null = null;
   const chunks: BlobPart[] = [];
@@ -105,23 +181,21 @@ async function recordAndTranscribe(): Promise<{
   return {
     async start() {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime =
-        MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : MediaRecorder.isTypeSupported("audio/webm")
-            ? "audio/webm"
-            : "";
-      recorder = new MediaRecorder(
-        stream,
-        mime ? { mimeType: mime } : undefined,
-      );
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : "";
+      recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunks.push(e.data);
       };
       stopped = new Promise<void>((res) => {
         recorder!.onstop = () => res();
       });
-      recorder.start(250);
+      // Slightly larger time-slice keeps fewer wasted boundary chunks
+      // around release; the recorder still flushes everything on stop.
+      recorder.start(500);
     },
     async stop(): Promise<string> {
       if (!recorder) return "";
@@ -133,7 +207,9 @@ async function recordAndTranscribe(): Promise<{
       await stopped;
       stream?.getTracks().forEach((t) => t.stop());
 
-      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+      const blob = new Blob(chunks, {
+        type: recorder.mimeType || "audio/webm",
+      });
       if (blob.size === 0) return "";
 
       const form = new FormData();
@@ -179,45 +255,36 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
     optsRef.current = opts;
   }, [opts]);
 
-  const browserRecRef = useRef<SpeechRecognitionLike | null>(null);
-  const browserTextRef = useRef("");
-  const elevenSessionRef = useRef<{
-    stop: () => Promise<string>;
-  } | null>(null);
-  /* True if the user released `.` while we were still awaiting the
-   * mic-permission prompt. The pending start is then immediately
-   * stopped once it resolves so we don't strand the recording. */
+  /* Active STT session. Set in onPress, consumed in onRelease. */
+  const sessionRef = useRef<SttSession | null>(null);
+  /* Pending-release: set if the user lets go while onPress is still
+   * awaiting mic permission / recorder warmup. Honoured at the tail
+   * of onPress so we never strand the recording. */
   const pendingReleaseRef = useRef(false);
+  /* True while a finalizeRelease is in flight, so an immediate second
+   * onPress doesn't try to stomp on it. */
+  const finalizingRef = useRef(false);
 
-  const finalizeRelease = useCallback(async () => {
-    let transcript = "";
+  const cfgSttRef = useRef(cfg.stt);
+  cfgSttRef.current = cfg.stt;
 
-    if (cfg.stt === "elevenlabs" && elevenSessionRef.current) {
+  const finalize = useCallback(
+    async (session: SttSession) => {
+      finalizingRef.current = true;
       setDock("thinking");
+      let transcript = "";
       try {
-        transcript = await elevenSessionRef.current.stop();
+        transcript = await session.stop();
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn("[voice] STT stop failed", err);
       }
-      elevenSessionRef.current = null;
-    } else {
-      const rec = browserRecRef.current;
-      if (rec) {
-        try {
-          rec.stop();
-        } catch {
-          /* already stopped */
-        }
-        browserRecRef.current = null;
-      }
-      transcript = browserTextRef.current.trim();
-      setDock("thinking");
-    }
-
-    setDock("idle");
-    if (transcript) optsRef.current.onTranscript?.(transcript);
-  }, [cfg.stt, setDock]);
+      finalizingRef.current = false;
+      setDock("idle");
+      if (transcript) optsRef.current.onTranscript?.(transcript);
+    },
+    [setDock],
+  );
 
   const onPress = useCallback(async () => {
     if (holdingRef.current) return;
@@ -226,98 +293,60 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
     setHolding(true);
     setDock("listening");
     clearTranscript();
-    browserTextRef.current = "";
 
-    if (cfg.stt === "elevenlabs") {
-      try {
-        const session = await recordAndTranscribe();
-        await session.start();
-        elevenSessionRef.current = { stop: session.stop };
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn("[voice] mic permission failed", err);
-        holdingRef.current = false;
-        pendingReleaseRef.current = false;
-        setHolding(false);
-        setDock("idle");
-        return;
-      }
-      // If the user already let go while we were awaiting the mic,
-      // honour that release now.
-      if (pendingReleaseRef.current) {
-        pendingReleaseRef.current = false;
-        holdingRef.current = false;
-        setHolding(false);
-        await finalizeRelease();
-      }
-      return;
-    }
+    const session: SttSession =
+      cfgSttRef.current === "elevenlabs"
+        ? makeElevenSttSession()
+        : makeBrowserSttSession({
+            onInterim: (text) => {
+              // Pump live transcript into the store so the dock can
+              // narrate it during the hold.
+              clearTranscript();
+              appendTranscript(text);
+            },
+          });
 
-    // browser fallback (Web Speech API)
-    const SR = getSpeechRecognition();
-    if (!SR) {
-      // unsupported browser — short fake transcript so the UI still flows
-      browserTextRef.current =
-        "every morning I end up triaging the same product bugs from Slack into Linear ";
-      appendTranscript(browserTextRef.current);
-      return;
-    }
-    const rec = new SR();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = "en-US";
-    rec.onresult = (event) => {
-      let finalText = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalText += event.results[i][0].transcript + " ";
-        }
-      }
-      if (finalText) {
-        browserTextRef.current += finalText;
-        appendTranscript(finalText);
-      }
-    };
-    rec.onerror = () => {
-      holdingRef.current = false;
-      pendingReleaseRef.current = false;
-      setHolding(false);
-      setDock("idle");
-    };
-    rec.onend = () => {
-      // handled in onRelease
-    };
     try {
-      rec.start();
+      await session.start();
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.warn("[voice] webspeech start failed", err);
+      console.warn("[voice] mic permission failed", err);
       holdingRef.current = false;
       pendingReleaseRef.current = false;
       setHolding(false);
       setDock("idle");
       return;
     }
-    browserRecRef.current = rec;
-  }, [cfg.stt, setDock, clearTranscript, appendTranscript, finalizeRelease]);
+
+    sessionRef.current = session;
+
+    // Honour any release that landed while we were awaiting start.
+    if (pendingReleaseRef.current) {
+      pendingReleaseRef.current = false;
+      holdingRef.current = false;
+      setHolding(false);
+      sessionRef.current = null;
+      await finalize(session);
+    }
+  }, [setDock, clearTranscript, appendTranscript, finalize]);
 
   const onRelease = useCallback(async () => {
     if (!holdingRef.current) return;
 
-    // Mic-permission prompt or recorder warmup hasn't finished yet —
-    // schedule the stop so onPress's tail can pick it up.
-    const elevenInflight =
-      cfg.stt === "elevenlabs" && elevenSessionRef.current === null;
-    if (elevenInflight) {
+    // Recorder warmup hasn't finished yet — schedule the stop so
+    // onPress's tail can pick it up.
+    if (sessionRef.current === null) {
       pendingReleaseRef.current = true;
       return;
     }
 
+    const s = sessionRef.current;
+    sessionRef.current = null;
     holdingRef.current = false;
     pendingReleaseRef.current = false;
     setHolding(false);
-    await finalizeRelease();
-  }, [cfg.stt, finalizeRelease]);
+    await finalize(s);
+  }, [finalize]);
 
   return {
     holding,

@@ -121,39 +121,62 @@ export function VoiceBridge() {
     };
   }, []);
 
-  /* ---------- Auto read-back on reply.done -------------------------- */
-  /* The agent stream sets dock="speaking" when streaming reply chunks
-     and back to "idle" when done. We subscribe to the store transitions
-     so we can fire TTS the moment streaming finishes. */
+  /* ---------- Auto read-back on reply.done --------------------------
+   *
+   * The agent stream sets dock="speaking" while it streams chunks of a
+   * reply, then back to "idle" when done. We watch that speaking → idle
+   * edge to start TTS.
+   *
+   * Important: TTS playback itself toggles the dock (we set "speaking"
+   * for the audio's duration, then "idle" on `onEnd`). Without a guard
+   * the second speaking → idle would re-trigger another speak(), which
+   * sets speaking again, etc — an infinite loop.
+   *
+   * Guard: every reply lives under a single `lastQuery`. We remember
+   * the query we last spoke for and never speak the same one twice.
+   * A new agent turn (`startReply` mutates `lastQuery`) is the only
+   * thing that re-arms playback. */
   useEffect(() => {
-    let lastDock: string | null = null;
+    let lastDock: string | null = useAgentStore.getState().dock;
     let stop: (() => void) | null = null;
+    let lastSpokenQuery: string | null = null;
+    let speaking = false;
 
     const unsub = useAgentStore.subscribe((s) => {
       const next = s.dock;
       const prev = lastDock;
       lastDock = next;
 
-      // We watch the speaking → idle edge. At that point the reply
-      // text is final; play it.
       if (prev === "speaking" && next === "idle") {
-        const reply = useAgentStore.getState().agentReply;
+        // Skip transitions caused by our own TTS finishing.
+        if (speaking) {
+          speaking = false;
+          return;
+        }
+        const reply = s.agentReply;
+        const query = s.lastQuery;
         if (!reply || !reply.trim()) return;
+        if (!query || query === lastSpokenQuery) return;
 
+        lastSpokenQuery = query;
+        speaking = true;
         useAgentStore.getState().setDock("speaking");
         stop?.();
         speak(reply, {
           onEnd: () => {
-            // Restore idle once audio has finished.
-            const cur = useAgentStore.getState().dock;
-            if (cur === "speaking") setDock("idle");
             stop = null;
+            // Only step back to idle if nothing else has progressed
+            // the state machine in the meantime.
+            if (useAgentStore.getState().dock === "speaking") {
+              setDock("idle");
+            }
           },
         }).then((s) => {
           stop = s;
         });
       }
     });
+
     return () => {
       unsub();
       stop?.();
