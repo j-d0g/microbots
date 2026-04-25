@@ -13,56 +13,72 @@ const TOOLS = [
     type: "function" as const,
     function: {
       name: "open_brief",
-      description: "Open the morning brief room showing automation proposals and yesterday's runs.",
-      parameters: { type: "object", properties: { date: { type: "string", description: "ISO date string, defaults to today" } }, required: [] },
+      description: "Open the morning brief window showing automation proposals and yesterday's runs. Optionally specify position and size.",
+      parameters: { type: "object", properties: { date: { type: "string", description: "ISO date string, defaults to today" }, x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }, required: [] },
     },
   },
   {
     type: "function" as const,
     function: {
       name: "open_graph",
-      description: "Open the memory ontology graph room. Optional filters.",
-      parameters: { type: "object", properties: { filter: { type: "object", properties: { layer: { type: "string" }, integration: { type: "string" }, since: { type: "string" }, query: { type: "string" } } } }, required: [] },
+      description: "Open the memory ontology graph window. Optionally specify position, size, and filters.",
+      parameters: { type: "object", properties: { filter: { type: "object", properties: { layer: { type: "string" }, integration: { type: "string" }, since: { type: "string" }, query: { type: "string" } } }, x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }, required: [] },
     },
   },
   {
     type: "function" as const,
     function: {
       name: "open_workflow",
-      description: "Open a specific workflow by ID, or the workflow list if no ID.",
-      parameters: { type: "object", properties: { id: { type: "string" } }, required: [] },
+      description: "Open a specific workflow window by ID, or the workflow list if no ID.",
+      parameters: { type: "object", properties: { id: { type: "string" }, x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }, required: [] },
     },
   },
   {
     type: "function" as const,
     function: {
       name: "open_stack",
-      description: "Open the microservice stack room. Optionally focus a specific service.",
-      parameters: { type: "object", properties: { service_id: { type: "string" } }, required: [] },
+      description: "Open the microservice stack window. Optionally focus a specific service.",
+      parameters: { type: "object", properties: { service_id: { type: "string" }, x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }, required: [] },
     },
   },
   {
     type: "function" as const,
     function: {
       name: "open_waffle",
-      description: "Open the voice waffle room for free-form voice input.",
-      parameters: { type: "object", properties: {}, required: [] },
+      description: "Open the voice waffle window for free-form voice input.",
+      parameters: { type: "object", properties: { x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }, required: [] },
     },
   },
   {
     type: "function" as const,
     function: {
       name: "open_playbook_hub",
-      description: "Open the playbook hub showing org, network, and suggested playbooks.",
-      parameters: { type: "object", properties: { scope: { type: "string", enum: ["org", "network", "suggested"] } }, required: [] },
+      description: "Open the playbook hub window showing org, network, and suggested playbooks.",
+      parameters: { type: "object", properties: { scope: { type: "string", enum: ["org", "network", "suggested"] }, x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }, required: [] },
     },
   },
   {
     type: "function" as const,
     function: {
       name: "open_settings",
-      description: "Open settings. Optionally jump to a section.",
-      parameters: { type: "object", properties: { section: { type: "string" } }, required: [] },
+      description: "Open settings window. Optionally jump to a section.",
+      parameters: { type: "object", properties: { section: { type: "string" }, x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }, required: [] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "arrange_windows",
+      description: "Arrange all open windows using a layout preset. Use when the user wants to see multiple things at once or asks you to organize the desktop.",
+      parameters: { type: "object", properties: { layout: { type: "string", enum: ["focus", "split", "grid", "stack-right"], description: "focus: maximize top window. split: two side-by-side. grid: tile all. stack-right: main left + sidebar right." } }, required: ["layout"] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "close_window",
+      description: "Close a specific room window, or the topmost window if no room specified.",
+      parameters: { type: "object", properties: { room: { type: "string", enum: ["brief", "graph", "workflow", "stack", "waffle", "playbooks", "settings"] } }, required: [] },
     },
   },
   {
@@ -99,20 +115,25 @@ const TOOLS = [
   },
 ];
 
-const SYSTEM_PROMPT = `You are the microbots agent -- a calm, minimal AI assistant for Maya Chen, founder of Inkwell (B2B sales-coaching SaaS, 8-person team).
+const SYSTEM_PROMPT = `You are the microbots stage manager -- a calm, minimal AI that controls a desktop of floating windows for Maya Chen, founder of Inkwell (B2B sales-coaching SaaS, 8-person team).
 
 You have access to Maya's memory ontology (150+ nodes across integrations, entities, memories, skills, workflows) from overnight ingestion of Slack, GitHub, Linear, Gmail, Notion, and Perplexity.
 
-Your job: help Maya navigate her automations, approve proposals, explore her memory graph, and manage her stack. You speak in short, warm, lowercase sentences. No emojis. No exclamation marks. Think MUJI catalog copy.
+Your job: proactively arrange the desktop to show Maya what she needs. You control windows -- opening, closing, positioning, and arranging them. The user sees a desktop stage and you are the performer putting relevant information in front of them.
 
 Tools available:
-- open_brief, open_graph, open_workflow, open_stack, open_waffle, open_playbook_hub, open_settings: navigate rooms
-- highlight, explain: act on current room content
-- show_card: show transient overlays (toast for status, memory for recalled facts, entity for references)
+- open_brief, open_graph, open_workflow, open_stack, open_waffle, open_playbook_hub, open_settings: open windows. Each accepts optional x, y, w, h to control position and size.
+- arrange_windows: tile all open windows using a layout preset (focus, split, grid, stack-right). Use when the user wants to see multiple things, or when opening a second window alongside an existing one.
+- close_window: close a specific room window or the topmost.
+- highlight, explain: act on content within a window.
+- show_card: show transient overlays (toast for status, memory for recalled facts, entity for references).
 
-Always use tools to navigate. Never just describe what you could do -- do it. If the user says "morning" or "brief", open the brief. If they mention a workflow, open it. If they ask about memory, open the graph.
-
-Keep text replies under 2 sentences. Use tools aggressively.`;
+Guidelines:
+- When opening a room, think about what else is already open and whether to arrange.
+- If opening 2+ windows, call arrange_windows afterward (e.g. split or stack-right).
+- When the user asks about memory + workflows, open both windows and arrange them.
+- Never just describe -- act. Use tools aggressively.
+- Keep text replies under 2 sentences. Lowercase. No emojis.`;
 
 interface OpenRouterMessage {
   role: "system" | "user" | "assistant" | "tool";
@@ -140,8 +161,22 @@ function toolCallToEvents(name: string, args: Record<string, unknown>): Array<Re
     };
     const room = roomMap[name];
     if (room) {
-      events.push({ type: "ui.room", room, payload: args });
+      const rect: Record<string, number> = {};
+      if (typeof args.x === "number") rect.x = args.x;
+      if (typeof args.y === "number") rect.y = args.y;
+      if (typeof args.w === "number") rect.w = args.w;
+      if (typeof args.h === "number") rect.h = args.h;
+      events.push({
+        type: "ui.room",
+        room,
+        payload: args,
+        ...(Object.keys(rect).length > 0 ? { rect } : {}),
+      });
     }
+  } else if (name === "arrange_windows") {
+    events.push({ type: "ui.arrange", layout: args.layout ?? "grid" });
+  } else if (name === "close_window") {
+    events.push({ type: "ui.close_window", room: args.room });
   } else if (name === "highlight") {
     events.push({ type: "ui.verb", verb: "highlight", args });
   } else if (name === "explain") {

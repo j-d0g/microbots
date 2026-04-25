@@ -33,7 +33,7 @@ export function WorkflowRoom({ payload }: { payload?: Record<string, unknown> })
             workflows · {seed.workflows.length} live
           </p>
           <h1 className="mt-2 text-[40px] font-medium leading-[1.1] tracking-tight">
-            Your automations, in plain English.
+            workflows.
           </h1>
         </header>
 

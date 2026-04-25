@@ -74,12 +74,10 @@ export function PlaybooksRoom(_props: { payload?: Record<string, unknown> }) {
             playbooks · internet of intelligence · {total} available
           </p>
           <h1 className="mt-2 text-[40px] font-medium leading-[1.1] tracking-tight">
-            Automations worth borrowing.
+            playbooks.
           </h1>
           <p className="mt-3 max-w-[560px] text-[15px] leading-relaxed text-ink-60">
-            From your org, from the curated network, and from what I have
-            matched to your graph. Trying one queues it for tonight's
-            proposer -- nothing deploys without your approval in the morning.
+            your org, the network, and matched suggestions. nothing deploys without your approval.
           </p>
         </header>
         <Hairline className="mb-8" />

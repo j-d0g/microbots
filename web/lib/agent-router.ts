@@ -34,6 +34,10 @@ function nav(room: RoomKind, slug?: string): Step {
   return { delay: 80, event: { type: "ui.room", room, slug } };
 }
 
+function arrange(layout: "focus" | "split" | "grid" | "stack-right"): Step {
+  return { delay: 100, event: { type: "ui.arrange", layout } };
+}
+
 function status(s: string, delay = 60): Step {
   return { delay, event: { type: "agent.status", status: s } };
 }
@@ -99,6 +103,7 @@ const SCRIPTS: Script[] = [
       dock("thinking"),
       status("plotting what i know..."),
       nav("graph"),
+      arrange("focus"),
       { delay: 500, event: { type: "reply.start", query: q } },
       dock("speaking"),
       ...streamReply(

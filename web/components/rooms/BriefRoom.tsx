@@ -30,9 +30,7 @@ export function BriefRoom(_props: { payload?: Record<string, unknown> }) {
             {seed.briefProposals.length} for you today.
           </h1>
           <p className="mt-3 max-w-[560px] text-[15px] leading-relaxed text-ink-60">
-            I read last night. Here is what I would take off your plate today.
-            Approve them and I will run each in shadow mode first, then promote
-            to live after one clean cycle.
+            overnight proposals. approve to shadow deploy, promote after one clean cycle.
           </p>
         </header>
 

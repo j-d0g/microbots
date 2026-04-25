@@ -119,11 +119,10 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
             memory · live ontology · {seed.nodes.length} nodes
           </p>
           <h1 className="mt-2 text-[40px] font-medium leading-[1.1] tracking-tight">
-            What I remember about your work.
+            memory graph.
           </h1>
           <p className="mt-3 max-w-[560px] text-[15px] leading-relaxed text-ink-60">
-            Every integration, entity, memory, skill, and workflow -- from newest
-            to oldest. Nodes settle in as I learn.
+            integrations, entities, memories, skills, workflows. nodes settle as data is ingested.
           </p>
         </header>
 

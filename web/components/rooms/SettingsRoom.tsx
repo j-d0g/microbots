@@ -35,7 +35,7 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
             settings
           </p>
           <h1 className="mt-2 text-[40px] font-medium leading-[1.1] tracking-tight">
-            Calm defaults.
+            defaults.
           </h1>
         </header>
 
@@ -85,8 +85,7 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
 
         <Section title="overnight schedule">
           <p className="text-[14px] text-ink-60">
-            The proposer runs at 03:00 local. Anything above the confidence
-            threshold below is queued for your morning brief.
+            proposer runs at 03:00 local. above threshold goes to morning brief.
           </p>
           <div className="mt-4 flex items-center gap-4">
             <Chip tone="accent">threshold · {seed.confidenceThreshold.toFixed(2)}</Chip>
@@ -98,8 +97,7 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
 
         <Section title="voice">
           <p className="text-[14px] text-ink-60">
-            Web Speech API for listening and speaking. Browser-native, no external
-            keys required. Silence unless I have something worth saying.
+            web speech API. browser-native. no external keys.
           </p>
         </Section>
 
@@ -109,8 +107,7 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
               {seed.nodes.length} nodes, {seed.edges.length} edges in the ontology.
             </p>
             <p>
-              Export, scope-delete, retention. Nothing ambient leaves the device
-              until you ask me to write a memory.
+              export, scope-delete, retention. nothing leaves the device until you say so.
             </p>
           </div>
         </Section>
@@ -120,7 +117,7 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
             danger zone
           </h2>
           <p className="text-[14px] text-ink-60">
-            Wipe the entire memory graph. This cannot be undone.
+            wipe the entire memory graph. cannot be undone.
           </p>
           <button
             type="button"

@@ -9,6 +9,7 @@ export type AgentEvent =
       room: RoomKind;
       slug?: string;
       payload?: Record<string, unknown>;
+      rect?: { x?: number; y?: number; w?: number; h?: number };
     }
   | { type: "ui.verb"; verb: VerbPayload["verb"]; args: Record<string, unknown> }
   | {
@@ -20,6 +21,8 @@ export type AgentEvent =
         ttl?: number;
       };
     }
+  | { type: "ui.arrange"; layout: "focus" | "split" | "grid" | "stack-right" }
+  | { type: "ui.close_window"; room?: RoomKind }
   | { type: "speak.chunk"; text: string }
   | { type: "agent.status"; status: string }
   | { type: "dock"; state: "idle" | "listening" | "thinking" | "speaking" | "hidden" }
@@ -31,11 +34,22 @@ export function applyAgentEvent(evt: AgentEvent): void {
   const s = useAgentStore.getState();
   switch (evt.type) {
     case "ui.room":
-      // Use modal stack openRoom instead of route navigation
-      s.openRoom(evt.room, evt.payload);
+      s.openWindow(evt.room, { rect: evt.rect, payload: evt.payload });
       if (evt.slug) s.setRoomSlug(evt.slug);
       else s.setRoomSlug(null);
       break;
+    case "ui.arrange":
+      s.arrangeWindows(evt.layout);
+      break;
+    case "ui.close_window": {
+      if (evt.room) {
+        const target = s.windows.find((w) => w.kind === evt.room);
+        if (target) s.closeWindow(target.id);
+      } else {
+        s.closeTopWindow();
+      }
+      break;
+    }
     case "ui.verb":
       s.emitVerb({ verb: evt.verb, args: evt.args, at: Date.now() });
       break;

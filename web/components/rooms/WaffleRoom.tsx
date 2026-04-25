@@ -22,8 +22,8 @@ export function WaffleRoom(_props: { payload?: Record<string, unknown> }) {
         </h1>
         <p className="mt-3 max-w-[480px] text-[15px] leading-relaxed text-ink-60">
           {supported
-            ? "Press and hold the dot below. Tell me the part of your day you wish someone else was doing."
-            : "Voice is not available in this browser. Type your thoughts using / instead."}
+            ? "hold the dot. tell me what you need automated."
+            : "voice not available. type with / instead."}
         </p>
 
         {supported && (

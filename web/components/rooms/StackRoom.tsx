@@ -33,11 +33,10 @@ export function StackRoom(_props: { payload?: Record<string, unknown> }) {
             microservices · {seed.services.length} deployed
           </p>
           <h1 className="mt-2 text-[40px] font-medium leading-[1.1] tracking-tight">
-            Your stack, block by block.
+            stack.
           </h1>
           <p className="mt-3 max-w-[560px] text-[15px] leading-relaxed text-ink-60">
-            Each block is a small Python service. Workflows own a column;
-            blocks stack. Click a block to see logs.
+            python microservices. click a block to see logs.
           </p>
         </header>
 
