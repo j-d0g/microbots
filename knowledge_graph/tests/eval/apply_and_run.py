@@ -43,7 +43,7 @@ PHASE_PROMPT_FILES: dict[str, list[str]] = {
     "triage": ["ingest/prompts/core.py"],
     "memory_extraction": ["enrich/prompts/memory.py"],
     "entity_resolution": ["enrich/prompts/entity.py"],
-    "skill_detection": ["enrich/prompts/skill_per_integration.py"],
+    "skill_detection": ["enrich/prompts/skill_per_integration.py", "enrich/prompts/skill_synthesis.py"],
     "workflow_composition": ["enrich/prompts/workflow.py"],
     "wiki": ["wiki/prompts/system.py"],
 }

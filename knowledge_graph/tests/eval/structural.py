@@ -160,16 +160,16 @@ def negative_suppression(
     if not negative_chat_ids:
         return 1.0
     neg_set = set(negative_chat_ids)
-    produced_from_neg = 0
+    neg_chats_with_memories: set[str] = set()
     for mem in db_memories:
         source_ids = mem.get("source_chat_ids", [])
         for sid in source_ids:
             sid_str = str(sid)
             clean = sid_str.split(":")[-1] if ":" in sid_str else sid_str
             if clean in neg_set or sid_str in neg_set:
-                produced_from_neg += 1
+                neg_chats_with_memories.add(clean if clean in neg_set else sid_str)
                 break
-    return 1.0 - (produced_from_neg / len(negative_chat_ids))
+    return 1.0 - (len(neg_chats_with_memories) / len(negative_chat_ids))
 
 
 def skill_recall(
