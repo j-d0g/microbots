@@ -31,7 +31,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("run_ingest_fixture")
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
 FIXTURES_TRAIN = ROOT / "tests" / "fixtures" / "train"
 INTEGRATIONS = ["slack", "github", "linear", "gmail", "notion", "perplexity"]
 

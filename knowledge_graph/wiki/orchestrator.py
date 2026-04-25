@@ -90,7 +90,12 @@ async def run_wiki(config: Config, memory_root: Path | None = None) -> WikiResul
                 result.failed += 1
                 result.details.append({"path": str(target.path), "status": "failed"})
             else:
-                changed = upd.content != _read_text_safe(target.path) if not wiki_cfg.write_dry_run else True
+                # Always write the file from the structured output so the file
+                # exists even if the agent skipped the write_markdown tool call.
+                if not wiki_cfg.write_dry_run and upd.content:
+                    target.path.parent.mkdir(parents=True, exist_ok=True)
+                    target.path.write_text(upd.content, encoding="utf-8")
+                    log.info("orchestrator: wrote %s (%d bytes)", target.path, len(upd.content.encode()))
                 result.updated += 1
                 result.details.append({"path": str(target.path), "status": "updated", "rationale": upd.rationale})
 

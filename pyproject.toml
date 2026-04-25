@@ -22,4 +22,5 @@ markers = [
     "e2e: end-to-end tests requiring a running SurrealDB",
     "live_llm: tests that make real LLM API calls",
 ]
-testpaths = ["tests"]
+testpaths = ["knowledge_graph/tests"]
+pythonpath = ["knowledge_graph"]

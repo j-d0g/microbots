@@ -29,7 +29,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
 FIXTURES = ROOT / "tests" / "fixtures"
 SYNTH_DIR = ROOT / "tests" / "synth"
 PERSONA_FILE = SYNTH_DIR / "persona.yaml"

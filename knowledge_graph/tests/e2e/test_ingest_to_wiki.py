@@ -15,8 +15,12 @@ import os
 from pathlib import Path
 
 import pytest
+from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+# Load .env before checking for keys so tests work when run directly
+load_dotenv()
+
+ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
 
 # Whether an LLM key is available in the environment
 _HAS_LLM_KEY = bool(
@@ -42,6 +46,29 @@ async def _count(db, table: str) -> int:
 
 def _md_files(memory_root: Path) -> list[Path]:
     return sorted(memory_root.rglob("*.md"))
+
+
+def _preflight_llm_auth() -> None:
+    """Check LLM key format before running the full pipeline.
+
+    Skips with a clear message when no valid key is present, rather than
+    letting 18 individual file failures surface as cryptic errors.
+    Auth is validated live during the agent run; this is a fast format check.
+    """
+    openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+
+    if openrouter_key and openrouter_key.startswith("sk-or-"):
+        return  # looks like a valid OpenRouter key
+    if anthropic_key and anthropic_key.startswith("sk-ant-"):
+        return  # looks like a valid Anthropic key
+
+    if openrouter_key or anthropic_key:
+        pytest.skip(
+            "LLM key present but may be invalid (wrong format). "
+            "OPENROUTER_API_KEY should start with 'sk-or-', ANTHROPIC_API_KEY with 'sk-ant-'."
+        )
+    pytest.skip("No LLM key available — set OPENROUTER_API_KEY or ANTHROPIC_API_KEY in .env.")
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +135,10 @@ async def test_wiki_writes_all_markdown_files(test_db, test_db_config, memory_ro
     """Seed → wiki agent → all expected markdown files exist and are non-empty."""
     if not _HAS_LLM_KEY:
         pytest.skip("No LLM API key set (OPENROUTER_API_KEY or ANTHROPIC_API_KEY)")
+
+    # Pre-flight: verify the key actually works before running the full pipeline.
+    # This gives a clear SKIP reason instead of 18 opaque "failed" entries.
+    _preflight_llm_auth()
 
     from seed.seed import seed
     from wiki.orchestrator import run_wiki
