@@ -1,10 +1,10 @@
-"""Deploy the kg_mcp server via render_sdk.
+"""Deploy the unified microbots FastAPI app via ``render_sdk``.
 
 Usage::
 
-    .venv/Scripts/python app/services/kg_mcp/deploy.py
-    .venv/Scripts/python app/services/kg_mcp/deploy.py --status
-    .venv/Scripts/python app/services/kg_mcp/deploy.py --teardown
+    .venv/Scripts/python app/deploy.py              # deploy
+    .venv/Scripts/python app/deploy.py --status     # read registry entry
+    .venv/Scripts/python app/deploy.py --teardown   # delete service + entry
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import sys
 import time
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -27,26 +27,33 @@ from render_sdk import RenderSDK, RenderSDKError  # noqa: E402
 
 SERVICE_PATH = Path(__file__).resolve().parent
 
-# These env vars are required by the container at runtime.
 RUNTIME_ENV_KEYS = (
     "SURREAL_URL",
     "SURREAL_USER",
     "SURREAL_PASS",
     "SURREAL_NS",
     "SURREAL_DB",
+    "COMPOSIO_API_KEY",
+    "COMPOSIO_USER_ID",
+    "OPENROUTER_API_KEY",       # present so agent paths that call LLMs work
+    "LOGFIRE_TOKEN",            # optional — lets the deployed service emit Logfire traces
+    "LOGFIRE_SERVICE_NAME",
+    "LOGFIRE_ENVIRONMENT",
 )
 
 
 def _runtime_env_vars() -> dict[str, str]:
-    """Pull the SURREAL_* keys from the host .env so the deployed container
-    can reach the same SurrealDB."""
-    missing = [k for k in RUNTIME_ENV_KEYS if not os.getenv(k)]
+    """Pull relevant keys from the host .env for the deployed container."""
+    out: dict[str, str] = {}
+    required = ("SURREAL_URL", "SURREAL_USER", "SURREAL_PASS")
+    missing = [k for k in required if not os.getenv(k)]
     if missing:
-        raise SystemExit(
-            f"Missing required env vars in .env: {missing}.\n"
-            "Add them and re-run."
-        )
-    return {k: os.environ[k] for k in RUNTIME_ENV_KEYS}
+        raise SystemExit(f"Missing required env vars in .env: {missing}")
+    for k in RUNTIME_ENV_KEYS:
+        v = os.getenv(k)
+        if v:
+            out[k] = v
+    return out
 
 
 def deploy() -> int:
@@ -57,6 +64,8 @@ def deploy() -> int:
 
     sdk = RenderSDK(log_level="INFO")
     env_vars = _runtime_env_vars()
+    print(f"[deploy] Passing {len(env_vars)} env vars to the container "
+          f"({', '.join(sorted(env_vars.keys()))})")
 
     try:
         result = sdk.deploy(
@@ -73,32 +82,29 @@ def deploy() -> int:
     print(f"  service_id   : {result.service_id}")
     print(f"  service_name : {result.service_name}")
     print(f"  image_tag    : {result.image_tag}")
-    print(f"  region       : {result.region}")
     print(f"  is_new       : {result.is_new}")
     print(f"  duration     : {result.duration_s}s")
     print("=" * 60)
 
-    print("\n[deploy] Probing the MCP server (it may need a few seconds to boot)...")
-    _probe(result.url + "/mcp")
+    print("\n[deploy] Probing /api/health...")
+    _probe(result.url + "/api/health")
     return 0
 
 
 def _probe(url: str, retries: int = 8, delay: float = 5.0) -> None:
-    """Most MCP HTTP transports return 405/406 on a plain GET — that's still a
-    healthy signal because it means the route is mounted. We treat any HTTP
-    response (not a connection error) as 'up'."""
     import requests
 
     for attempt in range(1, retries + 1):
         try:
-            resp = requests.get(url, timeout=10)
-            print(f"  attempt {attempt}: HTTP {resp.status_code}  body[:80]={resp.text[:80]!r}")
-            if resp.status_code < 500:
+            resp = requests.get(url, timeout=15)
+            short = resp.text.replace("\n", " ")[:200]
+            print(f"  attempt {attempt}: HTTP {resp.status_code}  {short}")
+            if resp.ok:
                 return
         except requests.RequestException as e:
             print(f"  attempt {attempt}: {type(e).__name__}: {e}")
         time.sleep(delay)
-    print("  giving up — service may still be warming. Check the Render dashboard.")
+    print("  giving up — service may still be warming. Check Render dashboard.")
 
 
 def status() -> int:
@@ -124,9 +130,9 @@ def teardown() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Deploy app/services/kg_mcp/ to Render.")
-    parser.add_argument("--status", action="store_true", help="Show registry entry and exit.")
-    parser.add_argument("--teardown", action="store_true", help="Delete service + registry entry.")
+    parser = argparse.ArgumentParser(description="Deploy the unified microbots app to Render.")
+    parser.add_argument("--status", action="store_true")
+    parser.add_argument("--teardown", action="store_true")
     args = parser.parse_args()
 
     if args.status:

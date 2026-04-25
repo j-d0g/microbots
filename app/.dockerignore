@@ -8,3 +8,4 @@ __pycache__/
 .vscode/
 *.log
 deploy.py
+services/kg_mcp/
