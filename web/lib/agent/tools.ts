@@ -85,11 +85,18 @@ export const MOUNT_POINT = z.enum([
   "pip-tr",
 ]);
 
+/** Layout preset names — kept in sync with `LAYOUT_PRESET_NAMES` in
+ *  `server-snapshot.ts`. The simulator owns the geometry; this enum
+ *  is just the wire shape the agent sees. */
 export const LAYOUT_PRESET = z.enum([
   "focus",
   "split",
   "grid",
   "stack-right",
+  "spotlight",
+  "theater",
+  "reading",
+  "triptych",
 ]);
 
 export const CARD_KIND = z.enum([
@@ -138,21 +145,45 @@ export function layoutTools(ctx: AgentToolCtx) {
 
     move_window: tool({
       description:
-        "Move/snap an existing window to a new mount point. Identify it by `id` (preferred) or `kind`.",
+        "Move/snap an existing window to a NAMED mount anchor. Identify it by `id` (preferred) or `kind`. For free-form custom positioning, prefer `set_window_rect` instead.",
       inputSchema: z.object({
         id: z.string().optional(),
         kind: WINDOW_KIND.optional(),
         mount: MOUNT_POINT,
       }),
       execute: async ({ id, kind, mount }) => {
-        // Translate the named mount into a % rect on the client side
-        // by emitting a `ui.resize` with the right rect. The browser
-        // applies it via updateWindowRect.
-        const rect = mountToClientRect(mount);
+        const rect = mountToClientRect(mount, ctx.snapshot.viewport);
         const events: AgentEvent[] = [
           { type: "ui.resize", room: kind as RoomKind | undefined, rect },
         ];
         return applyAndEmit(ctx, "move_window", { id, kind, mount }, events);
+      },
+    }),
+
+    set_window_rect: tool({
+      description:
+        "Move and resize a window to a custom % rectangle. Use when no named mount fits — e.g. centered subject (x:17, y:10, w:66, h:80), top-strip (x:0, y:0, w:100, h:30), bottom-strip + side, off-canvas drift, etc. Prefer named mounts when they fit; this tool is for organic, asymmetric layouts. Coordinates are 0–100 % of canvas (origin top-left).",
+      inputSchema: z.object({
+        id: z.string().optional(),
+        kind: WINDOW_KIND.optional(),
+        rect: z.object({
+          x: z.number().min(0).max(100),
+          y: z.number().min(0).max(100),
+          w: z.number().min(5).max(100),
+          h: z.number().min(5).max(100),
+        }),
+      }),
+      execute: async ({ id, kind, rect }) => {
+        const px = pctRectToPx(rect, ctx.snapshot.viewport);
+        const events: AgentEvent[] = [
+          { type: "ui.resize", room: kind as RoomKind | undefined, rect: px },
+        ];
+        return applyAndEmit(
+          ctx,
+          "set_window_rect",
+          { id, kind, rect_pct: rect },
+          events,
+        );
       },
     }),
 
@@ -176,11 +207,35 @@ export function layoutTools(ctx: AgentToolCtx) {
 
     arrange_windows: tool({
       description:
-        "Tile every open window using a preset. focus=top maximised; split=two side by side; grid=tile all; stack-right=main left + sidebar right. Call this when 2+ windows are open and the user asks for an arrangement.",
+        "Tile every open window using a named preset. The geometry — outer margin, inter-window gutter, subject-slot sizing — is pre-determined; you only pick a name. Subject (slot 0) is the focused window. Choose by intent (see system prompt for the picker table).",
       inputSchema: z.object({ layout: LAYOUT_PRESET }),
       execute: async ({ layout }) => {
-        const events: AgentEvent[] = [{ type: "ui.arrange", layout }];
-        return applyAndEmit(ctx, "arrange_windows", { layout }, events);
+        // Bypass the standard applyAndEmit flow: arrange_windows
+        // emits one ui.resize per window using the rects the simulator
+        // computed, instead of a single ui.arrange that would force
+        // the client to know preset geometry too.
+        ctx.emit({
+          type: "agent.tool.start",
+          name: "arrange_windows",
+          args: { layout },
+        });
+        const result = applyToolToSnapshot(ctx.snapshot, "arrange_windows", {
+          layout,
+        });
+        ctx.snapshot = result.snapshot;
+        for (const w of ctx.snapshot.windows) {
+          ctx.emit({
+            type: "ui.resize",
+            room: w.kind,
+            rect: pctRectToPx(w.rect, ctx.snapshot.viewport),
+          });
+        }
+        ctx.emit({
+          type: "agent.tool.done",
+          name: "arrange_windows",
+          ok: true,
+        });
+        return result.message;
       },
     }),
 
@@ -344,6 +399,18 @@ export function graphTools(ctx: AgentToolCtx) {
       inputSchema: z.object({ node_id: z.string() }),
       execute: async ({ node_id }) => dispatch("neighbors", { node_id }),
     }),
+    graph_highlight: tool({
+      description:
+        "Highlight a node and its direct neighbors (no zoom change). Pass empty string to clear.",
+      inputSchema: z.object({ node_id: z.string() }),
+      execute: async ({ node_id }) => dispatch("highlight", { node_id }),
+    }),
+    graph_zoom_to: tool({
+      description:
+        "Set the graph zoom level. Range 0.2 (far / overview) to 4 (close / detail).",
+      inputSchema: z.object({ scale: z.number().min(0.2).max(4) }),
+      execute: async ({ scale }) => dispatch("zoom_to", { scale }),
+    }),
     graph_path: tool({
       description: "Highlight the shortest path between two nodes.",
       inputSchema: z.object({ from: z.string(), to: z.string() }),
@@ -380,47 +447,63 @@ export function graphTools(ctx: AgentToolCtx) {
  * ------------------------------------------------------------------ */
 
 /** Translate a named mount to a partial pixel rect the client's
- *  `updateWindowRect` understands. The client uses pixel rects, not %,
- *  so we translate at the boundary. The %-rect → px-rect math is
- *  conservative and the user's `arrangeWindows()` is the source of
- *  truth for "tight" mounts. We keep it %-only here and let the client
- *  multiply by viewport. The fact that we send `x/y/w/h` as fractions
- *  of a 100×100 grid relies on `updateWindowRect` not interpreting
- *  them as pixels — which it does. So we instead emit the rect keyed
- *  to a 1440×900 reference so the user's display feels right. */
+ *  `updateWindowRect` understands. The client uses pixel rects, so we
+ *  translate at the server boundary using the snapshot's actual
+ *  viewport (sent by the browser on every request). This way the
+ *  layout looks correct on any screen — no hardcoded 1440×900. */
 function mountToClientRect(
   mount: MountPoint,
+  viewport: { w: number; h: number },
 ): { x?: number; y?: number; w?: number; h?: number } {
-  // Reference viewport for client-side rect math. 1440×900 is a common
-  // laptop default; the client clamps to its actual viewport on apply.
-  const VW = 1440;
-  const VH = 820; // 900 - 80 dock
-  const m = mountRectPctLocal(mount);
+  return pctRectToPx(mountRectPctLocal(mount), viewport);
+}
+
+function pctRectToPx(
+  rect: { x: number; y: number; w: number; h: number },
+  viewport: { w: number; h: number },
+): { x: number; y: number; w: number; h: number } {
+  // Subtract a small dock buffer so windows don't slide under the
+  // floating dock at the bottom of the canvas. ~80px is the dock + gap.
+  const usableH = Math.max(200, viewport.h - 80);
   return {
-    x: Math.round((m.x / 100) * VW),
-    y: Math.round((m.y / 100) * VH),
-    w: Math.round((m.w / 100) * VW),
-    h: Math.round((m.h / 100) * VH),
+    x: Math.round((rect.x / 100) * viewport.w),
+    y: Math.round((rect.y / 100) * usableH),
+    w: Math.round((rect.w / 100) * viewport.w),
+    h: Math.round((rect.h / 100) * usableH),
   };
 }
 
+/** Named-mount geometry — every mount honours OUTER margin from the
+ *  canvas edges and GUTTER between adjacent mounts. Same constants as
+ *  `lib/agent/server-snapshot.ts` so `arrange_windows` and `move_window`
+ *  produce visually consistent layouts. */
+const OUTER = 2.5;
+const GUTTER = 2.5;
+
 function mountRectPctLocal(mount: MountPoint) {
+  const O = OUTER;
+  const G = GUTTER;
+  const FULL = 100 - 2 * O;
+  const HALF = (FULL - G) / 2;
+  const THIRD = (FULL - 2 * G) / 3;
+  const Q = (FULL - G) / 2; // quadrant side, same as HALF
+
   switch (mount) {
-    case "full":         return { x: 0,  y: 0,   w: 100,    h: 100 };
-    case "left-half":    return { x: 0,  y: 0,   w: 50,     h: 100 };
-    case "right-half":   return { x: 50, y: 0,   w: 50,     h: 100 };
-    case "top-half":     return { x: 0,  y: 0,   w: 100,    h: 50 };
-    case "bottom-half":  return { x: 0,  y: 50,  w: 100,    h: 50 };
-    case "left-third":   return { x: 0,  y: 0,   w: 100/3,  h: 100 };
-    case "center-third": return { x: 100/3, y: 0, w: 100/3, h: 100 };
-    case "right-third":  return { x: 200/3, y: 0, w: 100/3, h: 100 };
-    case "tl":           return { x: 0,  y: 0,   w: 50,     h: 50 };
-    case "tr":           return { x: 50, y: 0,   w: 50,     h: 50 };
-    case "bl":           return { x: 0,  y: 50,  w: 50,     h: 50 };
-    case "br":           return { x: 50, y: 50,  w: 50,     h: 50 };
-    case "pip-br":       return { x: 75, y: 70,  w: 25,     h: 30 };
-    case "pip-tr":       return { x: 75, y: 0,   w: 25,     h: 30 };
-    case "freeform":     return { x: 25, y: 15,  w: 50,     h: 70 };
+    case "full":         return { x: O,             y: O,             w: FULL,  h: FULL };
+    case "left-half":    return { x: O,             y: O,             w: HALF,  h: FULL };
+    case "right-half":   return { x: O + HALF + G,  y: O,             w: HALF,  h: FULL };
+    case "top-half":     return { x: O,             y: O,             w: FULL,  h: HALF };
+    case "bottom-half":  return { x: O,             y: O + HALF + G,  w: FULL,  h: HALF };
+    case "left-third":   return { x: O,             y: O,             w: THIRD, h: FULL };
+    case "center-third": return { x: O + THIRD + G, y: O,             w: THIRD, h: FULL };
+    case "right-third":  return { x: O + 2*(THIRD+G), y: O,           w: THIRD, h: FULL };
+    case "tl":           return { x: O,             y: O,             w: Q,     h: Q };
+    case "tr":           return { x: O + Q + G,     y: O,             w: Q,     h: Q };
+    case "bl":           return { x: O,             y: O + Q + G,     w: Q,     h: Q };
+    case "br":           return { x: O + Q + G,     y: O + Q + G,     w: Q,     h: Q };
+    case "pip-br":       return { x: 100 - O - 25,  y: 100 - O - 22,  w: 25,    h: 22 };
+    case "pip-tr":       return { x: 100 - O - 25,  y: O,             w: 25,    h: 22 };
+    case "freeform":     return { x: 25,            y: 15,            w: 50,    h: 70 };
   }
 }
 

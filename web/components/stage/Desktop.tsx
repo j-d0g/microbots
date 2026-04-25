@@ -29,6 +29,7 @@ export function Desktop() {
   const closeTopWindow = useAgentStore((s) => s.closeTopWindow);
   const openWindow = useAgentStore((s) => s.openWindow);
   const arrangeWindows = useAgentStore((s) => s.arrangeWindows);
+  const updateWindowRect = useAgentStore((s) => s.updateWindowRect);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -58,6 +59,31 @@ export function Desktop() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  // Re-clamp every window on browser-resize so stale rects (set when
+  // the viewport was larger) don't keep clipping. updateWindowRect
+  // already runs through clampToBounds, so passing the current rect
+  // through it is enough — if the window now overflows, it shrinks /
+  // shifts back into bounds; otherwise it's a no-op.
+  //
+  // Debounced via rAF to coalesce rapid resize ticks. We grab the
+  // latest rect off the store inside the handler so we don't capture
+  // a stale `windows` snapshot.
+  useEffect(() => {
+    let raf = 0;
+    const onResize = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const live = useAgentStore.getState().windows;
+        for (const w of live) updateWindowRect(w.id, w.rect);
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [updateWindowRect]);
 
   return (
     <div

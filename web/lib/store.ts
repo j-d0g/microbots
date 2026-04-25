@@ -87,7 +87,55 @@ export function getMinSize(kind: RoomKind) { return MIN_SIZES[kind]; }
  *  a small visual reserve so a fully-bottom window doesn't sit behind
  *  the dock pill by default. */
 const DOCK_VISUAL_RESERVE = 24;
-const GAP = 16;
+/** Outer breathing room from the browser viewport edges. Small,
+ *  proportional to the chrome — windows feel "anchored on a stage"
+ *  rather than glued to the screen edge. Applied to user-driven
+ *  drag/resize via `clampToBounds`; the agent's named mounts honour
+ *  the same value via `OUTER` in `lib/agent/server-snapshot.ts`. */
+const CANVAS_INSET_PX = 16;
+/** Legacy gap used by the offline `arrangeWindows` reducer below. Kept
+ *  in sync with `CANVAS_INSET_PX` so the two paths look identical. */
+const GAP = CANVAS_INSET_PX;
+
+/**
+ * Clamp a window rect to the visible viewport so windows can never
+ * clip out of the canvas (off-screen right/bottom or behind the dock
+ * reserve). Used both by user-drag/resize and by agent-driven layout
+ * events — defense in depth, since the agent's px math is computed
+ * against the snapshot viewport which can drift if the user resizes
+ * the browser between the snapshot and the apply.
+ *
+ * Also enforces a small CANVAS_INSET_PX margin on every edge so a
+ * dragged window never sits flush to the browser chrome.
+ */
+export function clampToBounds(
+  rect: WindowRect,
+  kind: RoomKind,
+  viewport?: { w: number; h: number },
+): WindowRect {
+  const vw =
+    viewport?.w ?? (typeof window !== "undefined" ? window.innerWidth : 1440);
+  const vh =
+    viewport?.h ?? (typeof window !== "undefined" ? window.innerHeight : 900);
+  const usableH = Math.max(200, vh - DOCK_VISUAL_RESERVE);
+  const min = MIN_SIZES[kind];
+
+  // Size: never smaller than min, never larger than (viewport - 2*inset).
+  const maxW = Math.max(min.w, vw - 2 * CANVAS_INSET_PX);
+  const maxH = Math.max(min.h, usableH - 2 * CANVAS_INSET_PX);
+  const w = Math.max(min.w, Math.min(rect.w, maxW));
+  const h = Math.max(min.h, Math.min(rect.h, maxH));
+  // Position: keep the whole rect on-screen, with INSET on every edge.
+  const x = Math.max(
+    CANVAS_INSET_PX,
+    Math.min(rect.x, vw - CANVAS_INSET_PX - w),
+  );
+  const y = Math.max(
+    CANVAS_INSET_PX,
+    Math.min(rect.y, usableH - CANVAS_INSET_PX - h),
+  );
+  return { x, y, w, h };
+}
 
 export type RoomState =
   | "ready"
@@ -349,27 +397,23 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     }),
 
   moveWindow: (id, x, y) =>
-    set((s) => {
-      const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
-      const vh = typeof window !== "undefined" ? window.innerHeight : 768;
-      return {
-        windows: s.windows.map((w) => {
-          if (w.id !== id) return w;
-          const cx = Math.max(0, Math.min(x, vw - 80));
-          const cy = Math.max(0, Math.min(y, vh - 40));
-          return { ...w, rect: { ...w.rect, x: cx, y: cy } };
-        }),
-      };
-    }),
+    set((s) => ({
+      windows: s.windows.map((w) => {
+        if (w.id !== id) return w;
+        // Use full viewport-aware clamp so the window can't be dragged
+        // off the right/bottom edge of the canvas.
+        const next = clampToBounds({ ...w.rect, x, y }, w.kind);
+        return { ...w, rect: next };
+      }),
+    })),
 
   resizeWindow: (id, w, h) =>
     set((s) => ({
       windows: s.windows.map((win) => {
         if (win.id !== id) return win;
-        const min = MIN_SIZES[win.kind];
         return {
           ...win,
-          rect: { ...win.rect, w: Math.max(w, min.w), h: Math.max(h, min.h) },
+          rect: clampToBounds({ ...win.rect, w, h }, win.kind),
         };
       }),
     })),
@@ -415,11 +459,8 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     set((s) => ({
       windows: s.windows.map((w) => {
         if (w.id !== id) return w;
-        const min = MIN_SIZES[w.kind];
-        const nr = { ...w.rect, ...rect };
-        nr.w = Math.max(nr.w, min.w);
-        nr.h = Math.max(nr.h, min.h);
-        return { ...w, rect: nr };
+        const merged = { ...w.rect, ...rect };
+        return { ...w, rect: clampToBounds(merged, w.kind) };
       }),
     })),
 

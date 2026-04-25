@@ -41,6 +41,13 @@ export function WindowFrame({
   const updateWindowRect = useAgentStore((s) => s.updateWindowRect);
   const [dragging, setDragging] = useState(false);
 
+  const [resizing, setResizing] = useState(false);
+  // The user is actively manipulating this window when EITHER drag or
+  // resize is in progress. Skip CSS transitions in that case so the
+  // window tracks the cursor 1:1; otherwise, agent-driven rect changes
+  // animate smoothly via the springy bezier in the style block below.
+  const interacting = dragging || resizing;
+
   const dragRef = useRef<{ startX: number; startY: number; winX: number; winY: number } | null>(null);
   const resizeRef = useRef<{
     edge: Edge;
@@ -91,6 +98,7 @@ export function WindowFrame({
         startY: e.clientY,
         startRect: { ...win.rect },
       };
+      setResizing(true);
 
       const min = getMinSize(win.kind);
 
@@ -119,6 +127,7 @@ export function WindowFrame({
       };
       const onUp = () => {
         resizeRef.current = null;
+        setResizing(false);
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup", onUp);
       };
@@ -130,6 +139,24 @@ export function WindowFrame({
 
   if (win.minimized) return null;
 
+  // Animation strategy:
+  //   - Position via translate3d() so it's GPU-composited (smooth).
+  //   - Size via width/height — CSS transitions are fine for 2–7
+  //     windows on a desktop canvas.
+  //   - Skip transitions while the user drags or resizes so the window
+  //     tracks the cursor 1:1; agent-driven rect changes get the
+  //     premium ease-out below.
+  //
+  // Curve: cubic-bezier(0.32, 0.72, 0, 1) — Apple's "spring-out"
+  // material easing. Strong deceleration, no overshoot, lands quietly.
+  // Duration: 480ms feels deliberate without being slow; aligned with
+  // the "iOS/macOS modal" perceptual range (~400–520ms is calm).
+  const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+  const SPRING =
+    `transform 480ms ${EASE}, ` +
+    `width 480ms ${EASE}, ` +
+    `height 480ms ${EASE}`;
+
   return (
     <div
       data-testid={`window-${win.kind}`}
@@ -137,11 +164,14 @@ export function WindowFrame({
       onMouseDown={() => bringToFront(win.id)}
       style={{
         position: "absolute",
-        left: win.rect.x,
-        top: win.rect.y,
+        left: 0,
+        top: 0,
         width: win.rect.w,
         height: win.rect.h,
+        transform: `translate3d(${win.rect.x}px, ${win.rect.y}px, 0)`,
         zIndex: win.zIndex,
+        transition: interacting ? "none" : SPRING,
+        willChange: interacting ? "transform, width, height" : undefined,
       }}
       className={cn(
         "flex flex-col overflow-hidden",

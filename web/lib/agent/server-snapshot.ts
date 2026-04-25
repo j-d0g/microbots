@@ -27,32 +27,238 @@ import type { RoomKind } from "@/lib/store";
 
 const RING_CAP = 6;
 
-/** A canonical layout-preset → array-of-mount-assignment mapping. The
- *  client's `arrangeWindows` does pixel math; we do mount-name math
- *  here so the agent reasons in named anchors. */
-const PRESET_TO_MOUNTS: Record<
-  "focus" | "split" | "grid" | "stack-right",
-  (n: number) => MountPoint[]
-> = {
-  focus: (n) => Array.from({ length: n }, (_, i) => (i === 0 ? "full" : "freeform")),
-  split: (n) =>
-    Array.from({ length: n }, (_, i) =>
-      i === 0 ? "left-half" : i === 1 ? "right-half" : "freeform",
-    ),
-  grid: (n) => {
-    if (n <= 1) return ["full"];
-    if (n === 2) return ["left-half", "right-half"];
-    if (n === 3) return ["left-third", "center-third", "right-third"];
-    return ["tl", "tr", "bl", "br", ...Array(Math.max(0, n - 4)).fill("freeform" as MountPoint)];
+/* =================================================================
+ *  LAYOUT PRESETS — pre-determined geometry. Japanese-negative-space
+ *  principles bake in:
+ *    OUTER  : breathing room from the canvas edges (~ma 間)
+ *    GUTTER : spacing between adjacent windows
+ *  All numbers are % of canvas. The agent picks a preset name; the
+ *  simulator computes rects. The agent never does math.
+ *
+ *  Slot[0] is always the SUBJECT — the focused window when a user
+ *  triggers an arrangement. Subsequent slots are demoted contexts.
+ * ================================================================= */
+
+const OUTER = 2.5;
+const GUTTER = 2.5;
+const PIP_STRIP_H = 18; // height % reserved for thumbnail rows below a hero
+
+export type LayoutPreset =
+  | "focus"
+  | "split"
+  | "grid"
+  | "stack-right"
+  | "spotlight"
+  | "theater"
+  | "reading"
+  | "triptych";
+
+function rectFull(): RectPct {
+  return { x: OUTER, y: OUTER, w: 100 - 2 * OUTER, h: 100 - 2 * OUTER };
+}
+
+/**
+ * Layout a row of equal-width thumbnails along a horizontal strip.
+ * Used by focus / spotlight to place demoted windows below the
+ * subject *without* overlapping its bounds.
+ */
+function pipRow(count: number, y: number, h: number): RectPct[] {
+  const usable = 100 - 2 * OUTER;
+  const w = (usable - (count - 1) * GUTTER) / count;
+  const out: RectPct[] = [];
+  for (let i = 0; i < count; i++) {
+    out.push({ x: OUTER + i * (w + GUTTER), y, w, h });
+  }
+  return out;
+}
+
+const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
+  focus: (n) => {
+    // SUBJECT-DOMINANT, no overlap. With one window: full canvas. With
+    // many: subject takes the upper region (95×~78), demoted windows
+    // sit in a thin strip below — clearly separated by GUTTER.
+    if (n <= 1) return [rectFull()];
+    const subjectH = 100 - 2 * OUTER - GUTTER - PIP_STRIP_H;
+    const subject: RectPct = {
+      x: OUTER,
+      y: OUTER,
+      w: 100 - 2 * OUTER,
+      h: subjectH,
+    };
+    const stripY = OUTER + subjectH + GUTTER;
+    const pips = pipRow(n - 1, stripY, PIP_STRIP_H);
+    return [subject, ...pips];
   },
+
+  split: (n) => {
+    if (n <= 1) return [rectFull()];
+    const w = (100 - 2 * OUTER - GUTTER) / 2;
+    const h = 100 - 2 * OUTER;
+    const left: RectPct = { x: OUTER, y: OUTER, w, h };
+    const right: RectPct = { x: OUTER + w + GUTTER, y: OUTER, w, h };
+    if (n === 2) return [left, right];
+    // n>2: subject left, others stacked on the right.
+    const stackH = (h - (n - 2) * GUTTER) / (n - 1);
+    const sideX = OUTER + w + GUTTER;
+    const sides: RectPct[] = [];
+    for (let i = 0; i < n - 1; i++) {
+      sides.push({
+        x: sideX,
+        y: OUTER + i * (stackH + GUTTER),
+        w,
+        h: stackH,
+      });
+    }
+    return [left, ...sides];
+  },
+
+  grid: (n) => {
+    if (n <= 1) return [rectFull()];
+    if (n === 2) return PRESETS.split(2);
+    if (n === 3) return PRESETS.triptych(3);
+    const cols = Math.ceil(Math.sqrt(n));
+    const rows = Math.ceil(n / cols);
+    const w = (100 - 2 * OUTER - (cols - 1) * GUTTER) / cols;
+    const h = (100 - 2 * OUTER - (rows - 1) * GUTTER) / rows;
+    const out: RectPct[] = [];
+    for (let i = 0; i < n; i++) {
+      const r = Math.floor(i / cols);
+      const c = i % cols;
+      out.push({
+        x: OUTER + c * (w + GUTTER),
+        y: OUTER + r * (h + GUTTER),
+        w,
+        h,
+      });
+    }
+    return out;
+  },
+
   "stack-right": (n) => {
-    if (n <= 1) return ["full"];
+    if (n <= 1) return [rectFull()];
+    const mainW = 62;
+    const sideW = 100 - 2 * OUTER - GUTTER - mainW;
+    const sideX = OUTER + mainW + GUTTER;
+    const totalH = 100 - 2 * OUTER;
+    const sides = n - 1;
+    const sideH = (totalH - (sides - 1) * GUTTER) / sides;
+    const main: RectPct = { x: OUTER, y: OUTER, w: mainW, h: totalH };
+    const right: RectPct[] = [];
+    for (let i = 0; i < sides; i++) {
+      right.push({
+        x: sideX,
+        y: OUTER + i * (sideH + GUTTER),
+        w: sideW,
+        h: sideH,
+      });
+    }
+    return [main, ...right];
+  },
+
+  spotlight: (n) => {
+    // CENTRED HERO + BOTTOM THUMBNAILS, no overlap. Subject is centred
+    // (narrower than focus to feel more "stage-like"), demoted windows
+    // line up in a strip below.
+    if (n <= 1) return [rectFull()];
+    const subjectH = 70;
+    const subjectW = 64;
+    const subject: RectPct = {
+      x: (100 - subjectW) / 2,
+      y: OUTER,
+      w: subjectW,
+      h: subjectH,
+    };
+    const stripY = OUTER + subjectH + GUTTER;
+    const stripH = 100 - 2 * OUTER - subjectH - GUTTER;
+    const pips = pipRow(n - 1, stripY, stripH);
+    return [subject, ...pips];
+  },
+
+  theater: (n) => {
+    if (n <= 1) return [rectFull()];
+    const topH = 64;
+    const stripY = OUTER + topH + GUTTER;
+    const stripH = 100 - 2 * OUTER - topH - GUTTER;
+    const subject: RectPct = {
+      x: OUTER,
+      y: OUTER,
+      w: 100 - 2 * OUTER,
+      h: topH,
+    };
+    const cols = n - 1;
+    const stripW = (100 - 2 * OUTER - (cols - 1) * GUTTER) / cols;
+    const strips: RectPct[] = [];
+    for (let i = 0; i < cols; i++) {
+      strips.push({
+        x: OUTER + i * (stripW + GUTTER),
+        y: stripY,
+        w: stripW,
+        h: stripH,
+      });
+    }
+    return [subject, ...strips];
+  },
+
+  reading: (n) => {
+    if (n <= 1) return [rectFull()];
+    const mainW = 60;
+    const sideW = 100 - 2 * OUTER - GUTTER - mainW;
+    const h = 100 - 2 * OUTER;
+    const main: RectPct = { x: OUTER, y: OUTER, w: mainW, h };
+    if (n === 2) {
+      return [
+        main,
+        { x: OUTER + mainW + GUTTER, y: OUTER, w: sideW, h },
+      ];
+    }
+    // n>2: stack the sidebars vertically.
+    const sides = n - 1;
+    const sideH = (h - (sides - 1) * GUTTER) / sides;
+    const sideX = OUTER + mainW + GUTTER;
+    const sidebar: RectPct[] = [];
+    for (let i = 0; i < sides; i++) {
+      sidebar.push({
+        x: sideX,
+        y: OUTER + i * (sideH + GUTTER),
+        w: sideW,
+        h: sideH,
+      });
+    }
+    return [main, ...sidebar];
+  },
+
+  triptych: (n) => {
+    if (n <= 1) return [rectFull()];
+    if (n === 2) return PRESETS.split(2);
+    if (n > 3) return PRESETS.grid(n); // triptych is 3-only; degrade to grid
+    const w = (100 - 2 * OUTER - 2 * GUTTER) / 3;
+    const h = 100 - 2 * OUTER;
     return [
-      "left-half",
-      ...Array.from({ length: n - 1 }, () => "right-half" as MountPoint),
+      { x: OUTER, y: OUTER, w, h },
+      { x: OUTER + w + GUTTER, y: OUTER, w, h },
+      { x: OUTER + 2 * (w + GUTTER), y: OUTER, w, h },
     ];
   },
 };
+
+/** Public for tests + tools. Consumers should treat the array as
+ *  ordered: rects[0] = subject, rest = demoted slots. */
+export function rectsForPreset(layout: LayoutPreset, n: number): RectPct[] {
+  return PRESETS[layout](n);
+}
+
+/** Layout preset names exposed to the agent. Keep in sync with
+ *  LAYOUT_PRESET in `tools.ts`. */
+export const LAYOUT_PRESET_NAMES: readonly LayoutPreset[] = [
+  "focus",
+  "split",
+  "grid",
+  "stack-right",
+  "spotlight",
+  "theater",
+  "reading",
+  "triptych",
+];
 
 /** Resolve a mount name to a % rect. Same math as the client; we keep
  *  a copy here to avoid pulling browser-only modules into the server
@@ -273,8 +479,8 @@ export function applyToolToSnapshot(
     }
 
     case "arrange_windows": {
-      const layout = args.layout as keyof typeof PRESET_TO_MOUNTS;
-      const builder = PRESET_TO_MOUNTS[layout];
+      const layout = args.layout as LayoutPreset;
+      const builder = PRESETS[layout];
       if (!builder || snap.windows.length === 0) {
         return {
           snapshot: {
@@ -284,22 +490,27 @@ export function applyToolToSnapshot(
           message: `arrange_windows: unknown preset or empty canvas.`,
         };
       }
-      const mounts = builder(snap.windows.length);
-      // Apply mount[i] to windows sorted by openedAt ascending.
-      const ordered = [...snap.windows].sort((a, b) => a.openedAt - b.openedAt);
-      const byId = new Map(ordered.map((w, i) => [w.id, mounts[i]]));
+      const rects = builder(snap.windows.length);
+      // Subject (slot 0) goes to the focused window — i.e. whichever
+      // has the highest zIndex right now. The rest are mapped in
+      // descending z order so recent context fills the prominent
+      // demoted slots before older windows.
+      const ordered = [...snap.windows].sort((a, b) => b.zIndex - a.zIndex);
+      const rectById = new Map<string, RectPct>(
+        ordered.map((w, i) => [w.id, rects[i]] as const),
+      );
       const next: CanvasSnapshot = {
         ...snap,
         windows: snap.windows.map((w) => {
-          const m = byId.get(w.id);
-          if (!m) return w;
-          return { ...w, mount: m, rect: rectForMount(m) };
+          const r = rectById.get(w.id);
+          if (!r) return w;
+          return { ...w, mount: "freeform" as MountPoint, rect: r };
         }),
         recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
       };
       return {
         snapshot: withFocus(next),
-        message: `Arranged ${snap.windows.length} windows as ${layout}.`,
+        message: `Arranged ${snap.windows.length} windows as ${layout} (gutter ${GUTTER}%, outer ${OUTER}%).`,
       };
     }
 
@@ -311,6 +522,38 @@ export function applyToolToSnapshot(
         recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
       };
       return { snapshot: next, message: "Canvas cleared." };
+    }
+
+    case "set_window_rect": {
+      // Free-form positioning — args carry an explicit % rect. The
+      // tool wrapper validates ranges; we trust them here.
+      const rectPct = args.rect_pct as RectPct | undefined;
+      const target = findWindow(snap, {
+        id: args.id as string | undefined,
+        kind: args.kind as RoomKind | undefined,
+      });
+      if (!target || !rectPct) {
+        return {
+          snapshot: {
+            ...snap,
+            recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
+          },
+          message: "set_window_rect needs an existing window and a rect.",
+        };
+      }
+      const next: CanvasSnapshot = {
+        ...snap,
+        windows: snap.windows.map((w) =>
+          w.id === target.id
+            ? { ...w, mount: "freeform", rect: rectPct }
+            : w,
+        ),
+        recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+      };
+      return {
+        snapshot: withFocus(next),
+        message: `Resized ${target.kind} to ${rectPct.w.toFixed(0)}×${rectPct.h.toFixed(0)} at (${rectPct.x.toFixed(0)},${rectPct.y.toFixed(0)}).`,
+      };
     }
 
     /* --- content tools: don't mutate the canvas, just record + surface
