@@ -1,17 +1,15 @@
 "use client";
 
 import { createParser, type EventSourceMessage } from "eventsource-parser";
-import { useAgentStore, type RoomName, type VerbPayload } from "./store";
+import { useAgentStore, type RoomKind, type VerbPayload } from "./store";
 
-/** Event schema emitted by /api/agent/stream. Mirrors the server contract
- *  documented in the plan §6.2. */
 export type AgentEvent =
   | {
       type: "ui.room";
-      room: RoomName;
-      /** Optional sub-path within the room (e.g. a workflow slug). */
+      room: RoomKind;
       slug?: string;
       payload?: Record<string, unknown>;
+      rect?: { x?: number; y?: number; w?: number; h?: number };
     }
   | { type: "ui.verb"; verb: VerbPayload["verb"]; args: Record<string, unknown> }
   | {
@@ -23,12 +21,11 @@ export type AgentEvent =
         ttl?: number;
       };
     }
+  | { type: "ui.arrange"; layout: "focus" | "split" | "grid" | "stack-right" }
+  | { type: "ui.close_window"; room?: RoomKind }
   | { type: "speak.chunk"; text: string }
   | { type: "agent.status"; status: string }
   | { type: "dock"; state: "idle" | "listening" | "thinking" | "speaking" | "hidden" }
-  /** Reply lifecycle for the typed-query overlay. `reply.start` clears
-   *  the buffer; `reply.chunk` appends; `reply.done` is a terminator the
-   *  CommandBar can react to (e.g. unfocus). */
   | { type: "reply.start"; query: string }
   | { type: "reply.chunk"; text: string }
   | { type: "reply.done" };
@@ -37,10 +34,22 @@ export function applyAgentEvent(evt: AgentEvent): void {
   const s = useAgentStore.getState();
   switch (evt.type) {
     case "ui.room":
-      s.setRoom(evt.room);
+      s.openWindow(evt.room, { rect: evt.rect, payload: evt.payload });
       if (evt.slug) s.setRoomSlug(evt.slug);
       else s.setRoomSlug(null);
       break;
+    case "ui.arrange":
+      s.arrangeWindows(evt.layout);
+      break;
+    case "ui.close_window": {
+      if (evt.room) {
+        const target = s.windows.find((w) => w.kind === evt.room);
+        if (target) s.closeWindow(target.id);
+      } else {
+        s.closeTopWindow();
+      }
+      break;
+    }
     case "ui.verb":
       s.emitVerb({ verb: evt.verb, args: evt.args, at: Date.now() });
       break;
@@ -56,8 +65,6 @@ export function applyAgentEvent(evt: AgentEvent): void {
       }
       break;
     case "speak.chunk":
-      // Hook for TTS sink — for now append to agent status line so the dock
-      // shows what the agent is "saying".
       s.setAgentStatus(evt.text);
       break;
     case "agent.status":
@@ -73,8 +80,6 @@ export function applyAgentEvent(evt: AgentEvent): void {
       s.appendReply(evt.text);
       break;
     case "reply.done":
-      // no-op; CommandBar watches the dock state and lastQuery to decide
-      // when to fade.
       break;
   }
 }
@@ -97,7 +102,39 @@ export async function connectAgentStream(
         const parsed = JSON.parse(msg.data) as AgentEvent;
         applyAgentEvent(parsed);
       } catch {
-        // swallow bad frames rather than killing the stream
+        // swallow bad frames
+      }
+    },
+  });
+  const reader = res.body.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parser.feed(decoder.decode(value, { stream: true }));
+  }
+}
+
+/** Send a user query to the agent and apply events as they stream back */
+export async function sendQuery(
+  query: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await fetch("/api/agent/stream", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query, room: useAgentStore.getState().room }),
+    signal,
+  });
+  if (!res.body) return;
+  const decoder = new TextDecoder();
+  const parser = createParser({
+    onEvent: (msg: EventSourceMessage) => {
+      if (!msg.data) return;
+      try {
+        const parsed = JSON.parse(msg.data) as AgentEvent;
+        applyAgentEvent(parsed);
+      } catch {
+        // swallow
       }
     },
   });
