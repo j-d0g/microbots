@@ -13,7 +13,7 @@
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 
 let _client: ReturnType<typeof createOpenAICompatible> | null = null;
 
@@ -44,7 +44,7 @@ function client() {
 }
 
 /** Returns a model handle for a given OpenRouter model slug. Falls back
- *  to env override or `google/gemini-2.5-flash`.
+ *  to env override or `google/gemini-2.5-flash-lite`.
  *
  *  Use `||` (not `??`): `.env` files coerce unset values to `""`, and
  *  the empty string is a valid-looking slug that OpenRouter rejects
