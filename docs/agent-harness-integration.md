@@ -181,8 +181,10 @@ can hit these from the browser without proxying.
 
 ## 3. MCP transport — `/mcp/`
 
-For pydantic-ai agents and any MCP-compatible client. 13 tools, all read-only,
-all returning JSON-encoded strings.
+For pydantic-ai agents and any MCP-compatible client. **20 tools** — 13
+read tools + 7 write tools — all returning JSON-encoded strings.
+
+### Read tools (13)
 
 | Tool | Args | Description |
 |------|------|-------------|
@@ -199,6 +201,36 @@ all returning JSON-encoded strings.
 | `kg_wiki_tree` | — | All wiki paths (no contents) |
 | `kg_wiki_page` | `path` | One wiki page's markdown |
 | `kg_health` | — | Sanity check + table count |
+
+### Write tools (7)
+
+All writes are **upsert / append** (no destructive deletes). Calling the same
+tool twice with the same identifier is safe.
+
+| Tool | Required args | Description |
+|------|---------------|-------------|
+| `kg_add_memory` | `content` (+ optional `memory_type`, `confidence`, `source`, `tags`, `chat_id`, `about_entity_id`, `about_integration_slug`) | Persist a memory. Idempotent on content hash. Optional edges to source chat / target entity / integration. |
+| `kg_upsert_entity` | `name`, `entity_type` (+ optional `description`, `aliases`, `tags`, `appears_in_integration`, `appears_in_handle`, `appears_in_role`) | Add or merge a person / organisation / project / concept. Identity = `(entity_type, name)`. |
+| `kg_upsert_skill` | `slug`, `name`, `description` (+ optional `steps`, `frequency`, `strength_increment` default 1, `tags`, `uses_integrations`) | Add a skill or **atomically increment** existing strength on each call. |
+| `kg_upsert_workflow` | `slug`, `name`, `description` (+ optional `trigger`, `outcome`, `frequency`, `tags`, `skill_chain`) | Add or update a workflow. When `skill_chain` is supplied it *replaces* the existing chain. |
+| `kg_add_chat` | `content`, `source_type` (+ optional `source_id`, `title`, `summary`, `signal_level`, `occurred_at`, `from_integration`, `mentions`) | Record a chat / observation. `source_id` is the dedup key when supplied. |
+| `kg_write_wiki_page` | `path`, `content` (+ optional `rationale`) | Diff-update a wiki page. Logs a `wiki_page_revision` row only when the content actually changes. |
+| `kg_update_user_profile` | (all optional: `name`, `role`, `goals`, `preferences`, `context_window`) | Patch the singleton user_profile. `goals` replaces; `preferences` merges. |
+
+Annotations: `readOnlyHint=False, destructiveHint=False, idempotentHint=False`. Memory writes are content-hash-idempotent; skill writes accumulate strength on each call.
+
+### Example write call from pydantic-ai
+
+```python
+async with agent.run_mcp_servers():
+    # Agent reads context, decides, then writes a new memory back to the graph:
+    await agent.run(
+        "Based on what you read, what's a new memory you should record? "
+        "Use the kg_add_memory tool to write it."
+    )
+```
+
+The agent can chain reads and writes in one run — no separate plumbing needed.
 
 ### pydantic-ai client
 

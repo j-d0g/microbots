@@ -460,6 +460,157 @@ URL-encode the path if it contains slashes — though the route handler accepts 
 
 ---
 
+## 4b. Knowledge Graph — Write endpoints
+
+The same data the MCP tools serve, but also writable via plain REST. All
+writes are **upsert / append** — there are no destructive deletes in v1.
+Calling the same endpoint with the same identifier is safe (entity / skill /
+workflow / wiki are keyed by slug or path; memory is keyed by content hash).
+
+### `POST /api/kg/memories` — record a memory
+
+```http
+POST /api/kg/memories
+Content-Type: application/json
+
+{
+  "content":                "User prefers small focused PRs.",
+  "memory_type":            "preference",          // fact / preference / action_pattern / decision / observation
+  "confidence":             0.85,                  // 0.0 – 1.0
+  "source":                 "agent",               // optional, free-form
+  "tags":                   ["code-review"],       // optional
+  "chat_id":                "chat:abc",            // optional — also creates chat_yields edge
+  "about_entity_id":        "entity:martin",       // optional — also creates memory_about edge
+  "about_integration_slug": "github"               // optional — also creates memory_about edge
+}
+
+→ 201 { "id": "memory:agent_<hash>", "memory_id": "agent_<hash>" }
+```
+
+Idempotent on `content` — re-posting the same content updates the same row.
+
+### `POST /api/kg/entities` — upsert a person / org / project
+
+```http
+POST /api/kg/entities
+{
+  "name":                   "Alice Chen",
+  "entity_type":            "person",              // person / organisation / project / product / concept
+  "description":            "Infra lead at Microbots",
+  "aliases":                ["@alice", "alice-chen"],
+  "tags":                   ["infra"],
+  "appears_in_integration": "slack",               // optional — creates appears_in edge
+  "appears_in_handle":      "@alice",              // optional
+  "appears_in_role":        "infra"                // optional
+}
+
+→ 201 { "id": "entity:person_alice_chen", "slug": "person_alice_chen" }
+```
+
+Identity is `(entity_type, name)`. Re-posting with the same `(type, name)` merges aliases / tags / description.
+
+### `POST /api/kg/skills` — add or strengthen a skill
+
+```http
+POST /api/kg/skills
+{
+  "slug":                "notify_deploy",
+  "name":                "Notify #deployments before push",
+  "description":         "Posts a heads-up message to #deployments before each prod deploy",
+  "steps":               ["draft message", "post to #deployments", "wait for ack"],
+  "frequency":           "daily",
+  "strength_increment":  1,                        // added to existing strength on each call
+  "tags":                ["slack", "deploy"],
+  "uses_integrations":   ["slack"]                 // creates skill_uses edges
+}
+
+→ 201 { "id": "skill:notify_deploy", "slug": "notify_deploy", "strength": 5, "created": false }
+```
+
+Atomic — calling twice with `strength_increment: 2` and `strength_increment: 3` results in `strength = 5`.
+
+### `POST /api/kg/workflows` — upsert a workflow
+
+```http
+POST /api/kg/workflows
+{
+  "slug":          "morning_brief",
+  "name":          "Morning Brief",
+  "description":   "Daily morning briefing assembling Slack + GitHub + Linear updates.",
+  "trigger":       "daily 9am",
+  "outcome":       "User has full context before standup",
+  "frequency":     "daily",
+  "tags":          ["briefing"],
+  "skill_chain": [
+    { "slug": "fetch_inbox",  "step_order": 1 },
+    { "slug": "summarise",    "step_order": 2 },
+    { "slug": "post_summary", "step_order": 3 }
+  ]
+}
+
+→ 201 { "id": "workflow:morning_brief", "slug": "morning_brief" }
+```
+
+When `skill_chain` is provided, it **replaces** any existing chain. Pass `null` (or omit) to leave the chain untouched.
+
+### `POST /api/kg/chats` — record an observation / chat
+
+```http
+POST /api/kg/chats
+{
+  "content":          "Alice: deployment-staging finished cleanly",
+  "source_type":      "slack_thread",              // free-form; e.g. github_issue, agent_observation
+  "source_id":        "slack-thread-abc123",       // dedup key — re-posting same id upserts
+  "title":            "Staging deploy",
+  "summary":          "Deployment to staging completed without errors.",
+  "signal_level":     "high",                      // low / mid / high
+  "occurred_at":      "2026-04-26T08:42:00Z",      // ISO-8601
+  "from_integration": "slack",
+  "mentions": [
+    { "id": "entity:person_alice_chen", "mention_type": "author" }
+  ]
+}
+
+→ 201 { "id": "chat:slack-thread-abc123" }
+```
+
+### `PUT /api/kg/wiki/{path}` — write a wiki page
+
+```http
+PUT /api/kg/wiki/memories/agents.md
+{
+  "content":   "# Memories\n\n- User prefers async-first comms\n- Notify #deployments before push",
+  "rationale": "Refreshed after enrichment cycle"
+}
+
+→ 200 { "id": "wiki_page:memories_agents_md", "path": "memories/agents.md",
+        "updated": true, "unchanged": false, "revision": 3 }
+```
+
+Path slashes work fine — URL-encoded or raw. The endpoint is idempotent: posting the same `content` twice returns `{updated: false, unchanged: true}` and does not log a new revision row. Each content change increments `revision` and writes a `wiki_page_revision` row for history.
+
+**Allowed path prefixes** (schema constraint): `root` (i.e. `user.md`) · `integrations/...` · `entities/...` · `chats/...` · `memories/...` · `skills/...` · `workflows/...`. Any other prefix gets normalised to `root`.
+
+### `PATCH /api/kg/user` — update the user profile
+
+```http
+PATCH /api/kg/user
+{
+  "name":           "Desmond",                 // optional
+  "role":           "AI engineer",             // optional
+  "goals":          [ "ship microbots v1" ],   // optional — replaces existing
+  "preferences":    { "deploy": "thursdays" }, // optional — merges into existing
+  "context_window": 8000                       // optional, 512–200000
+}
+
+→ 200 { "id": "user_profile:default", "updated": true,
+        "fields": ["updated_at", "preferences"] }
+```
+
+Every field is optional. Only fields you pass are updated; the rest are left untouched.
+
+---
+
 ## 5. System endpoints
 
 ### `GET /health`
@@ -691,6 +842,87 @@ export interface WikiPage {
   depth:   number;
   layer:   string;
 }
+
+// ── Write request bodies ─────────────────────────────────────────────
+
+export interface AddMemoryBody {
+  content:                  string;
+  memory_type?:             "fact" | "preference" | "action_pattern" | "decision" | "observation";
+  confidence?:              number;          // 0.0 – 1.0, default 0.7
+  source?:                  string;
+  tags?:                    string[];
+  chat_id?:                 string;
+  about_entity_id?:         string;
+  about_integration_slug?:  string;
+}
+
+export interface UpsertEntityBody {
+  name:                     string;
+  entity_type:              string;
+  description?:             string;
+  aliases?:                 string[];
+  tags?:                    string[];
+  appears_in_integration?:  string;
+  appears_in_handle?:       string;
+  appears_in_role?:         string;
+}
+
+export interface UpsertSkillBody {
+  slug:                 string;
+  name:                 string;
+  description:          string;
+  steps?:               string[];
+  frequency?:           string;
+  strength_increment?:  number;     // default 1, 1–10
+  tags?:                string[];
+  uses_integrations?:   string[];
+}
+
+export interface UpsertWorkflowBody {
+  slug:         string;
+  name:         string;
+  description:  string;
+  trigger?:     string;
+  outcome?:     string;
+  frequency?:   string;
+  tags?:        string[];
+  skill_chain?: { slug: string; step_order: number }[];
+}
+
+export interface AddChatBody {
+  content:          string;
+  source_type:      string;
+  source_id?:       string;
+  title?:           string;
+  summary?:         string;
+  signal_level?:    "low" | "mid" | "high";    // default "mid"
+  occurred_at?:     string;                    // ISO-8601
+  from_integration?: string;
+  mentions?:        { id: string; mention_type?: string }[];
+}
+
+export interface WriteWikiPageBody {
+  content:    string;
+  rationale?: string;
+}
+
+export interface UpdateUserProfileBody {
+  name?:            string;
+  role?:            string;
+  goals?:           string[];
+  preferences?:     Record<string, unknown>;
+  context_window?:  number;     // 512–200000
+}
+
+// ── Write responses ──────────────────────────────────────────────────
+
+export interface AddMemoryResponse  { id: string; memory_id: string; }
+export interface UpsertEntityResp   { id: string; slug: string; }
+export interface UpsertSkillResp    { id: string; slug: string; strength: number; created: boolean; }
+export interface UpsertWorkflowResp { id: string; slug: string; }
+export interface AddChatResponse    { id: string; }
+export interface WriteWikiResp      { id: string; path: string; updated: boolean; unchanged: boolean; revision: number; }
+export interface UpdateUserResp     { id: string; updated: boolean; fields: string[]; }
 
 // ── Errors ───────────────────────────────────────────────────────────
 
