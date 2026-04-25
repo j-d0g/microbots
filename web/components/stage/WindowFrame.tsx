@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { X, Minus } from "lucide-react";
 import { useAgentStore, type WindowState, getMinSize } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
@@ -146,46 +145,42 @@ export function WindowFrame({
       }}
       className={cn(
         "flex flex-col overflow-hidden",
-        "rounded-lg border border-rule bg-paper-0",
-        "shadow-[0_2px_8px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.03)]",
-        "transition-shadow duration-200",
+        "rounded-xl border border-black/[0.04] bg-paper-0",
+        "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.04)]",
+        "backdrop-blur-sm",
       )}
     >
       {/* Title bar */}
       <div
         onMouseDown={onHeaderDown}
         className={cn(
-          "flex h-9 shrink-0 items-center justify-between px-3",
-          "border-b border-rule bg-paper-1/80",
+          "flex h-8 shrink-0 items-center justify-between px-3",
+          "border-b border-black/[0.04]",
           dragging ? "cursor-grabbing" : "cursor-grab",
           "select-none",
         )}
       >
-        <span className="font-mono text-[10px] uppercase tracking-wider text-ink-35">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-35">
           {ROOM_LABELS[win.kind] ?? win.kind}
         </span>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={() => minimizeWindow(win.id)}
-            className="flex h-6 w-6 items-center justify-center text-ink-35 hover:text-ink-60 transition-colors"
+            className="h-[7px] w-4 rounded-full bg-ink-35/12 hover:bg-ink-35/25 transition-colors duration-150"
             aria-label="minimize"
-          >
-            <Minus size={11} strokeWidth={1.5} />
-          </button>
+          />
           <button
             type="button"
             onClick={() => closeWindow(win.id)}
-            className="flex h-6 w-6 items-center justify-center text-ink-35 hover:text-ink-60 transition-colors"
+            className="h-[7px] w-[7px] rounded-full bg-ink-35/12 hover:bg-ink-35/25 transition-colors duration-150"
             aria-label="close"
-          >
-            <X size={11} strokeWidth={1.5} />
-          </button>
+          />
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 muji-scroll">
         {children}
       </div>
 
@@ -197,10 +192,10 @@ export function WindowFrame({
           className={cn(
             "absolute",
             EDGE_CURSORS[edge],
-            edge === "n" && "left-2 right-2 top-0 h-1",
-            edge === "s" && "left-2 right-2 bottom-0 h-1",
-            edge === "e" && "top-2 bottom-2 right-0 w-1",
-            edge === "w" && "top-2 bottom-2 left-0 w-1",
+            edge === "n" && "left-3 right-3 top-0 h-1",
+            edge === "s" && "left-3 right-3 bottom-0 h-1",
+            edge === "e" && "top-3 bottom-3 right-0 w-1",
+            edge === "w" && "top-3 bottom-3 left-0 w-1",
             edge === "ne" && "top-0 right-0 h-3 w-3",
             edge === "nw" && "top-0 left-0 h-3 w-3",
             edge === "se" && "bottom-0 right-0 h-3 w-3",

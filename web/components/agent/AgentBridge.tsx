@@ -6,22 +6,16 @@ import { useAgentStore } from "@/lib/store";
 
 /** Mounts once in the shell. Opens the SSE agent stream. */
 export function AgentBridge() {
-  const openWindow = useAgentStore((s) => s.openWindow);
-  const windows = useAgentStore((s) => s.windows);
-
   useEffect(() => {
-    if (windows.length === 0) {
-      openWindow("brief");
+    const s = useAgentStore.getState();
+    if (s.windows.length === 0) {
+      s.openWindow("brief");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    const ctrl = new AbortController();
-    connectAgentStream(ctrl.signal).catch(() => {
-      /* stream will be retried as needed */
-    });
-    return () => ctrl.abort();
+    // Skip the initial SSE connect -- no empty-query call on mount.
+    // The agent stream is triggered by user queries via the command bar.
   }, []);
 
   return null;

@@ -496,3 +496,4 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   setRoomState: (room, state) =>
     set((s) => ({ roomStates: { ...s.roomStates, [room]: state } })),
 }));
+

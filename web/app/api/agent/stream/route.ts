@@ -133,7 +133,9 @@ Guidelines:
 - If opening 2+ windows, call arrange_windows afterward (e.g. split or stack-right).
 - When the user asks about memory + workflows, open both windows and arrange them.
 - Never just describe -- act. Use tools aggressively.
-- Keep text replies under 2 sentences. Lowercase. No emojis.`;
+- Keep text replies under 2 sentences. Lowercase. No emojis.
+- NEVER close a window unless the user explicitly asks you to. If the user message is empty or you have no clear intent, open the morning brief.
+- On first contact with no specific request, open the brief and greet briefly.`;
 
 interface OpenRouterMessage {
   role: "system" | "user" | "assistant" | "tool";

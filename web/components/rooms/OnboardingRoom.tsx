@@ -6,11 +6,11 @@ import { cn } from "@/lib/cn";
 
 export function OnboardingRoom() {
   const setOnboarded = useAgentStore((s) => s.setOnboarded);
-  const openRoom = useAgentStore((s) => s.openRoom);
+  const openWindow = useAgentStore((s) => s.openWindow);
 
   const handleStart = () => {
     setOnboarded(true);
-    openRoom("brief");
+    openWindow("brief");
   };
 
   return (

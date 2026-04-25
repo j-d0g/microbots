@@ -22,7 +22,7 @@ const ROOM_COMPONENTS: Record<RoomKind, React.ComponentType<{ payload?: Record<s
   settings: SettingsRoom,
 };
 
-const EASE = [0.2, 0.8, 0.2, 1] as const;
+const SPRING = { type: "spring", stiffness: 400, damping: 32, mass: 0.8 } as const;
 
 export function Desktop() {
   const windows = useAgentStore((s) => s.windows);
@@ -65,7 +65,7 @@ export function Desktop() {
       data-testid="desktop-canvas"
       style={{ bottom: 80 }}
     >
-      <AnimatePresence>
+      <AnimatePresence mode="popLayout">
         {windows
           .filter((w) => !w.minimized)
           .map((win) => {
@@ -73,10 +73,10 @@ export function Desktop() {
             return (
               <motion.div
                 key={win.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, ease: EASE }}
+                initial={{ opacity: 0, scale: 0.92, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                transition={SPRING}
                 style={{
                   position: "absolute",
                   left: 0,
