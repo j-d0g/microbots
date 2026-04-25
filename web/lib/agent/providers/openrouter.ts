@@ -44,7 +44,7 @@ function client() {
 }
 
 /** Returns a model handle for a given OpenRouter model slug. Falls back
- *  to env override or `google/gemini-2.5-flash`.
+ *  to env override or `google/gemini-2.5-flash-lite`.
  *
  *  Use `||` (not `??`): `.env` files coerce unset values to `""`, and
  *  the empty string is a valid-looking slug that OpenRouter rejects

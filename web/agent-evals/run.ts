@@ -379,9 +379,9 @@ async function main() {
   printDeltaTable(metrics);
   console.log(`\nReport written: agent-evals/reports/${reportName}`);
 
-  // Exit with error if overall pass rate is below 50% (catches broken harness)
-  if (metrics.passRate < 0.3) {
-    console.warn(`\n⚠ Overall pass rate ${(metrics.passRate * 100).toFixed(1)}% is below 30%`);
+  if (metrics.passRate < 0.5) {
+    console.error(`\n⚠ Overall pass rate ${(metrics.passRate * 100).toFixed(1)}% is below 50% — broken harness?`);
+    process.exit(1);
   }
 }
 
