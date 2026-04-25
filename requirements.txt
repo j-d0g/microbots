@@ -1,6 +1,3 @@
-surrealdb>=1.0.0
-python-dotenv>=1.0.0
-httpx>=0.28.1
-anthropic>=0.97.0
-composio>=0.11.6
-pydantic>=2.0.0
+# This project is managed via uv + pyproject.toml.
+# Install with: uv sync
+# See pyproject.toml for the canonical dependency list.

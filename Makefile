@@ -2,8 +2,9 @@ include .env
 export
 
 PYTHON := uv run python
+KG     := knowledge_graph
 
-.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report
+.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest-seed memory-reset ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report
 
 install:
 	uv sync
@@ -20,16 +21,28 @@ db-down:
 	docker compose down
 
 db-schema:
-	$(PYTHON) schema/apply.py
+	$(PYTHON) $(KG)/schema/apply.py
 
 db-seed:
-	$(PYTHON) seed/seed.py
+	$(PYTHON) $(KG)/seed/seed.py
 
 db-reset:
 	docker compose down -v
 	$(MAKE) db-up
 	$(MAKE) db-schema
 	$(MAKE) db-seed
+	$(MAKE) memory-reset
+	$(MAKE) wiki
+
+# Wipe and regenerate all memory/ markdown files from seed data (no Composio, no LLM triage needed)
+ingest-seed: install
+	$(PYTHON) $(KG)/seed/wiki_from_seed.py
+
+# Remove all generated memory/ markdown files (preserves directory structure)
+memory-reset:
+	@echo "Clearing generated memory/ markdown files..."
+	@find $(KG)/memory/ -name "*.md" -delete 2>/dev/null || true
+	@echo "memory/ cleared."
 
 db-query:
 	docker exec -it microbots-surrealdb surreal sql \
@@ -41,7 +54,7 @@ db-query:
 
 # Composio → triage → SurrealDB (requires .env + CLI-connected apps; see README "Prerequisite")
 ingest composio-ingest: install
-	$(PYTHON) -m ingest
+	cd $(KG) && $(PYTHON) -m ingest
 
 # One-time: print Composio CLI connection steps (run in your shell before first ingest)
 composio-auth:
@@ -54,25 +67,25 @@ composio-auth:
 	@echo "See README → Composio ingestion → Prerequisite"
 
 wiki:
-	$(PYTHON) -m wiki
+	cd $(KG) && $(PYTHON) -m wiki
 
 test:
-	uv run pytest tests/unit tests/golden -v
+	uv run pytest $(KG)/tests/unit $(KG)/tests/golden -v
 
 e2e:
-	uv run pytest tests/e2e -v
+	uv run pytest $(KG)/tests/e2e -v
 
 synth-corpus:
-	$(PYTHON) tests/synth/generate_corpus.py
+	$(PYTHON) $(KG)/tests/synth/generate_corpus.py
 
 rerecord-goldens:
-	LLM_MODE=record uv run pytest tests/golden -v
+	LLM_MODE=record uv run pytest $(KG)/tests/golden -v
 
 eval:
-	$(PYTHON) tests/eval/apply_and_run.py
+	$(PYTHON) $(KG)/tests/eval/apply_and_run.py
 
 eval-report:
-	$(PYTHON) tests/eval/judge.py --report
+	$(PYTHON) $(KG)/tests/eval/judge.py --report
 
 db-export:
 	docker exec microbots-surrealdb surreal export \
