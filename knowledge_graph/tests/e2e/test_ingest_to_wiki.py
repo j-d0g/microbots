@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
+ROOT = Path(__file__).resolve().parent.parent.parent  # = knowledge_graph/
 
 _HAS_LLM_KEY = bool(
     os.getenv("OPENROUTER_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
@@ -244,3 +244,7 @@ def test_corpus_meta_annotations():
     assert "expected_entities" in meta
     assert "expected_skills" in meta
     assert "expected_workflows" in meta
+    assert "expected_negative_chats" in meta
+    assert "expected_alias_clusters" in meta
+    assert "expected_multi_integration_workflows" in meta
+    assert "expected_contradictions" in meta

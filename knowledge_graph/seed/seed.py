@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from surrealdb import AsyncSurreal
 
+from microbots import get_logger, span
+
 load_dotenv()
 
 SURREAL_URL = os.getenv("SURREAL_URL", "ws://localhost:8000/rpc")
@@ -14,6 +16,8 @@ SURREAL_USER = os.getenv("SURREAL_USER", "root")
 SURREAL_PASS = os.getenv("SURREAL_PASS", "root")
 SURREAL_NS = os.getenv("SURREAL_NS", "microbots")
 SURREAL_DB = os.getenv("SURREAL_DB", "memory")
+
+log = get_logger(__name__)
 
 
 def placeholder_embedding(dim: int = 1536) -> list[float]:
@@ -28,7 +32,7 @@ def now() -> str:
 
 
 async def seed(db: AsyncSurreal):
-    print("Seeding user_profile...")
+    log.info("seeding user_profile")
     await db.query("""
         UPSERT user_profile:default CONTENT {
             name: "Desmond",
@@ -50,7 +54,7 @@ async def seed(db: AsyncSurreal):
         };
     """)
 
-    print("Seeding integrations...")
+    log.info("seeding integrations")
     integrations = [
         {
             "id": "integration:slack",
@@ -186,7 +190,7 @@ async def seed(db: AsyncSurreal):
             }};
         """)
 
-    print("Seeding entities...")
+    log.info("seeding entities")
     entities = [
         {
             "id": "entity:alice",
@@ -286,7 +290,7 @@ async def seed(db: AsyncSurreal):
             }};
         """)
 
-    print("Seeding chats...")
+    log.info("seeding chats")
     chat_records = [
         {
             "id": "chat:slack_deploy_incident",
@@ -361,7 +365,7 @@ async def seed(db: AsyncSurreal):
             }};
         """)
 
-    print("Seeding memories...")
+    log.info("seeding memories")
     memory_records = [
         {
             "id": "memory:notify_deployments",
@@ -429,7 +433,7 @@ async def seed(db: AsyncSurreal):
             }};
         """)
 
-    print("Seeding skills...")
+    log.info("seeding skills")
     skill_records = [
         {
             "id": "skill:create_linear_from_slack",
@@ -519,7 +523,7 @@ async def seed(db: AsyncSurreal):
             }};
         """)
 
-    print("Seeding workflows...")
+    log.info("seeding workflows")
     workflow_records = [
         {
             "id": "workflow:deploy_pipeline",
@@ -571,7 +575,7 @@ async def seed(db: AsyncSurreal):
             }};
         """)
 
-    print("Seeding layer_index nodes...")
+    log.info("seeding layer_index nodes")
     layer_indexes = [
         ("layer_index:user", "user", "user", 0, "memory/user.md", "Root navigation index. Entry point for all agent memory.", 800),
         ("layer_index:integrations", "integrations", "integrations", 1, "memory/integrations/agents.md", "Index of all 6 integrations with behavioral metadata.", 600),
@@ -602,7 +606,7 @@ async def seed(db: AsyncSurreal):
             }};
         """)
 
-    print("Seeding edges...")
+    log.info("seeding edges")
 
     # uses_integration: user → integrations
     for slug in ["slack", "github", "linear", "gmail", "notion", "perplexity"]:
@@ -937,29 +941,34 @@ async def seed(db: AsyncSurreal):
         except (KeyError, IndexError, TypeError):
             return 0
 
-    print("\nSeed complete. Verifying record counts...")
-    tables = ["user_profile", "integration", "entity", "chat", "memory", "skill", "workflow", "layer_index"]
-    for table in tables:
-        result = await db.query(f"SELECT count() FROM {table} GROUP ALL;")
-        print(f"  {table}: {extract_count(result)}")
+    with span("seed.verify"):
+        log.info("seed complete — verifying record counts")
+        tables = ["user_profile", "integration", "entity", "chat", "memory", "skill", "workflow", "layer_index"]
+        node_counts: dict[str, int] = {}
+        for table in tables:
+            result = await db.query(f"SELECT count() FROM {table} GROUP ALL;")
+            node_counts[table] = extract_count(result)
+        log.info("node table counts", **node_counts)
 
-    edge_tables = [
-        "uses_integration", "appears_in", "co_used_with", "related_to_entity",
-        "chat_from", "chat_mentions", "chat_yields", "memory_about",
-        "skill_derived_from", "skill_uses", "workflow_contains_skill",
-        "workflow_uses", "workflow_involves", "memory_informs", "indexed_by", "drills_into"
-    ]
-    print("\nEdge counts:")
-    for table in edge_tables:
-        result = await db.query(f"SELECT count() FROM {table} GROUP ALL;")
-        print(f"  {table}: {extract_count(result)}")
+        edge_tables = [
+            "uses_integration", "appears_in", "co_used_with", "related_to_entity",
+            "chat_from", "chat_mentions", "chat_yields", "memory_about",
+            "skill_derived_from", "skill_uses", "workflow_contains_skill",
+            "workflow_uses", "workflow_involves", "memory_informs", "indexed_by", "drills_into"
+        ]
+        edge_counts: dict[str, int] = {}
+        for table in edge_tables:
+            result = await db.query(f"SELECT count() FROM {table} GROUP ALL;")
+            edge_counts[table] = extract_count(result)
+        log.info("edge table counts", **edge_counts)
 
 
 async def main():
-    async with AsyncSurreal(SURREAL_URL) as db:
-        await db.signin({"username": SURREAL_USER, "password": SURREAL_PASS})
-        await db.use(SURREAL_NS, SURREAL_DB)
-        await seed(db)
+    with span("seed.run", namespace=SURREAL_NS, database=SURREAL_DB):
+        async with AsyncSurreal(SURREAL_URL) as db:
+            await db.signin({"username": SURREAL_USER, "password": SURREAL_PASS})
+            await db.use(SURREAL_NS, SURREAL_DB)
+            await seed(db)
 
 
 if __name__ == "__main__":

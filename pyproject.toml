@@ -13,6 +13,14 @@ dependencies = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
     "pyyaml>=6.0",
+    # Observability (microbots/log.py)
+    "logfire>=2.0.0",
+    # render_sdk runtime deps (kept in sync with render_sdk/pyproject.toml)
+    "docker>=7.0",
+    "requests>=2.31",
+    "portalocker>=2.8",
+    "pyngrok>=7.0",
+    "click>=8.1",
 ]
 
 [tool.pytest.ini_options]
@@ -23,4 +31,4 @@ markers = [
     "live_llm: tests that make real LLM API calls",
 ]
 testpaths = ["knowledge_graph/tests"]
-pythonpath = ["knowledge_graph"]
+pythonpath = [".", "knowledge_graph"]

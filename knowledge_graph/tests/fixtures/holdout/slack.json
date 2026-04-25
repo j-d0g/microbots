@@ -1,20 +1,47 @@
 [
   {
-    "source_id": "slack-3-ai-eng-1981fb903a2cbbbc",
+    "source_id": "adv-slack-deploy-rule-w3",
     "source_type": "slack_thread",
-    "title": "Week 3: microbots SurrealDB progress",
-    "content": "Desmond: Pushed schema updates for week 3. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
-    "channel": "#ai-engineering",
+    "title": "Deploy cadence discussion (week 3)",
+    "content": "Desmond: New rule: we only deploy to prod on Tuesdays. No exceptions.\nAlice Chen: Makes sense, gives us Monday to prep and Wednesday to monitor.\nBob Kim: Agreed. Updating the runbook now.\n",
     "signal_level": "high",
-    "occurred_at": "2025-01-25T14:00:00+00:00"
+    "occurred_at": "2025-01-22T12:00:00+00:00",
+    "channel": "#deployments"
   },
   {
-    "source_id": "slack-2-deploy-00047e045d7acd4d",
+    "source_id": "adv-slack-noise-lunch",
     "source_type": "slack_thread",
-    "title": "Deploy: microbots v0.2 to staging",
-    "content": "Desmond: Deploying microbots v0.2 to staging now. Linear: MIC-20.\nAlice Chen: Looks good from infra side. Green light.\nDesmond: Deployed. All smoke tests passing.",
-    "channel": "#deployments",
+    "title": "Lunch plans",
+    "content": "Bob Kim: Anyone up for tacos?\nCarol Diaz: Yes! The new place on 5th?\nBob Kim: Perfect, noon works.\n",
+    "signal_level": "low",
+    "occurred_at": "2025-01-08T12:00:00+00:00",
+    "channel": "#general"
+  },
+  {
+    "source_id": "adv-slack-bob-alias",
+    "source_type": "slack_thread",
+    "title": "Bob's code review",
+    "content": "@bob: I'll take the review for PR #55.\nDesmond: Thanks Bob Kim!\n",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-15T12:00:00+00:00",
+    "channel": "#code-review"
+  },
+  {
+    "source_id": "adv-slack-alice-chen-infra",
+    "source_type": "slack_thread",
+    "title": "Alice Chen infra review",
+    "content": "Alice Chen: I reviewed the Terraform changes. LGTM, ship it.\nDesmond: Thanks Alice! Deploying now. CC @alice on the deploy thread.\n",
     "signal_level": "high",
-    "occurred_at": "2025-01-15T18:00:00+00:00"
+    "occurred_at": "2025-01-15T12:00:00+00:00",
+    "channel": "#deployments"
+  },
+  {
+    "source_id": "slack-4-ai-eng-aca2c6eba3d7cef3",
+    "source_type": "slack_thread",
+    "title": "Week 4: microbots SurrealDB progress",
+    "content": "Desmond: Pushed schema updates for week 4. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
+    "channel": "#ai-engineering",
+    "signal_level": "high",
+    "occurred_at": "2025-01-30T11:00:00+00:00"
   }
 ]

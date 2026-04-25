@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paper (warm off-white ground) */
+  --color-paper-0: #fbfaf6;
+  --color-paper-1: #f4f2ec;
+  --color-paper-2: #eceae3;
+
+  /* Hairlines */
+  --color-rule: #d9d6cd;
+  --color-rule-strong: #b7b3a8;
+
+  /* Sumi ink */
+  --color-ink-90: #1a1a1a;
+  --color-ink-60: #5b5b58;
+  --color-ink-35: #9c9a93;
+
+  /* Single restrained accent */
+  --color-accent-indigo: #2e3a8c;
+  --color-accent-indigo-soft: #eaecf6;
+
+  /* Confidence scale */
+  --color-confidence-high: #3e7d53;
+  --color-confidence-med: #b8873a;
+  --color-confidence-low: #a85545;
+
+  /* Type */
+  --font-display: "Söhne", "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Motion */
+  --ease-muji: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-paper-0);
+  color: var(--color-ink-90);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+/* Hairline utility — 1px rule that doesn't half-pixel on hidpi */
+.hairline {
+  background: var(--color-rule);
+  height: 1px;
+  width: 100%;
+}
+
+/* Ink-in animation for agent text */
+@keyframes ink-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ink-in {
+  animation: ink-in 240ms var(--ease-muji) both;
+}
+
+/* Voice dot breathing */
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+.breathing {
+  animation: breathe 1.8s var(--ease-muji) infinite;
+}
+
+/* Hide scrollbars but keep scroll */
+.calm-scroll::-webkit-scrollbar {
+  display: none;
+}
+.calm-scroll {
+  scrollbar-width: none;
+}
+
+/* Thin elegant scrollbar for windows */
+.muji-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.muji-scroll:hover {
+  scrollbar-color: rgba(156, 154, 147, 0.18) transparent;
+}
+.muji-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.muji-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.muji-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background 200ms;
+}
+.muji-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(156, 154, 147, 0.18);
+}
+.muji-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 154, 147, 0.3);
+}
+
+/* Smooth window transitions */
+.window-frame {
+  will-change: transform;
+  transition: box-shadow 200ms var(--ease-muji);
+}

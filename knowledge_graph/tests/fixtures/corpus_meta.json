@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-04-25T11:14:07.519312+00:00",
+  "generated_at": "2025-01-06T00:00:00+00:00",
   "seed": 42,
   "persona": {},
   "total_items": {
-    "slack": 8,
-    "github": 20,
-    "linear": 16,
-    "gmail": 8,
-    "notion": 8,
+    "slack": 17,
+    "github": 22,
+    "linear": 17,
+    "gmail": 9,
+    "notion": 9,
     "perplexity": 12
   },
   "expected_entities": [
@@ -68,6 +68,44 @@
     {
       "slug": "bug_triage_pipeline",
       "min_skill_count": 2
+    }
+  ],
+  "expected_negative_chats": [
+    "adv-slack-noise-lunch",
+    "adv-slack-noise-holiday",
+    "adv-slack-noise-gif"
+  ],
+  "expected_alias_clusters": [
+    {
+      "canonical": "Alice Park",
+      "type": "person",
+      "aliases": [
+        "@alice-park",
+        "alice.park@company.com"
+      ]
+    },
+    {
+      "canonical": "Bob Kim",
+      "type": "person",
+      "aliases": [
+        "@bob",
+        "bob-kim",
+        "bob@company.com",
+        "Bob K."
+      ]
+    }
+  ],
+  "expected_multi_integration_workflows": [
+    {
+      "slug": "cross_integration_deploy_pipeline",
+      "min_integrations": 3
+    }
+  ],
+  "expected_contradictions": [
+    {
+      "topic": "deploy_day_rule",
+      "min_memories": 2,
+      "max_avg_confidence": 0.7
     }
   ]
 }

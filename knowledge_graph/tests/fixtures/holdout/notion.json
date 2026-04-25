@@ -8,11 +8,19 @@
     "occurred_at": "2025-01-15T00:00:00+00:00"
   },
   {
-    "source_id": "notion-4-0",
+    "source_id": "notion-3-0",
     "source_type": "notion_page",
-    "title": "Week 4: Deploy Runbook",
+    "title": "Week 3: Architecture Decision Record",
+    "content": "ADR: Use SurrealDB for agent memory graph. Decision: SurrealDB chosen for multi-model (graph+doc+vector) capability.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-25T00:00:00+00:00"
+  },
+  {
+    "source_id": "notion-2-0",
+    "source_type": "notion_page",
+    "title": "Week 2: Deploy Runbook",
     "content": "Updated deploy runbook with smoke test step and Alice approval gate for infra-touching deploys.",
     "signal_level": "high",
-    "occurred_at": "2025-01-28T00:00:00+00:00"
+    "occurred_at": "2025-01-14T00:00:00+00:00"
   }
 ]

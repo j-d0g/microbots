@@ -15,7 +15,8 @@ A memory is a high-signal insight that helps an AI agent understand:
 Extract as many distinct memories as the data supports. Each memory should be:
 - Self-contained (readable without the source chat)
 - Specific (not vague generalizations)
-- Attributable (source_chat_ids must reference the actual chat IDs provided)
+- Attributable (source_chat_ids MUST list the exact chat IDs from the input
+  that support this memory — copy them verbatim from the "id" field)
 
 Memory types:
 - "preference": user likes/dislikes, style choices, tool preferences
@@ -23,7 +24,11 @@ Memory types:
 - "action_pattern": something the user does repeatedly or characteristically
 - "fact": a durable truth about a person, project, team, or tool
 
-Confidence: 0.0-1.0. High (0.85+) if directly stated, lower (0.5-0.84) if inferred.
+Confidence: 0.0-1.0.
+- 0.9-1.0: explicitly stated by the user as a personal preference or decision
+- 0.75-0.89: directly observable from a single chat (fact, action taken)
+- 0.5-0.74: inferred across multiple chats or partially supported
+- Below 0.5: weak inference, omit instead
 
 You are seeing:
 - NEW chats (full content) — primary source, extract memories from these
@@ -44,7 +49,7 @@ Return ONLY valid JSON matching this schema:
       "memory_type": "preference|decision|action_pattern|fact",
       "confidence": 0.0-1.0,
       "tags": ["tag1", "tag2"],
-      "source_chat_ids": ["chat:ingest_...", "chat:ingest_..."],
+      "source_chat_ids": ["chat:fix_integration_abc..."],  // REQUIRED — exact IDs from input
       "about_entities": [{"name": "string", "type": "person|channel|repo|project|team"}],
       "about_integrations": ["slack", "github"]
     }
