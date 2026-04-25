@@ -5,7 +5,7 @@
  * floating cards, calling per-window tools (graph_focus_node and
  * friends), highlighting, drafting, comparing.
  *
- * Same shape as the layout-agent: short system prompt, ≤ 4 steps, no
+ * Same shape as the layout-agent: short system prompt, ≤ 3 steps, no
  * prose. Returns a brief result string the orchestrator can mention.
  */
 
@@ -40,7 +40,7 @@ rules:
 - prefer per-window tools (e.g. brief_approve, workflow_select,
   stack_filter) over generic verbs whenever a matching tool exists.
 
-at most 4 steps. be decisive.`;
+at most 3 steps. be decisive.`;
 
 const PER_WINDOW_HINT: Record<RoomKind, string> = {
   brief:

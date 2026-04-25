@@ -7,7 +7,7 @@
  * focus / clear).
  *
  * Tiny system prompt — the layout vocabulary is small and we want
- * decisions in <150ms. We cap steps at 4 so a runaway agent can't
+ * decisions in <150ms. We cap steps at 3 so a runaway agent can't
  * spin the canvas.
  */
 
@@ -78,7 +78,7 @@ becomes the subject (slot 0).
 - set_window_rect is for genuine outliers ("put this in the top-right
   corner at 30 percent"). default to a preset.
 
-at most 4 steps. one tool per action. snappy.`;
+at most 3 steps. one tool per action. snappy.`;
 
 export async function runLayoutAgent(
   ctx: AgentToolCtx,
