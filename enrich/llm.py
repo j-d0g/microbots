@@ -1,8 +1,12 @@
-"""Shared LLM helper for the enrichment layer: call_llm + JSON retry wrapper."""
+"""Shared LLM helper for the enrichment layer: call_llm + JSON retry wrapper.
+
+Also provides ``resolve_enrich_model`` for Pydantic AI agent construction.
+"""
 from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from typing import Any
 
@@ -10,6 +14,23 @@ from config import Config
 from ingest.llm import call_llm
 
 log = logging.getLogger(__name__)
+
+
+def resolve_enrich_model(config: Config) -> str:
+    """Pick the pydantic_ai model string for enrichment agents.
+
+    Priority mirrors wiki/agent.py:
+    1. OPENROUTER_API_KEY  → ``openrouter:<openrouter_model>``
+    2. ANTHROPIC_API_KEY   → ``anthropic:<anthropic_model>``
+    3. Fallback            → ``openai:gpt-4.1-mini``
+    """
+    if os.getenv("OPENROUTER_API_KEY"):
+        model = config.llm.openrouter_model
+        return model if model.startswith("openrouter:") else f"openrouter:{model}"
+    if os.getenv("ANTHROPIC_API_KEY"):
+        model = config.llm.anthropic_model
+        return model if model.startswith("anthropic:") else f"anthropic:{model}"
+    return "openai:gpt-4.1-mini"
 
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*\n?(.*?)\n?```$", re.DOTALL | re.IGNORECASE)
 

@@ -1,15 +1,17 @@
-"""Two-pass skill detection: per-integration map → cross-integration reduce."""
+"""Two-pass skill detection: Pydantic AI agents for per-integration map → cross-integration reduce."""
 from __future__ import annotations
 
 import asyncio
 import logging
 from typing import Any
 
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent
 from surrealdb import AsyncSurreal
 
 from config import Config
 from enrich.context import group_chats_by_integration
-from enrich.llm import call_llm_json
+from enrich.llm import resolve_enrich_model
 from enrich.prompts import skill_per_integration as pass1_prompt
 from enrich.prompts import skill_synthesis as pass2_prompt
 from enrich.writers.skill_writer import write_skill
@@ -17,6 +19,67 @@ from ingest.db import unwrap_surreal_rows
 
 log = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Pydantic output models
+# ---------------------------------------------------------------------------
+
+class SkillCandidate(BaseModel):
+    name: str
+    slug: str = ""
+    description: str = ""
+    steps: list[str] = Field(default_factory=list)
+    strength: int = 1
+    frequency: str = "ad-hoc"
+    tags: list[str] = Field(default_factory=list)
+    integrations_used: list[str] = Field(default_factory=list)
+    evidence_chat_ids: list[str] = Field(default_factory=list)
+    evidence_memory_ids: list[str] = Field(default_factory=list)
+
+
+class BelowThresholdCandidate(BaseModel):
+    name: str
+    observation_count: int = 1
+    reason_excluded: str = ""
+    evidence_chat_ids: list[str] = Field(default_factory=list)
+
+
+class SkillPass1Result(BaseModel):
+    skills: list[SkillCandidate] = Field(default_factory=list)
+    candidates_below_threshold: list[BelowThresholdCandidate] = Field(default_factory=list)
+
+
+class SkillSynthesisResult(BaseModel):
+    skills: list[SkillCandidate] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Agent builders
+# ---------------------------------------------------------------------------
+
+def _build_pass1_agent(config: Config, integration: str) -> Agent[None, SkillPass1Result]:
+    model_str = resolve_enrich_model(config)
+    return Agent(
+        model=model_str,
+        output_type=SkillPass1Result,
+        system_prompt=pass1_prompt.build_system(integration),
+        retries=config.pipeline.max_retries,
+    )
+
+
+def _build_pass2_agent(config: Config) -> Agent[None, SkillSynthesisResult]:
+    model_str = resolve_enrich_model(config)
+    return Agent(
+        model=model_str,
+        output_type=SkillSynthesisResult,
+        system_prompt=pass2_prompt.SYSTEM,
+        retries=config.pipeline.max_retries,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Internal: Pass 1 per-integration
+# ---------------------------------------------------------------------------
 
 async def _pass1_integration(
     integration: str,
@@ -29,28 +92,33 @@ async def _pass1_integration(
     batch = chats[: cfg.skill_max_chats_per_integration]
     memories = all_memories[: cfg.skill_max_memories_per_integration]
 
-    # Scope old summaries to this integration
     intg_old = [
         s for s in old_summaries
         if str(s.get("source_type", "")).lower().startswith(integration[:4])
     ][:200]
 
-    system = pass1_prompt.build_system(integration)
     user = pass1_prompt.build_user_prompt(
         new_chats=batch,
         old_summaries=intg_old,
         memories=memories,
     )
 
-    result = await call_llm_json(
-        system, user, config, label=f"skill_pass1/{integration}"
-    )
-    if result is None:
+    agent = _build_pass1_agent(config, integration)
+
+    try:
+        result = await agent.run(user)
+        output = result.output.model_dump()
+    except Exception as e:  # noqa: BLE001
+        log.warning("skill_pass1/%s failed: %s", integration, e)
         return {"integration": integration, "skills": [], "candidates_below_threshold": []}
 
-    result["integration"] = integration
-    return result
+    output["integration"] = integration
+    return output
 
+
+# ---------------------------------------------------------------------------
+# Public entry point (same signature as before)
+# ---------------------------------------------------------------------------
 
 async def detect_skills(
     new_chats: list[dict[str, Any]],
@@ -62,7 +130,6 @@ async def detect_skills(
     if not new_chats:
         return 0
 
-    # Group chats by integration
     res = await db.query("SELECT in, out FROM chat_from")
     chat_from_rows = unwrap_surreal_rows(res)
     groups = group_chats_by_integration(new_chats, chat_from_rows)
@@ -77,7 +144,6 @@ async def detect_skills(
     ]
     pass1_results: list[dict[str, Any]] = await asyncio.gather(*tasks)
 
-    # Check if any Pass 1 produced skills
     all_candidates = [r for r in pass1_results if r.get("skills") or r.get("candidates_below_threshold")]
     if not all_candidates:
         log.info("Skill detection: no candidates from Pass 1")
@@ -87,16 +153,15 @@ async def detect_skills(
     cfg = config.enrichment
     synthesis_input = pass1_results[: cfg.skill_max_candidates_for_synthesis]
 
-    system = pass2_prompt.SYSTEM
     user = pass2_prompt.build_user_prompt(synthesis_input)
+    agent2 = _build_pass2_agent(config)
 
-    final_result = await call_llm_json(system, user, config, label="skill_pass2_synthesis")
-    if final_result is None:
-        log.warning("Skill synthesis (Pass 2) failed, falling back to Pass 1 results")
-        # Fall back to whatever Pass 1 found
+    try:
+        result = await agent2.run(user)
+        final_skills = [s.model_dump() for s in result.output.skills]
+    except Exception as e:  # noqa: BLE001
+        log.warning("Skill synthesis (Pass 2) failed: %s, falling back to Pass 1 results", e)
         final_skills = [s for r in pass1_results for s in r.get("skills") or []]
-    else:
-        final_skills = final_result.get("skills") or []
 
     # Filter to min strength
     min_s = config.enrichment.skill_min_strength
