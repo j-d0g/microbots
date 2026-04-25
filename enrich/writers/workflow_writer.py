@@ -80,6 +80,7 @@ async def write_workflow(
     )
 
     # workflow_contains_skill edges (ordered)
+    # Uniqueness key = (in, out, step_order) — re-enrichment may change ordering.
     for step in skill_sequence:
         skill_slug = str(step.get("skill_slug") or "").strip()
         step_order = int(step.get("step_order") or 0)
@@ -88,9 +89,17 @@ async def write_workflow(
             continue
         s_rec = RecordID("skill", skill_slug)
         try:
-            await relate_unique(
-                db, wf_rec, "workflow_contains_skill", s_rec,
-                {"step_order": step_order, "optional": optional},
+            # Check for existing edge with the same (in, out, step_order) triple.
+            existing = await db.query(
+                "SELECT id FROM workflow_contains_skill "
+                "WHERE in = $f AND out = $t AND step_order = $o LIMIT 1",
+                {"f": wf_rec, "t": s_rec, "o": step_order},
+            )
+            if unwrap_surreal_rows(existing):
+                continue
+            await db.query(
+                "RELATE $f->workflow_contains_skill->$t CONTENT $c",
+                {"f": wf_rec, "t": s_rec, "c": {"step_order": step_order, "optional": optional}},
             )
         except Exception as e:  # noqa: BLE001
             log.debug("workflow_contains_skill skipped (%s → %s): %s", slug, skill_slug, e)

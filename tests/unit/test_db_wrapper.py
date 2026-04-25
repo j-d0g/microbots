@@ -98,31 +98,25 @@ async def _seed_workflow(db, slug: str = "wf1") -> None:
 # Tests: param validation
 # ---------------------------------------------------------------------------
 
-def test_unknown_query_rejected(microbots_db):
+@pytest.mark.asyncio
+async def test_unknown_query_rejected(microbots_db):
     """Passing an unregistered query name must raise ValueError immediately."""
-    import asyncio
     with pytest.raises(ValueError, match="Unknown named query"):
-        asyncio.get_event_loop().run_until_complete(
-            microbots_db.named_query("DROP TABLE user_profile")
-        )
+        await microbots_db.named_query("DROP TABLE user_profile")
 
 
-def test_raw_surql_cannot_be_injected(microbots_db):
+@pytest.mark.asyncio
+async def test_raw_surql_cannot_be_injected(microbots_db):
     """Arbitrary SurrealQL strings as query names must be rejected."""
-    import asyncio
     with pytest.raises(ValueError, match="Unknown named query"):
-        asyncio.get_event_loop().run_until_complete(
-            microbots_db.named_query("SELECT * FROM user_profile")
-        )
+        await microbots_db.named_query("SELECT * FROM user_profile")
 
 
-def test_integration_detail_requires_slug(microbots_db):
+@pytest.mark.asyncio
+async def test_integration_detail_requires_slug(microbots_db):
     """integration_detail must raise ValueError if 'slug' param is missing."""
-    import asyncio
     with pytest.raises(ValueError, match="requires param 'slug'"):
-        asyncio.get_event_loop().run_until_complete(
-            microbots_db.named_query("integration_detail", {})
-        )
+        await microbots_db.named_query("integration_detail", {})
 
 
 # ---------------------------------------------------------------------------

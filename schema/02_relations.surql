@@ -38,8 +38,8 @@ DEFINE FIELD OVERWRITE extracted_at    ON chat_yields TYPE option<datetime>;
 DEFINE TABLE OVERWRITE memory_about SCHEMAFULL TYPE RELATION IN memory OUT entity | integration;
 DEFINE FIELD OVERWRITE relevance       ON memory_about TYPE option<float>;
 
--- Skill → Chat | Workflow (provenance)
-DEFINE TABLE OVERWRITE skill_derived_from SCHEMAFULL TYPE RELATION IN skill OUT chat | workflow;
+-- Skill → Chat | Memory | Workflow (provenance)
+DEFINE TABLE OVERWRITE skill_derived_from SCHEMAFULL TYPE RELATION IN skill OUT chat | memory | workflow;
 
 -- Skill → Integration
 DEFINE TABLE OVERWRITE skill_uses SCHEMAFULL TYPE RELATION IN skill OUT integration;
