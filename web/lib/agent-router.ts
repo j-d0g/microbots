@@ -34,6 +34,14 @@ function nav(room: RoomKind, slug?: string): Step {
   return { delay: 80, event: { type: "ui.room", room, slug } };
 }
 
+function tool(
+  room: RoomKind,
+  toolName: string,
+  args: Record<string, unknown> = {},
+): Step {
+  return { delay: 120, event: { type: "ui.tool", room, tool: toolName, args } };
+}
+
 function arrange(layout: "focus" | "split" | "grid" | "stack-right"): Step {
   return { delay: 100, event: { type: "ui.arrange", layout } };
 }
@@ -81,6 +89,8 @@ const SCRIPTS: Script[] = [
       dock("thinking"),
       status("opening the bug triage workflow..."),
       nav("workflow"),
+      tool("workflow", "select", { slug: "bug-triage-pipeline" }),
+      tool("workflow", "show_recipe", {}),
       { delay: 200, event: { type: "reply.start", query: q } },
       dock("speaking"),
       ...streamReply(
@@ -92,6 +102,88 @@ const SCRIPTS: Script[] = [
         { text: "Maya triages Slack #product-bugs into Linear every weekday morning.", confidence: 0.94 },
         6500,
       ),
+      { delay: 200, event: { type: "reply.done" } },
+      dock("idle"),
+      status("", 0),
+    ],
+  },
+  {
+    match: (q) => word(q, "high confidence", "high only", "filter high"),
+    build: (q) => [
+      dock("thinking"),
+      status("filtering brief to high-confidence proposals..."),
+      nav("brief"),
+      tool("brief", "filter", { tone: "high" }),
+      { delay: 200, event: { type: "reply.start", query: q } },
+      dock("speaking"),
+      ...streamReply(
+        "filtered to high-confidence proposals only. say 'show all' to clear.",
+      ),
+      { delay: 200, event: { type: "reply.done" } },
+      dock("idle"),
+      status("", 0),
+    ],
+  },
+  {
+    match: (q) => word(q, "warn", "warning", "anything wrong", "what's broken", "whats broken"),
+    build: (q) => [
+      dock("thinking"),
+      status("checking service health..."),
+      nav("stack"),
+      tool("stack", "filter", { health: "warn" }),
+      { delay: 200, event: { type: "reply.start", query: q } },
+      dock("speaking"),
+      ...streamReply(
+        "notion-scribe is in warn -- approaching the Notion API rate limit. tap it to read the logs.",
+      ),
+      tool("stack", "highlight", { slug: "notion-scribe" }),
+      { delay: 200, event: { type: "reply.done" } },
+      dock("idle"),
+      status("", 0),
+    ],
+  },
+  {
+    match: (q) => word(q, "logs", "log of", "see logs", "show logs"),
+    build: (q) => {
+      const m = q.toLowerCase().match(/(slack-linear-bridge|gmail-router|pr-digest|standup-bot|notion-scribe)/);
+      const slug = m?.[1] ?? "notion-scribe";
+      return [
+        dock("thinking"),
+        status(`opening ${slug} logs...`),
+        nav("stack"),
+        tool("stack", "select", { slug }),
+        { delay: 200, event: { type: "reply.start", query: q } },
+        dock("speaking"),
+        ...streamReply(`here are the recent logs for ${slug}.`),
+        { delay: 200, event: { type: "reply.done" } },
+        dock("idle"),
+        status("", 0),
+      ];
+    },
+  },
+  {
+    match: (q) => word(q, "members", "team", "roles", "permissions"),
+    build: (q) => [
+      dock("thinking"),
+      nav("settings"),
+      tool("settings", "scroll_to", { section: "members" }),
+      { delay: 200, event: { type: "reply.start", query: q } },
+      dock("speaking"),
+      ...streamReply("three members. Maya owner, Raj admin, Sofia member."),
+      { delay: 200, event: { type: "reply.done" } },
+      dock("idle"),
+      status("", 0),
+    ],
+  },
+  {
+    match: (q) => word(q, "danger", "wipe", "reset memory", "clear graph"),
+    build: (q) => [
+      dock("thinking"),
+      nav("settings"),
+      tool("settings", "scroll_to", { section: "danger" }),
+      { delay: 200, event: { type: "reply.start", query: q } },
+      dock("speaking"),
+      ...streamReply("danger zone. wiping the graph is irreversible -- confirm by voice if you want to proceed."),
       { delay: 200, event: { type: "reply.done" } },
       dock("idle"),
       status("", 0),

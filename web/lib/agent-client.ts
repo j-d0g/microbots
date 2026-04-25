@@ -2,6 +2,8 @@
 
 import { createParser, type EventSourceMessage } from "eventsource-parser";
 import { useAgentStore, type RoomKind, type VerbPayload } from "./store";
+import { callRoomTool } from "./room-tools";
+import { buildSnapshot } from "./agent/snapshot";
 
 export type AgentEvent =
   | {
@@ -23,12 +25,29 @@ export type AgentEvent =
     }
   | { type: "ui.arrange"; layout: "focus" | "split" | "grid" | "stack-right" }
   | { type: "ui.close_window"; room?: RoomKind }
+  | {
+      type: "ui.resize";
+      room?: RoomKind;
+      rect: { x?: number; y?: number; w?: number; h?: number };
+    }
+  | {
+      type: "ui.tool";
+      room: RoomKind;
+      tool: string;
+      args?: Record<string, unknown>;
+    }
   | { type: "speak.chunk"; text: string }
   | { type: "agent.status"; status: string }
   | { type: "dock"; state: "idle" | "listening" | "thinking" | "speaking" | "hidden" }
   | { type: "reply.start"; query: string }
   | { type: "reply.chunk"; text: string }
-  | { type: "reply.done" };
+  | { type: "reply.done" }
+  /** Orchestrator handed off to a sub-agent. The sidecar renders a chip. */
+  | { type: "agent.delegate"; to: "layout" | "content"; intent: string }
+  /** A sub-agent issued a tool. The sidecar pushes a live row. */
+  | { type: "agent.tool.start"; name: string; args: Record<string, unknown> }
+  /** A sub-agent's tool returned. The sidecar marks the row done. */
+  | { type: "agent.tool.done"; name: string; ok: boolean };
 
 export function applyAgentEvent(evt: AgentEvent): void {
   const s = useAgentStore.getState();
@@ -48,6 +67,18 @@ export function applyAgentEvent(evt: AgentEvent): void {
       } else {
         s.closeTopWindow();
       }
+      break;
+    }
+    case "ui.resize": {
+      const target = evt.room
+        ? s.windows.find((w) => w.kind === evt.room && !w.minimized)
+        : [...s.windows].filter((w) => !w.minimized).sort((a, b) => b.zIndex - a.zIndex)[0];
+      if (target) s.updateWindowRect(target.id, evt.rect);
+      break;
+    }
+    case "ui.tool": {
+      // Fire-and-forget; agents don't await tool side-effects in the event stream.
+      void callRoomTool(evt.room, evt.tool, evt.args ?? {});
       break;
     }
     case "ui.verb":
@@ -80,6 +111,28 @@ export function applyAgentEvent(evt: AgentEvent): void {
       s.appendReply(evt.text);
       break;
     case "reply.done":
+      break;
+    case "agent.delegate":
+      // Mirror into the recent-actions ring so the SnapshotInspector
+      // reflects the delegation; sidecar UI will read this too.
+      s.pushAction({
+        t: Date.now(),
+        tool: `delegate_${evt.to}`,
+        args: { intent: evt.intent },
+        ok: true,
+      });
+      break;
+    case "agent.tool.start":
+      s.pushAction({
+        t: Date.now(),
+        tool: evt.name,
+        args: evt.args,
+        ok: true,
+      });
+      break;
+    case "agent.tool.done":
+      // No store change — the start record above already marks it ok.
+      // We could stamp the duration here once we capture start times.
       break;
   }
 }
@@ -114,18 +167,20 @@ export async function connectAgentStream(
   }
 }
 
-/** Send a user query to the agent and apply events as they stream back */
-export async function sendQuery(
-  query: string,
+/** Sentinel thrown when the orchestrate route signals it can't run
+ *  (e.g. no API key). Callers should catch this and degrade to the
+ *  scripted local fallback (`routeIntent` from `agent-router.ts`). */
+export class AgentFallback extends Error {
+  constructor(public reason: string) {
+    super(reason);
+    this.name = "AgentFallback";
+  }
+}
+
+async function consumeSSE(
+  body: ReadableStream<Uint8Array>,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch("/api/agent/stream", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ query, room: useAgentStore.getState().room }),
-    signal,
-  });
-  if (!res.body) return;
   const decoder = new TextDecoder();
   const parser = createParser({
     onEvent: (msg: EventSourceMessage) => {
@@ -134,14 +189,51 @@ export async function sendQuery(
         const parsed = JSON.parse(msg.data) as AgentEvent;
         applyAgentEvent(parsed);
       } catch {
-        // swallow
+        // swallow bad frames
       }
     },
   });
-  const reader = res.body.getReader();
+  const reader = body.getReader();
   while (true) {
+    if (signal?.aborted) {
+      reader.cancel().catch(() => undefined);
+      break;
+    }
     const { done, value } = await reader.read();
     if (done) break;
     parser.feed(decoder.decode(value, { stream: true }));
   }
+}
+
+/** Send a user query to the orchestrator, posting a fresh canvas
+ *  snapshot so the agent has eyes. Throws `AgentFallback` if the route
+ *  is unreachable or returns 503 (no key). The CommandBar catches that
+ *  and runs `routeIntent()` locally so the demo still works. */
+export async function sendQuery(
+  query: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const snapshot = buildSnapshot({ query });
+  let res: Response;
+  try {
+    res = await fetch("/api/agent/orchestrate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query, snapshot }),
+      signal,
+    });
+  } catch (err) {
+    throw new AgentFallback(
+      err instanceof Error ? err.message : "network error",
+    );
+  }
+
+  if (res.status === 503 || res.headers.get("x-agent-fallback") === "local") {
+    throw new AgentFallback("no API key configured");
+  }
+  if (!res.ok || !res.body) {
+    throw new AgentFallback(`orchestrate returned ${res.status}`);
+  }
+
+  await consumeSSE(res.body, signal);
 }
