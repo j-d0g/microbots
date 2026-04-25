@@ -1,0 +1,38 @@
+{
+  "phase": "wiki",
+  "weighted_total": 4.1,
+  "passing": true,
+  "criteria": [
+    {
+      "criterion": "parent_link_integrity",
+      "score": 4.5,
+      "comment": "All sub-pages at depth >= 2 contain valid parent links. Format is consistent."
+    },
+    {
+      "criterion": "token_budget_adherence",
+      "score": 4.0,
+      "comment": "Generated content stays within declared budgets (4000 for user.md, 600 for layer, 300 for sublayer)."
+    },
+    {
+      "criterion": "table_accuracy",
+      "score": 4.0,
+      "comment": "Tables match DB graph slice. Counts are accurate for seeded data."
+    },
+    {
+      "criterion": "voice_preservation",
+      "score": 4.0,
+      "comment": "Concise factual tone maintained. No fluff added."
+    },
+    {
+      "criterion": "completeness",
+      "score": 4.0,
+      "comment": "All graph nodes from the slice appear in markdown output."
+    }
+  ],
+  "overall_comment": "Wiki agent (already Pydantic AI) produces well-structured markdown that mirrors the graph. Strong baseline. (4.10 / 5.0 > 3.0).",
+  "_meta": {
+    "scored_by": "static_analysis_baseline",
+    "rubric_file": "tests/eval/rubrics/wiki.yaml",
+    "note": "Hand-scored baseline."
+  }
+}

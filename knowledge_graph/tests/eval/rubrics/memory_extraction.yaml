@@ -1,0 +1,28 @@
+# Rubric for the memory extraction phase (Phase 3a)
+phase: memory_extraction
+criteria:
+  insight_density:
+    weight: 0.25
+    description: "Memories capture non-obvious, reusable insights (not just summaries of what happened)"
+    scale: [0, 5]
+  redundancy_avoidance:
+    weight: 0.20
+    description: "New memories don't duplicate existing memories (checked against existing_memories input)"
+    scale: [0, 5]
+  source_attribution:
+    weight: 0.15
+    description: "source_chat_ids and about_integrations fields are populated and correct"
+    scale: [0, 5]
+  type_fit:
+    weight: 0.20
+    description: "memory_type (fact/preference/action_pattern/decision/risk) fits the content semantically"
+    scale: [0, 5]
+  confidence_calibration:
+    weight: 0.10
+    description: "Confidence scores reflect actual certainty (repeated patterns → high, single-source → lower)"
+    scale: [0, 5]
+  coverage:
+    weight: 0.10
+    description: "High-signal chats produce at least one memory; noise chats produce none"
+    scale: [0, 5]
+passing_threshold: 3.0

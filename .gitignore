@@ -1,24 +1,61 @@
-# Environments
+# --- Secrets and local env (template: .env.example) ---
 .env
 .env.local
 .env.*.local
 
-# Python
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
 *.egg-info/
+.eggs/
+dist/
+build/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.pytype/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Virtual environments ---
 .venv/
 venv/
-.uv/
+env/
 
-# IDE
+# --- uv (keep uv.lock and pyproject.toml in git) ---
+
+# --- Composio / ingest cache (optional override: COMPOSIO_CACHE_DIR) ---
+.composio_cache/
+
+# --- SurrealDB exports (see Makefile db-export) ---
+backup_*.surql
+*.backup.surql
+
+# --- IDEs and editors ---
 .idea/
 .vscode/
+*.swp
+*~
+.project
+.classpath
+.settings/
 
-# OS
+# --- OS ---
 .DS_Store
 Thumbs.db
 
-# Backups
-backup_*.surql
+# --- Logs ---
+*.log
+logs/
+
+# --- External reference repos (cloned for reading, not part of microbots) ---
+kaig/
+
+# --- Worktrees ---
+.worktrees/

@@ -1,0 +1,93 @@
+# Canonical persona spec for synthetic corpus generation
+persona:
+  name: Desmond
+  role: AI engineer
+  company: Startup (series A, ~15 people)
+  team:
+    - name: Alice Chen
+      role: Co-founder, Infrastructure Lead
+      handles:
+        slack: "@alice"
+        github: "alice-chen"
+        email: "alice@company.com"
+        linear: "Alice"
+    - name: Bob Kim
+      role: Senior AI Engineer
+      handles:
+        slack: "@bob"
+        github: "bob-kim"
+        email: "bob@company.com"
+        linear: "Bob"
+    - name: Carol Diaz
+      role: Product Designer
+      handles:
+        slack: "@carol"
+        github: "carol-diaz"
+        email: "carol@company.com"
+        linear: "Carol"
+
+repos:
+  - slug: microbots
+    description: "Agent memory infrastructure. Python + SurrealDB."
+  - slug: taro-api
+    description: "Backend API. FastAPI + PostgreSQL."
+  - slug: infra
+    description: "Terraform + Docker infrastructure configs."
+
+linear_projects:
+  - name: Agent Memory
+    description: "All microbots development tasks"
+  - name: Platform
+    description: "taro-api and infra work"
+
+slack_channels:
+  - "#ai-engineering"
+  - "#deployments"
+  - "#general"
+  - "#code-review"
+
+conventions:
+  - "Create Linear ticket before opening GitHub PR"
+  - "Post to #deployments before and after every production deploy"
+  - "Request review from Bob for microbots and taro-api PRs"
+  - "Tag Alice on infra-touching PRs"
+  - "Python: type hints required, mypy + black enforced via pre-commit"
+  - "Link Linear ticket in PR description"
+
+# Corpus timespan: 4 weeks
+weeks: 4
+items_per_week:
+  slack: 8
+  github: 5
+  linear: 4
+  gmail: 2
+  notion: 2
+  perplexity: 3
+
+# Ground truth (used by test assertions)
+expected_entities:
+  - name: Alice Chen
+    type: person
+    aliases: ["@alice", "alice-chen", "alice@company.com"]
+  - name: Bob Kim
+    type: person
+    aliases: ["@bob", "bob-kim", "bob@company.com"]
+  - name: Carol Diaz
+    type: person
+    aliases: ["@carol", "carol-diaz"]
+  - name: microbots
+    type: repo
+    aliases: ["microbots", "github.com/org/microbots"]
+  - name: Agent Memory
+    type: project
+    aliases: ["Agent Memory", "agent-memory"]
+
+expected_skills:
+  - slug: deploy_flow
+    min_strength: 2
+  - slug: pr_review_flow
+    min_strength: 2
+
+expected_workflows:
+  - slug: bug_triage_pipeline
+    min_skill_count: 2

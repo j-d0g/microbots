@@ -1,0 +1,24 @@
+# Rubric for the entity resolution phase (Phase 3b)
+phase: entity_resolution
+criteria:
+  merge_precision:
+    weight: 0.30
+    description: "No false merges — entities that refer to different people/things remain separate"
+    scale: [0, 5]
+  merge_recall:
+    weight: 0.25
+    description: "All aliases for the same entity are collapsed (Alice, @alice, alice-chen → one node)"
+    scale: [0, 5]
+  description_faithfulness:
+    weight: 0.20
+    description: "Entity descriptions accurately reflect what's known from the chat context"
+    scale: [0, 5]
+  relationship_accuracy:
+    weight: 0.15
+    description: "appears_in edges correctly map each entity to the integrations where it appears"
+    scale: [0, 5]
+  coverage:
+    weight: 0.10
+    description: "Expected entities from corpus_meta are all present in the resolved graph"
+    scale: [0, 5]
+passing_threshold: 3.0

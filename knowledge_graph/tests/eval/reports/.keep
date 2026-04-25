@@ -1,0 +1,2 @@
+# This directory holds eval score reports, proposals, and promotion logs.
+# Files are created by: uv run python tests/eval/judge.py --phase <phase> --input <file>

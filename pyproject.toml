@@ -5,12 +5,30 @@ requires-python = ">=3.11"
 dependencies = [
     "surrealdb>=1.0.0",
     "python-dotenv>=1.0.0",
+    "httpx>=0.28.1",
+    "anthropic>=0.97.0",
+    "composio>=0.11.6",
+    "pydantic-ai[openai]>=1.87.0",
+    "tiktoken>=0.12.0",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+    "pyyaml>=6.0",
+    # Observability (microbots/log.py)
     "logfire>=2.0.0",
+    # render_sdk runtime deps (kept in sync with render_sdk/pyproject.toml)
+    "docker>=7.0",
+    "requests>=2.31",
+    "portalocker>=2.8",
+    "pyngrok>=7.0",
+    "click>=8.1",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["microbots"]
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "e2e: end-to-end tests requiring a running SurrealDB",
+    "live_llm: tests that make real LLM API calls",
+]
+testpaths = ["knowledge_graph/tests"]
+pythonpath = ["knowledge_graph"]

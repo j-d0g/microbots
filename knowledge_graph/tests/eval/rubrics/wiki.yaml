@@ -1,0 +1,24 @@
+# Rubric for the wiki agent phase (Phase 4)
+phase: wiki
+criteria:
+  parent_link_integrity:
+    weight: 0.20
+    description: "All sub-pages (depth ≥ 2) contain a valid Parent link to their parent agents.md"
+    scale: [0, 5]
+  token_budget_adherence:
+    weight: 0.20
+    description: "Generated content is within the declared token budget for each file type"
+    scale: [0, 5]
+  table_accuracy:
+    weight: 0.30
+    description: "Tables and counts in the markdown match the DB graph slice exactly"
+    scale: [0, 5]
+  voice_preservation:
+    weight: 0.15
+    description: "Existing human edits and voice are preserved where they don't contradict the graph"
+    scale: [0, 5]
+  completeness:
+    weight: 0.15
+    description: "Every graph node represented in the slice appears in the markdown"
+    scale: [0, 5]
+passing_threshold: 3.0

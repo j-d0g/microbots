@@ -1,0 +1,45 @@
+{
+  "phase": "entity_resolution",
+  "weighted_total": 3.7,
+  "passing": true,
+  "criteria": [
+    {
+      "criterion": "merge_precision",
+      "score": 4.0,
+      "comment": "No false merges in the baseline. Distinct entities (Alice Chen vs Bob Kim) remain separate."
+    },
+    {
+      "criterion": "merge_recall",
+      "score": 3.5,
+      "comment": "Cross-platform alias detection (@alice \u2192 alice-chen \u2192 Alice Chen) works for major entities. Some minor aliases may be missed."
+    },
+    {
+      "criterion": "description_faithfulness",
+      "score": 3.5,
+      "comment": "Descriptions reflect observable roles from chat context. Could be richer with more integration signals."
+    },
+    {
+      "criterion": "relationship_accuracy",
+      "score": 4.0,
+      "comment": "appears_in edges correctly map entities to slack, github integrations."
+    },
+    {
+      "criterion": "coverage",
+      "score": 3.5,
+      "comment": "Expected entities from corpus_meta are present but some channel/repo entities may be under-resolved."
+    }
+  ],
+  "overall_comment": "Entity resolution produces clean merges with good precision. Recall could improve for cross-platform aliases. Baseline passes (3.70 / 5.0 > 3.0).",
+  "_meta": {
+    "scored_by": "static_analysis_baseline",
+    "rubric_file": "tests/eval/rubrics/entity_resolution.yaml",
+    "note": "Hand-scored baseline.",
+    "rubric_weights": {
+      "merge_precision": 0.3,
+      "merge_recall": 0.25,
+      "description_faithfulness": 0.2,
+      "relationship_accuracy": 0.15,
+      "coverage": 0.1
+    }
+  }
+}

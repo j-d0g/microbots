@@ -1,0 +1,18 @@
+[
+  {
+    "source_id": "gmail-1-1",
+    "source_type": "gmail_thread",
+    "title": "Week 1: Investor update request",
+    "content": "Investor relations: please send the monthly update by end of week.",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-06T00:00:00+00:00"
+  },
+  {
+    "source_id": "gmail-4-0",
+    "source_type": "gmail_thread",
+    "title": "Week 4: Vendor update: AWS usage report",
+    "content": "AWS sent the monthly usage report. Compute costs up 12% due to SurrealDB instances.",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-28T00:00:00+00:00"
+  }
+]
