@@ -1,0 +1,78 @@
+{
+  "phase": "triage",
+  "phase_output": {
+    "integration_metadata": {
+      "user_purpose": "Primary async communication hub for team coordination, deploy notifications, and quick decisions.",
+      "usage_patterns": [
+        "Post to #deployments before and after every production deploy",
+        "Use threads for in-depth discussion"
+      ],
+      "navigation_tips": [
+        "#ai-engineering for AI project context",
+        "#deployments has the full deploy history"
+      ],
+      "key_entities": [
+        {"name": "Alice Chen", "type": "person", "role": "infra approver"},
+        {"name": "Bob Kim",    "type": "person", "role": "code reviewer"}
+      ]
+    },
+    "chat_records": [
+      {
+        "external_id": "slack-3-deploy-964a24370480e04b",
+        "title": "Deploy: microbots v0.3 to staging",
+        "summary": "Desmond deployed microbots v0.3 to staging. Alice gave green light. All smoke tests passed.",
+        "content": "Desmond: Deploying microbots v0.3 to staging now. Linear: MIC-30.\nAlice Chen: Looks good from infra side. Green light.\nDesmond: Deployed. All smoke tests passing.",
+        "signal_level": "high",
+        "source_type": "slack_thread",
+        "occurred_at": "2025-01-21T18:00:00+00:00",
+        "entities_mentioned": [
+          {"name": "Alice Chen",    "mention_type": "approver"},
+          {"name": "#deployments", "mention_type": "channel"}
+        ]
+      },
+      {
+        "external_id": "slack-1-ai-eng-31211503a11510a9",
+        "title": "Week 1: microbots SurrealDB progress",
+        "summary": "Desmond confirmed HNSW embedding DIMENSION is 1536, matching OpenAI. All green.",
+        "content": "Desmond: Pushed schema updates for week 1. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
+        "signal_level": "high",
+        "source_type": "slack_thread",
+        "occurred_at": "2025-01-07T12:00:00+00:00",
+        "entities_mentioned": [
+          {"name": "Bob Kim",         "mention_type": "reviewer"},
+          {"name": "#ai-engineering", "mention_type": "channel"}
+        ]
+      },
+      {
+        "external_id": "slack-1-cr-b2a4ece0e48f05a9",
+        "title": "PR review request: week 1 changes",
+        "summary": "Desmond requested PR #5 review from Bob for the microbots enrichment layer.",
+        "content": "Desmond: @bob PR #5 is ready for review — microbots enrichment layer.\nBob Kim: On it. Will review today.",
+        "signal_level": "mid",
+        "source_type": "slack_thread",
+        "occurred_at": "2025-01-06T13:00:00+00:00",
+        "entities_mentioned": [
+          {"name": "Bob Kim",       "mention_type": "reviewer"},
+          {"name": "#code-review",  "mention_type": "channel"}
+        ]
+      }
+    ],
+    "items_dropped": []
+  },
+  "ground_truth": {
+    "expected_entities": [
+      {"name": "Alice Chen", "type": "person", "aliases": ["@alice", "alice-chen", "alice@company.com"]},
+      {"name": "Bob Kim",    "type": "person", "aliases": ["@bob",   "bob-kim",   "bob@company.com"]}
+    ],
+    "expected_signal_levels": {
+      "deploy_slack_thread":      "high",
+      "ai_eng_slack_thread":      "high",
+      "code_review_slack_thread": "mid"
+    },
+    "expected_chat_count": 3,
+    "expected_fields": [
+      "external_id", "title", "summary", "content",
+      "signal_level", "source_type", "occurred_at", "entities_mentioned"
+    ]
+  }
+}

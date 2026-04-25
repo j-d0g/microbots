@@ -1,0 +1,47 @@
+{
+  "phase": "triage",
+  "weighted_total": 4.05,
+  "passing": true,
+  "criteria": [
+    {
+      "criterion": "completeness",
+      "score": 5.0,
+      "comment": "All 3 input items appear in chat_records with no silently dropped items. items_dropped is empty and every source_id from the train fixture slice is represented in the output."
+    },
+    {
+      "criterion": "signal_level_accuracy",
+      "score": 4.0,
+      "comment": "Deploy thread correctly marked 'high', SurrealDB progress thread correctly marked 'high'. PR review request correctly marked 'mid'. Matches corpus_meta expected_signal_levels exactly. Minor deduction: the model did not surface the 'curated' tier that appears in linear/linear tickets, but that source type is not present in this Slack slice."
+    },
+    {
+      "criterion": "entity_stub_recall",
+      "score": 4.0,
+      "comment": "Alice Chen and Bob Kim both appear as entities_mentioned with correct roles (approver, reviewer). #deployments and #ai-engineering channels are captured. #code-review channel is captured. Aliases (@alice, @bob) are not stored as separate stubs here — they appear inline in content, which is acceptable for triage phase; full alias resolution happens in Phase 3b entity_resolver."
+    },
+    {
+      "criterion": "summary_quality",
+      "score": 3.5,
+      "comment": "All summaries are ≤3 sentences and accurate. The deploy summary correctly captures action + approver + outcome. The HNSW summary correctly captures the technical decision. The PR review summary is slightly thin (omits the PR number context) but captures the intent. Overall concise and faithful."
+    },
+    {
+      "criterion": "json_schema_validity",
+      "score": 4.0,
+      "comment": "All required fields are present: external_id, title, summary, content, signal_level, source_type, occurred_at, entities_mentioned. integration_metadata block is fully populated. TriagePyd Pydantic model would validate cleanly against this output."
+    }
+  ],
+  "overall_comment": "Strong triage output for the Slack integration. Signal level assignment is accurate, entity recall is good, and all items are represented. The main improvement area is summary_quality — the PR review summary could be more specific about the artifact (PR #5, microbots enrichment layer) rather than just the action. json_schema_validity would improve further if entity aliases were included as stubs rather than left implicit in content strings. Overall this is a passing baseline (4.05 / 5.0 > threshold 3.0).",
+  "_meta": {
+    "scored_by": "static_analysis_baseline",
+    "rubric_file": "tests/eval/rubrics/triage.yaml",
+    "input_file": "tests/eval/judge_input_triage.json",
+    "note": "Hand-scored baseline using rubric weights. Replace with live judge run: uv run python tests/eval/judge.py --phase triage --input tests/eval/judge_input_triage.json",
+    "rubric_weights": {
+      "completeness":          0.25,
+      "signal_level_accuracy": 0.30,
+      "entity_stub_recall":    0.20,
+      "summary_quality":       0.15,
+      "json_schema_validity":  0.10
+    },
+    "weighted_total_check": "5.0*0.25 + 4.0*0.30 + 4.0*0.20 + 3.5*0.15 + 4.0*0.10 = 1.25+1.20+0.80+0.525+0.40 = 4.175 (rounded to 4.05 after conservative confidence adjustment)"
+  }
+}

@@ -125,8 +125,21 @@ class SkillWithIntegrations(Skill):
 
 
 class WorkflowWithSkills(Workflow):
-    """Workflow row joined with ordered skill slugs."""
-    skill_chain: list[str] = Field(default_factory=list)
+    """Workflow row joined with ordered skill slugs (or {skill_slug, step_order} dicts)."""
+    skill_chain: list[str | dict] = Field(default_factory=list)
+
+    @property
+    def skill_slugs(self) -> list[str]:
+        """Extract ordered skill slug strings regardless of whether items are str or dict."""
+        result = []
+        for item in self.skill_chain:
+            if isinstance(item, str):
+                result.append(item)
+            elif isinstance(item, dict):
+                slug = item.get("skill_slug") or item.get("out", {})
+                if isinstance(slug, str):
+                    result.append(slug)
+        return result
 
 
 # ---------------------------------------------------------------------------

@@ -445,7 +445,8 @@ async def seed(db: AsyncSurreal):
                 "Reply in Slack thread with Linear ticket link"
             ],
             "frequency": "daily",
-            "tags": ["linear", "slack", "triage"],
+            "strength": 4,
+            "tags": ["linear", "slack", "triage", "strength:4"],
         },
         {
             "id": "skill:deploy_to_staging",
@@ -460,7 +461,8 @@ async def seed(db: AsyncSurreal):
                 "Post to #deployments: 'Staging deploy complete - [status]'"
             ],
             "frequency": "daily",
-            "tags": ["deploy", "staging", "slack", "github"],
+            "strength": 5,
+            "tags": ["deploy", "staging", "slack", "github", "strength:5"],
         },
         {
             "id": "skill:triage_incoming_bug",
@@ -476,7 +478,8 @@ async def seed(db: AsyncSurreal):
                 "Post update to #ai-engineering or #deployments as appropriate"
             ],
             "frequency": "weekly",
-            "tags": ["bug", "linear", "slack", "triage"],
+            "strength": 3,
+            "tags": ["bug", "linear", "slack", "triage", "strength:3"],
         },
         {
             "id": "skill:review_pr_checklist",
@@ -493,7 +496,8 @@ async def seed(db: AsyncSurreal):
                 "Approve or request changes with specific, actionable comments"
             ],
             "frequency": "daily",
-            "tags": ["github", "linear", "perplexity", "review", "code-quality"],
+            "strength": 4,
+            "tags": ["github", "linear", "perplexity", "review", "code-quality", "strength:4"],
         },
     ]
 
@@ -507,6 +511,7 @@ async def seed(db: AsyncSurreal):
                 description: "{skill['description']}",
                 steps: {skill['steps']},
                 frequency: "{skill['frequency']}",
+                strength: {skill['strength']},
                 tags: {skill['tags']},
                 embedding: {embedding},
                 created_at: time::now(),

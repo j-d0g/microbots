@@ -78,23 +78,24 @@ LIMIT $limit
 
 _Q_SKILLS_ALL = """
 SELECT
-    id, name, slug, description, steps, frequency, tags,
-    array::group(->skill_uses->integration.slug) AS integrations
+    id, name, slug, description, steps, frequency, strength, tags,
+    array::distinct((SELECT out.slug FROM skill_uses WHERE in = $parent.id).out.slug) AS integrations
 FROM skill
-WHERE array::any(tags, |$t| string::starts_with($t, 'strength:') AND
-    <int> string::slice($t, 9, 99) >= $min_strength)
-ORDER BY name ASC
+WHERE strength >= $min_strength
+ORDER BY strength DESC, name ASC
 """
 
 _Q_WORKFLOWS_ALL = """
 SELECT
     id, name, slug, description, trigger, outcome, frequency, tags,
-    (
-        SELECT out.slug AS skill_slug, step_order
-        FROM workflow_contains_skill
-        WHERE in = $parent.id
-        ORDER BY step_order ASC
-    ) AS skill_chain_rows
+    array::distinct(
+        (
+            SELECT out.slug AS skill_slug, step_order
+            FROM workflow_contains_skill
+            WHERE in = $parent.id
+            ORDER BY step_order ASC
+        )
+    ) AS skill_chain
 FROM workflow
 ORDER BY name ASC
 """

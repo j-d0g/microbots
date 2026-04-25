@@ -64,6 +64,7 @@ DEFINE FIELD OVERWRITE slug            ON skill TYPE string;
 DEFINE FIELD OVERWRITE description     ON skill TYPE string;
 DEFINE FIELD OVERWRITE steps           ON skill TYPE option<array<string>>;
 DEFINE FIELD OVERWRITE frequency       ON skill TYPE option<string>;
+DEFINE FIELD OVERWRITE strength        ON skill TYPE int DEFAULT 1;
 DEFINE FIELD OVERWRITE tags            ON skill TYPE option<array<string>>;
 DEFINE FIELD OVERWRITE embedding       ON skill TYPE option<array<float>>;
 DEFINE FIELD OVERWRITE created_at      ON skill TYPE datetime DEFAULT time::now();

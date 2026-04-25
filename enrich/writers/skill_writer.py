@@ -58,6 +58,7 @@ async def write_skill(
             description: $desc,
             steps: $steps,
             frequency: $freq,
+            strength: $strength,
             tags: $tags,
             created_at: time::now(),
             updated_at: time::now()
@@ -70,6 +71,7 @@ async def write_skill(
             "desc": description,
             "steps": steps,
             "freq": frequency,
+            "strength": strength,
             "tags": tags,
         },
     )
