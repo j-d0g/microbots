@@ -288,6 +288,37 @@ make eval-report
 
 E2E tests use `seed/seed.py` directly — no Composio, no LLM triage. The `live_llm` marker gates tests that make real LLM calls; they are skipped automatically when no API key is set.
 
+### End-to-end test suite (`tests/e2e/`)
+
+All 6 tests run against an ephemeral SurrealDB namespace spun up and torn down per-test by `conftest.py`. No production data is touched.
+
+| Test | LLM? | What it checks |
+|------|------|----------------|
+| `test_seed_populates_graph` | No | Seeding produces the correct node counts: 1 user, 6 integrations, 10 entities, 6 chats, 6 memories, 4 skills, 3 workflows, 13 layer_index nodes |
+| `test_seed_derives_all_wiki_targets` | No | `derive_targets()` returns 18 ordered paths: 6 integration sub-layers + 5 entity-type sub-layers + 6 layer summaries + `user.md` last (depth 3 → 2 → 1) |
+| `test_wiki_writes_all_markdown_files` | **Yes** | Full pipeline: seed → wiki agent → asserts all 18 `memory/` files exist and are non-empty. Skipped automatically if no `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` is set |
+| `test_wiki_target_idempotency` | No | `derive_targets()` called twice on the same DB state returns the identical ordered list |
+| `test_seed_edge_invariants` | No | Structural graph invariants: `chat_from ≥ chat`, `chat_yields ≥ memory`, `skill_derived_from ≥ skill`, `workflow_contains_skill ≥ 2× workflow` |
+| `test_corpus_meta_annotations` | No | `tests/fixtures/corpus_meta.json` contains `expected_entities`, `expected_skills`, `expected_workflows` keys (skipped if file not present) |
+
+**Latest run:** 6/6 passed (~60 s, `google/gemini-2.0-flash-001` via OpenRouter).
+
+The LLM test (`test_wiki_writes_all_markdown_files`) produces 18 files:
+
+```
+chats/agents.md                       # chat summary across all integrations
+entities/agents.md                    # all entity types overview
+entities/{channel,person,project,repo,team}/agents.md  # 5 per-type pages
+integrations/agents.md                # all integrations overview
+integrations/{github,gmail,linear,notion,perplexity,slack}/agents.md  # 6 per-tool pages
+memories/agents.md                    # distilled memories summary
+skills/agents.md                      # 4 skills with steps
+user.md                               # root index
+workflows/agents.md                   # 3 workflows with trigger/outcome/skill chain
+```
+
+The wiki agent runs depth-3 targets in parallel (configurable `max_concurrent`), then depth-2 sequentially, then `user.md` last so each level can reference the level below it.
+
 ## Tech stack
 
 | Component | Details |
