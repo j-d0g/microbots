@@ -58,7 +58,7 @@ SELECT path, depth FROM wiki_page ORDER BY depth, path;
 ### Quick start
 
 ```bash
-# Copy env template and add credentials
+# Copy the env template and fill in any secrets
 cp .env.example .env
 
 # Start SurrealDB, apply schema (which includes the empty wiki skeleton), seed
@@ -166,6 +166,29 @@ microbots/                            (git root)
 ├── Makefile                      # lifecycle targets (see table above)
 ├── pyproject.toml                # uv-managed dependencies + pytest config
 │
+├── microbots/                    # shared utilities package
+│   ├── __init__.py               # public re-exports (get_logger, span, instrument, get_correlation_id)
+│   └── log.py                    # central Logfire-backed logging facade
+│
+├── render_sdk/                   # local-folder → Render.com deploy SDK
+│   ├── sdk.py                    # primary entry point: RenderSDK.deploy(local_path) -> DeployResult
+│   ├── docker_builder.py         # build & push Docker images (with explicit auth_config for Windows)
+│   ├── render_api.py             # Render REST client (create_service, trigger_redeploy, polling)
+│   ├── registry.py               # JSON registry mapping local paths -> service IDs (file-locked)
+│   ├── validator.py              # Dockerfile validation + fallback generation
+│   ├── log_drain.py              # optional ngrok-backed runtime log drain
+│   ├── cli.py                    # `render-sdk` CLI
+│   └── tests/                    # pytest suite
+│
+├── test/                         # ad-hoc scripts/demos (not the pytest suite)
+│   ├── test_logging.py           # exercises microbots/log.py — 9 scenarios
+│   ├── deploy_fastapi_demo.py    # end-to-end test of render_sdk against the demo app
+│   └── fastapi_demo/             # tiny FastAPI app used as render_sdk's deploy target
+│       ├── main.py               # `/` (Jinja UX template) + `/health`
+│       ├── Dockerfile            # python:3.11-slim, EXPOSE 8080
+│       ├── requirements.txt      # fastapi + uvicorn + jinja2
+│       └── templates/index.html  # styled landing page
+│
 └── knowledge_graph/                  # all Python source for the agent memory product
     ├── config.py                 # pipeline + LLM + wiki config dataclasses
     │
@@ -211,6 +234,67 @@ microbots/                            (git root)
 ```
 
 Note: there is no `memory/` directory anywhere; the markdown layer is `wiki_page` rows in SurrealDB.
+
+## Observability
+
+All scripts and services in this repo log through a single facade in
+`microbots/log.py`, backed by [Pydantic Logfire](https://logfire.pydantic.dev).
+Four environment variables configure it; the same records are emitted
+to the local console **and** to Logfire (when a token is set) — same
+timestamps, same attributes, same per-run `correlation_id`.
+
+```bash
+# .env
+LOGFIRE_TOKEN=                                      # empty = local only
+LOGFIRE_SERVICE_NAME=microbots
+LOGFIRE_BASE_URL=https://logfire-eu.pydantic.dev    # EU by default
+LOGFIRE_ENVIRONMENT=dev
+```
+
+```python
+from microbots import get_logger, span, instrument, get_correlation_id
+
+log = get_logger(__name__)
+log.info("hello {user}", user="alice")
+
+with span("db.query", table="entity"):
+    rows = await db.query("SELECT * FROM entity;")
+
+@instrument("workflow.deploy_pipeline")
+async def deploy(branch: str) -> str: ...
+
+print("run:", get_correlation_id())                 # e.g. "8c3f1a902b77"
+```
+
+Every record automatically carries a 12-char `correlation_id` so a
+single run is one query in the Logfire UI:
+`correlation_id = "8c3f1a902b77"`. Override via `CORRELATION_ID` env
+var to link work across multiple processes.
+
+See [`docs/logging.md`](docs/logging.md) for the full guide — public
+API, every use-case (structured logs, spans, exceptions, async,
+correlation id propagation), and querying via the Logfire UI / MCP.
+
+## Render Deploy SDK
+
+`render_sdk/` ships a single-call deploy pipeline used by agent-generated
+code: hand it a folder containing a Dockerfile and it builds, pushes to
+Docker Hub, creates (or redeploys) a Render web service, and returns a
+live URL.
+
+```python
+from render_sdk import RenderSDK
+
+sdk = RenderSDK()                          # reads RENDER_API_KEY, DOCKER_* from .env
+result = sdk.deploy("/path/to/project")    # idempotent per path
+print(result.url)                          # https://your-app-ab12.onrender.com
+```
+
+A local JSON registry (`~/.render_sdk/registry.json`, file-locked) maps
+each absolute folder path to its Render `service_id` and image repo, so
+a second `deploy(...)` call on the same path **redeploys** the existing
+service instead of creating a duplicate. The smoke test lives at
+`test/deploy_fastapi_demo.py` and deploys `test/fastapi_demo/` end-to-end.
 
 ## Graph model
 
