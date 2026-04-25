@@ -603,7 +603,7 @@ export function applyToolToSnapshot(
       // playbooks_*, settings_*) are client-side dispatches the
       // simulator doesn't model — record success so the recovery
       // metric and snapshotToPrompt stay truthful.
-      const roomPrefixes = ["brief_", "workflow_", "stack_", "waffle_", "playbooks_", "settings_"];
+      const roomPrefixes = ["brief_", "workflow_", "stack_", "waffle_", "playbooks_", "settings_", "graph_"];
       if (roomPrefixes.some((p) => tool.startsWith(p))) {
         return {
           snapshot: {
