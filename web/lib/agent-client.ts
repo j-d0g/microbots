@@ -137,36 +137,6 @@ export function applyAgentEvent(evt: AgentEvent): void {
   }
 }
 
-export async function connectAgentStream(
-  signal: AbortSignal,
-): Promise<void> {
-  const res = await fetch("/api/agent/stream", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ room: useAgentStore.getState().room }),
-    signal,
-  });
-  if (!res.body) return;
-  const decoder = new TextDecoder();
-  const parser = createParser({
-    onEvent: (msg: EventSourceMessage) => {
-      if (!msg.data) return;
-      try {
-        const parsed = JSON.parse(msg.data) as AgentEvent;
-        applyAgentEvent(parsed);
-      } catch {
-        // swallow bad frames
-      }
-    },
-  });
-  const reader = res.body.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    parser.feed(decoder.decode(value, { stream: true }));
-  }
-}
-
 /** Sentinel thrown when the orchestrate route signals it can't run
  *  (e.g. no API key). Callers should catch this and degrade to the
  *  scripted local fallback (`routeIntent` from `agent-router.ts`). */

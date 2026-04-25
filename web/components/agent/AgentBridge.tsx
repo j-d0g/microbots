@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { connectAgentStream } from "@/lib/agent-client";
 import { useAgentStore } from "@/lib/store";
 
 /** Mounts once in the shell. Opens the SSE agent stream. */
