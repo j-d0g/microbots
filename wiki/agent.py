@@ -3,9 +3,13 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Union
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
+from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from config import WikiConfig
 from wiki.deps import WikiDeps
@@ -20,6 +24,8 @@ from wiki.tools import (
 
 log = logging.getLogger(__name__)
 
+_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
 
 class WikiUpdate(BaseModel):
     """Structured output from one wiki agent invocation."""
@@ -29,29 +35,48 @@ class WikiUpdate(BaseModel):
     tokens_used: int = 0
 
 
-def _resolve_model(config: WikiConfig) -> str:
-    """Pick the model string based on available API keys.
+def _resolve_model(config: WikiConfig) -> Union[OpenAIChatModel, AnthropicModel, str]:
+    """Build the Pydantic AI model object based on available API keys.
 
     Priority:
-    1. OPENROUTER_API_KEY → use openrouter_model
-    2. ANTHROPIC_API_KEY → use anthropic:claude-haiku-4-5-20251001
-    3. OPENAI_API_KEY → use config.model (default openai:gpt-4.1-mini)
+    1. OPENROUTER_API_KEY → OpenAIChatModel via OpenRouter (OpenAI-compatible)
+    2. ANTHROPIC_API_KEY  → AnthropicModel
+    3. Fallback           → plain string (openai:gpt-4.1-mini, needs OPENAI_API_KEY)
     """
-    if os.getenv("OPENROUTER_API_KEY"):
-        return config.openrouter_model
-    if os.getenv("ANTHROPIC_API_KEY"):
-        return "anthropic:claude-haiku-4-5-20251001"
-    # Fallback to explicit model (may fail if no key)
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    if openrouter_key:
+        # Strip any "openrouter:" prefix that may have been stored in config
+        model_name = config.openrouter_model.removeprefix("openrouter:")
+        log.info("wiki: using OpenRouter model %s", model_name)
+        return OpenAIChatModel(
+            model_name,
+            provider=OpenAIProvider(
+                base_url=_OPENROUTER_BASE_URL,
+                api_key=openrouter_key,
+            ),
+        )
+
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if anthropic_key:
+        model_name = "claude-haiku-4-5-20251001"
+        log.info("wiki: using Anthropic model %s", model_name)
+        return AnthropicModel(model_name)
+
+    # Last resort: plain string — works if OPENAI_API_KEY is set
+    log.warning(
+        "wiki: no OPENROUTER_API_KEY or ANTHROPIC_API_KEY set; "
+        "falling back to %s (requires OPENAI_API_KEY)",
+        config.model,
+    )
     return config.model
 
 
 def build_wiki_agent(config: WikiConfig) -> Agent[WikiDeps, WikiUpdate]:
     """Construct the WikiAgent with all tools registered."""
-    model_str = _resolve_model(config)
-    log.info("wiki: using model %s", model_str)
+    model = _resolve_model(config)
 
     agent: Agent[WikiDeps, WikiUpdate] = Agent(
-        model=model_str,
+        model=model,
         deps_type=WikiDeps,
         output_type=WikiUpdate,
         system_prompt=SYSTEM_PROMPT,

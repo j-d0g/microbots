@@ -69,10 +69,13 @@ class EnrichmentConfig:
 @dataclass
 class WikiConfig:
     """Configuration for the Phase 4 wiki agent."""
-    # Pydantic AI model string. Uses OpenRouter by default (set OPENROUTER_API_KEY).
-    # Alternatives: "anthropic:claude-haiku-4-5-20251001" or "openai:gpt-4.1-mini"
+    # Fallback model string used when neither OPENROUTER_API_KEY nor ANTHROPIC_API_KEY is set.
+    # Requires OPENAI_API_KEY in the environment.
     model: str = "openai:gpt-4.1-mini"
-    openrouter_model: str = "openrouter:nvidia/nemotron-nano-9b-v2"
+    # OpenRouter model name (bare slug, no "openrouter:" prefix).
+    # Used when OPENROUTER_API_KEY is set. See https://openrouter.ai/models
+    # Must support structured/JSON output (tool-use capable).
+    openrouter_model: str = "google/gemini-2.0-flash-001"
     max_concurrent: int = 4
     token_budgets: dict[str, int] = field(
         default_factory=lambda: {

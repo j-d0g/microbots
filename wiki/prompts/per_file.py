@@ -30,11 +30,13 @@ def render_user_prompt(
 {graph_json}
 ```
 
-Using the tools available (`query_graph`, `estimate_tokens`, `read_markdown`, `write_markdown`):
+Instructions (follow exactly in this order, no extra steps):
 
-1. Review the existing content and the graph slice above.
-2. Fetch any additional graph data you need via `query_graph`.
-3. Draft the updated markdown. Validate parent links and token budget.
-4. Call `write_markdown` with the final content.
-5. Return a `WikiUpdate` with `path="{rel}"`, `content=<final>`, and a brief `rationale`.
+1. Read the graph slice above — it is the authoritative data for this file.
+2. If one specific detail is missing and critical, call `query_graph` **once** for it. Otherwise skip.
+3. Write the updated markdown in your head. Keep within the {token_budget}-token budget.
+4. Call `write_markdown` exactly once with path=`{rel}` and the final content.
+5. Return `WikiUpdate` with `path="{rel}"`, `content=<the same content you wrote>`, and a one-sentence `rationale`.
+
+Do not call `read_markdown`, `list_markdown_tree`, or `estimate_tokens` — the graph slice above is sufficient.
 """
