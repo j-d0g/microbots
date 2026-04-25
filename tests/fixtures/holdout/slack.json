@@ -1,0 +1,20 @@
+[
+  {
+    "source_id": "slack-3-ai-eng-1981fb903a2cbbbc",
+    "source_type": "slack_thread",
+    "title": "Week 3: microbots SurrealDB progress",
+    "content": "Desmond: Pushed schema updates for week 3. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
+    "channel": "#ai-engineering",
+    "signal_level": "high",
+    "occurred_at": "2025-01-25T14:00:00+00:00"
+  },
+  {
+    "source_id": "slack-2-deploy-00047e045d7acd4d",
+    "source_type": "slack_thread",
+    "title": "Deploy: microbots v0.2 to staging",
+    "content": "Desmond: Deploying microbots v0.2 to staging now. Linear: MIC-20.\nAlice Chen: Looks good from infra side. Green light.\nDesmond: Deployed. All smoke tests passing.",
+    "channel": "#deployments",
+    "signal_level": "high",
+    "occurred_at": "2025-01-15T18:00:00+00:00"
+  }
+]

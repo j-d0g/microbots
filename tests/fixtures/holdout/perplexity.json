@@ -1,0 +1,26 @@
+[
+  {
+    "source_id": "perplexity-1-1",
+    "source_type": "perplexity_async",
+    "title": "Week 1: Sonar research: HNSW index tuning for SurrealDB",
+    "content": "Research: HNSW M=16, ef_construction=200 recommended for 1M vectors. SurrealDB DIMENSION must match embedding model output.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-11T00:00:00+00:00"
+  },
+  {
+    "source_id": "perplexity-2-2",
+    "source_type": "perplexity_async",
+    "title": "Week 2: Sonar research: Pydantic AI vs LangChain tradeoffs",
+    "content": "Pydantic AI: typed structured output, provider-agnostic. LangChain: more ecosystem but heavier. Chose Pydantic AI for agent layer.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-16T00:00:00+00:00"
+  },
+  {
+    "source_id": "perplexity-4-2",
+    "source_type": "perplexity_async",
+    "title": "Week 4: Sonar research: SurrealDB graph query patterns",
+    "content": "Best practices for SurrealDB graph traversal: use RELATE, arrow notation, and SELECT * FROM table WHERE <-relation<-other.",
+    "signal_level": "high",
+    "occurred_at": "2025-02-01T00:00:00+00:00"
+  }
+]

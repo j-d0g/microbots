@@ -1,0 +1,50 @@
+[
+  {
+    "source_id": "notion-2-0",
+    "source_type": "notion_page",
+    "title": "Week 2: Deploy Runbook",
+    "content": "Updated deploy runbook with smoke test step and Alice approval gate for infra-touching deploys.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-14T00:00:00+00:00"
+  },
+  {
+    "source_id": "notion-1-1",
+    "source_type": "notion_page",
+    "title": "Week 1: Meeting Notes",
+    "content": "Weekly sync notes: discussed microbots progress, deploy runbook update, and next sprint priorities.",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-10T00:00:00+00:00"
+  },
+  {
+    "source_id": "notion-4-1",
+    "source_type": "notion_page",
+    "title": "Week 4: Meeting Notes",
+    "content": "Weekly sync notes: discussed microbots progress, deploy runbook update, and next sprint priorities.",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-31T00:00:00+00:00"
+  },
+  {
+    "source_id": "notion-3-0",
+    "source_type": "notion_page",
+    "title": "Week 3: Architecture Decision Record",
+    "content": "ADR: Use SurrealDB for agent memory graph. Decision: SurrealDB chosen for multi-model (graph+doc+vector) capability.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-25T00:00:00+00:00"
+  },
+  {
+    "source_id": "notion-1-0",
+    "source_type": "notion_page",
+    "title": "Week 1: Meeting Notes",
+    "content": "Weekly sync notes: discussed microbots progress, deploy runbook update, and next sprint priorities.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-12T00:00:00+00:00"
+  },
+  {
+    "source_id": "notion-3-1",
+    "source_type": "notion_page",
+    "title": "Week 3: Deploy Runbook",
+    "content": "Updated deploy runbook with smoke test step and Alice approval gate for infra-touching deploys.",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-20T00:00:00+00:00"
+  }
+]

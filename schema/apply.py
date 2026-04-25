@@ -30,8 +30,6 @@ async def apply_schema():
             print(f"  ✓ {path.name} applied.")
 
         print("\nSchema applied successfully.")
-        result = await db.query("INFO FOR DB;")
-        print("Tables defined:", list(result[0].get("tables", {}).keys()))
 
 
 if __name__ == "__main__":

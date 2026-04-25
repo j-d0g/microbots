@@ -149,6 +149,24 @@ async def seed(db: AsyncSurreal):
             ],
             "frequency": "weekly",
         },
+        {
+            "id": "integration:perplexity",
+            "name": "Perplexity",
+            "slug": "perplexity",
+            "category": "knowledge",
+            "description": "Web-grounded AI research and async Sonar deep-research jobs.",
+            "user_purpose": "Fast research, comparisons, and deep-dive async reports with citations. Complements GitHub/Linear with external context.",
+            "usage_patterns": [
+                "Use Sonar async for long research tasks that exceed sync chat limits",
+                "Cross-check library or API behavior before implementing",
+                "Gather citations for ADRs and Notion architecture notes"
+            ],
+            "navigation_tips": [
+                "Async job list reflects recent Sonar work; open completed jobs for full response text",
+                "Prefer explicit dates and product names in prompts for better retrieval"
+            ],
+            "frequency": "daily",
+        },
     ]
 
     for intg in integrations:
@@ -315,6 +333,15 @@ async def seed(db: AsyncSurreal):
             "signal_level": "high",
             "summary": "Deploy runbook updated with 5-step process including Linear ticket, Slack notifications, smoke tests, and Alice approval for infra changes.",
         },
+        {
+            "id": "chat:perplexity_sonar_research",
+            "title": "Sonar research: vector index tradeoffs (SurrealDB)",
+            "content": "Async job completed. Key takeaways: M and ef_construction control recall vs build time; for 1M+ vectors, start with M=16, ef_construction=200 and benchmark. Citations: HNSW papers and SurrealDB docs on DIMENSION matching embedding size.",
+            "source_type": "perplexity_async",
+            "source_id": "perplexity-sonar-mock-001",
+            "signal_level": "high",
+            "summary": "Deep research on HNSW parameters and SurrealDB HNSW DIMENSION requirements for production indexing.",
+        },
     ]
 
     for chat in chat_records:
@@ -381,8 +408,8 @@ async def seed(db: AsyncSurreal):
             "content": "When defining HNSW vector indexes in SurrealDB, always verify the DIMENSION matches the embedding model (1536 for OpenAI/compatible). Mismatch causes silent failures.",
             "memory_type": "fact",
             "confidence": 0.95,
-            "source": "Bob's PR review comment on PR #42",
-            "tags": ["surrealdb", "hnsw", "embedding", "gotcha"],
+            "source": "Bob's PR review on PR #42; Perplexity Sonar research on HNSW tradeoffs",
+            "tags": ["surrealdb", "hnsw", "embedding", "gotcha", "perplexity", "github"],
         },
     ]
 
@@ -418,7 +445,8 @@ async def seed(db: AsyncSurreal):
                 "Reply in Slack thread with Linear ticket link"
             ],
             "frequency": "daily",
-            "tags": ["linear", "slack", "triage"],
+            "strength": 4,
+            "tags": ["linear", "slack", "triage", "strength:4"],
         },
         {
             "id": "skill:deploy_to_staging",
@@ -433,7 +461,8 @@ async def seed(db: AsyncSurreal):
                 "Post to #deployments: 'Staging deploy complete - [status]'"
             ],
             "frequency": "daily",
-            "tags": ["deploy", "staging", "slack", "github"],
+            "strength": 5,
+            "tags": ["deploy", "staging", "slack", "github", "strength:5"],
         },
         {
             "id": "skill:triage_incoming_bug",
@@ -449,15 +478,17 @@ async def seed(db: AsyncSurreal):
                 "Post update to #ai-engineering or #deployments as appropriate"
             ],
             "frequency": "weekly",
-            "tags": ["bug", "linear", "slack", "triage"],
+            "strength": 3,
+            "tags": ["bug", "linear", "slack", "triage", "strength:3"],
         },
         {
             "id": "skill:review_pr_checklist",
             "name": "Review PR with checklist",
             "slug": "review_pr_checklist",
-            "description": "Conduct a thorough PR review following team standards: type hints, tests, schema correctness, and Linear ticket linkage.",
+            "description": "Conduct a thorough PR review following team standards: type hints, tests, schema correctness, and Linear ticket linkage. Use Perplexity for library or API behavior when the diff touches unfamiliar surface area.",
             "steps": [
                 "Check PR description links to a Linear ticket",
+                "For unfamiliar dependencies or APIs, quick-check current behavior in Perplexity (citations) before deep review",
                 "Verify all Python functions have type hints",
                 "Check tests exist for new functionality",
                 "For SurrealDB changes: verify SCHEMAFULL, HNSW dimensions, index correctness",
@@ -465,7 +496,8 @@ async def seed(db: AsyncSurreal):
                 "Approve or request changes with specific, actionable comments"
             ],
             "frequency": "daily",
-            "tags": ["github", "review", "code-quality"],
+            "strength": 4,
+            "tags": ["github", "linear", "perplexity", "review", "code-quality", "strength:4"],
         },
     ]
 
@@ -479,6 +511,7 @@ async def seed(db: AsyncSurreal):
                 description: "{skill['description']}",
                 steps: {skill['steps']},
                 frequency: "{skill['frequency']}",
+                strength: {skill['strength']},
                 tags: {skill['tags']},
                 embedding: {embedding},
                 created_at: time::now(),
@@ -516,7 +549,7 @@ async def seed(db: AsyncSurreal):
             "trigger": "Starting work on a new feature or bug fix",
             "outcome": "Feature merged to main, Linear ticket closed, PR linked",
             "frequency": "daily",
-            "tags": ["github", "linear", "review", "workflow"],
+            "tags": ["github", "linear", "perplexity", "review", "workflow"],
         },
     ]
 
@@ -541,7 +574,7 @@ async def seed(db: AsyncSurreal):
     print("Seeding layer_index nodes...")
     layer_indexes = [
         ("layer_index:user", "user", "user", 0, "memory/user.md", "Root navigation index. Entry point for all agent memory.", 800),
-        ("layer_index:integrations", "integrations", "integrations", 1, "memory/integrations/agents.md", "Index of all 5 integrations with behavioral metadata.", 600),
+        ("layer_index:integrations", "integrations", "integrations", 1, "memory/integrations/agents.md", "Index of all 6 integrations with behavioral metadata.", 600),
         ("layer_index:entities", "entities", "entities", 1, "memory/entities/agents.md", "Index of all cross-integration entities (people, channels, repos, projects, teams).", 700),
         ("layer_index:chats", "chats", "chats", 1, "memory/chats/agents.md", "Index of all chat data by source integration.", 500),
         ("layer_index:memories", "memories", "memories", 1, "memory/memories/agents.md", "Index of distilled high-signal memories.", 400),
@@ -552,6 +585,7 @@ async def seed(db: AsyncSurreal):
         ("layer_index:integrations_linear", "integrations/linear", "integrations", 2, "memory/integrations/linear/agents.md", "Linear-specific behavioral detail.", 300),
         ("layer_index:integrations_gmail", "integrations/gmail", "integrations", 2, "memory/integrations/gmail/agents.md", "Gmail-specific behavioral detail.", 200),
         ("layer_index:integrations_notion", "integrations/notion", "integrations", 2, "memory/integrations/notion/agents.md", "Notion-specific behavioral detail.", 200),
+        ("layer_index:integrations_perplexity", "integrations/perplexity", "integrations", 2, "memory/integrations/perplexity/agents.md", "Perplexity-specific behavioral detail.", 200),
     ]
 
     for li_id, name, layer, depth, md_path, desc, cost in layer_indexes:
@@ -571,13 +605,14 @@ async def seed(db: AsyncSurreal):
     print("Seeding edges...")
 
     # uses_integration: user → integrations
-    for slug in ["slack", "github", "linear", "gmail", "notion"]:
+    for slug in ["slack", "github", "linear", "gmail", "notion", "perplexity"]:
         primary_uses = {
             "slack": "async team communication and deploy coordination",
             "github": "code collaboration and PR reviews",
             "linear": "task tracking and sprint management",
             "gmail": "external communications and investor updates",
             "notion": "documentation and architecture specs",
+            "perplexity": "web-grounded research and async Sonar deep-dive reports",
         }
         await db.query(f"""
             RELATE user_profile:default->uses_integration->integration:{slug} CONTENT {{
@@ -607,6 +642,8 @@ async def seed(db: AsyncSurreal):
         ("entity:team_engineering", "integration:slack", "Engineering", "team", "Eng team Slack presence"),
         ("entity:team_engineering", "integration:github", "Engineering", "team", "GitHub org team"),
         ("entity:team_engineering", "integration:linear", "Engineering", "team", "Linear team"),
+        ("entity:bob", "integration:perplexity", "sonar / research", "engineer", "Validates API and library details during review"),
+        ("entity:repo_microbots", "integration:perplexity", "microbots", "repo", "SurrealDB and vector index research in context of this repo"),
     ]
     for entity_id, intg_id, handle, role, context in appears_in_edges:
         await db.query(f"""
@@ -624,6 +661,9 @@ async def seed(db: AsyncSurreal):
         ("integration:github", "integration:linear", 200, "pr_workflow", "Every PR links to a Linear ticket"),
         ("integration:slack", "integration:notion", 40, "documentation", "Notion links shared in Slack for context"),
         ("integration:linear", "integration:notion", 30, "specs", "Linear tickets link to Notion specs"),
+        ("integration:slack", "integration:perplexity", 35, "research", "Links to Perplexity results pasted in threads for quick team context"),
+        ("integration:github", "integration:perplexity", 25, "research", "Check APIs and best practices in Perplexity before coding"),
+        ("integration:perplexity", "integration:notion", 20, "citations", "Perplexity findings cited in Notion ADRs and specs"),
     ]
     for from_id, to_id, freq, context, desc in co_used_edges:
         await db.query(f"""
@@ -659,6 +699,7 @@ async def seed(db: AsyncSurreal):
         ("chat:linear_ticket_triage", "integration:linear"),
         ("chat:slack_code_style", "integration:slack"),
         ("chat:notion_deploy_runbook", "integration:notion"),
+        ("chat:perplexity_sonar_research", "integration:perplexity"),
     ]
     for chat_id, intg_id in chat_from_edges:
         await db.query(f"RELATE {chat_id}->chat_from->{intg_id};")
@@ -677,6 +718,8 @@ async def seed(db: AsyncSurreal):
         ("chat:slack_code_style", "entity:alice", "mentioned"),
         ("chat:notion_deploy_runbook", "entity:channel_deployments", "mentioned"),
         ("chat:notion_deploy_runbook", "entity:alice", "mentioned"),
+        ("chat:perplexity_sonar_research", "entity:repo_microbots", "mentioned"),
+        ("chat:perplexity_sonar_research", "entity:bob", "mentioned"),
     ]
     for chat_id, entity_id, mention_type in chat_mention_edges:
         await db.query(f"""
@@ -694,6 +737,7 @@ async def seed(db: AsyncSurreal):
         ("chat:slack_code_style", "memory:python_type_hints", 0.90),
         ("chat:notion_deploy_runbook", "memory:notify_deployments", 0.92),
         ("chat:linear_ticket_triage", "memory:linear_before_pr", 0.85),
+        ("chat:perplexity_sonar_research", "memory:surrealdb_hnsw", 0.93),
     ]
     for chat_id, mem_id, confidence in chat_yields_edges:
         await db.query(f"""
@@ -712,6 +756,7 @@ async def seed(db: AsyncSurreal):
         ("memory:python_type_hints", "entity:bob", 0.80),
         ("memory:bob_reviewer", "entity:bob", 0.98),
         ("memory:surrealdb_hnsw", "integration:github", 0.70),
+        ("memory:surrealdb_hnsw", "integration:perplexity", 0.65),
     ]
     for mem_id, target_id, relevance in memory_about_edges:
         await db.query(f"""
@@ -743,6 +788,7 @@ async def seed(db: AsyncSurreal):
         ("skill:triage_incoming_bug", "integration:linear"),
         ("skill:review_pr_checklist", "integration:github"),
         ("skill:review_pr_checklist", "integration:linear"),
+        ("skill:review_pr_checklist", "integration:perplexity"),
     ]
     for skill_id, intg_id in skill_uses_edges:
         await db.query(f"RELATE {skill_id}->skill_uses->{intg_id};")
@@ -775,6 +821,7 @@ async def seed(db: AsyncSurreal):
         ("workflow:bug_triage", "integration:github"),
         ("workflow:pr_review_cycle", "integration:github"),
         ("workflow:pr_review_cycle", "integration:linear"),
+        ("workflow:pr_review_cycle", "integration:perplexity"),
     ]
     for wf_id, intg_id in workflow_uses_edges:
         await db.query(f"RELATE {wf_id}->workflow_uses->{intg_id};")
@@ -804,6 +851,7 @@ async def seed(db: AsyncSurreal):
         ("memory:linear_before_pr", "workflow:pr_review_cycle"),
         ("memory:linear_before_pr", "skill:create_linear_from_slack"),
         ("memory:bob_reviewer", "workflow:pr_review_cycle"),
+        ("memory:surrealdb_hnsw", "workflow:pr_review_cycle"),
         ("memory:surrealdb_hnsw", "skill:review_pr_checklist"),
     ]
     for mem_id, target_id in memory_informs_edges:
@@ -822,6 +870,8 @@ async def seed(db: AsyncSurreal):
         ("integration:gmail", "layer_index:integrations_gmail"),
         ("integration:notion", "layer_index:integrations"),
         ("integration:notion", "layer_index:integrations_notion"),
+        ("integration:perplexity", "layer_index:integrations"),
+        ("integration:perplexity", "layer_index:integrations_perplexity"),
         ("entity:alice", "layer_index:entities"),
         ("entity:bob", "layer_index:entities"),
         ("entity:carol", "layer_index:entities"),
@@ -837,6 +887,7 @@ async def seed(db: AsyncSurreal):
         ("chat:linear_ticket_triage", "layer_index:chats"),
         ("chat:slack_code_style", "layer_index:chats"),
         ("chat:notion_deploy_runbook", "layer_index:chats"),
+        ("chat:perplexity_sonar_research", "layer_index:chats"),
         ("memory:notify_deployments", "layer_index:memories"),
         ("memory:alice_infra", "layer_index:memories"),
         ("memory:linear_before_pr", "layer_index:memories"),
@@ -867,6 +918,7 @@ async def seed(db: AsyncSurreal):
         ("layer_index:integrations", "layer_index:integrations_linear", 2, 300),
         ("layer_index:integrations", "layer_index:integrations_gmail", 2, 200),
         ("layer_index:integrations", "layer_index:integrations_notion", 2, 200),
+        ("layer_index:integrations", "layer_index:integrations_perplexity", 2, 200),
     ]
     for from_li, to_li, depth, cost in drills_into_edges:
         await db.query(f"""
@@ -876,12 +928,20 @@ async def seed(db: AsyncSurreal):
             }};
         """)
 
+    def extract_count(result) -> int:
+        try:
+            row = result[0]
+            if isinstance(row, list):
+                row = row[0]
+            return row.get("count", 0) if isinstance(row, dict) else 0
+        except (KeyError, IndexError, TypeError):
+            return 0
+
     print("\nSeed complete. Verifying record counts...")
     tables = ["user_profile", "integration", "entity", "chat", "memory", "skill", "workflow", "layer_index"]
     for table in tables:
         result = await db.query(f"SELECT count() FROM {table} GROUP ALL;")
-        count = result[0][0].get("count", 0) if result and result[0] else 0
-        print(f"  {table}: {count}")
+        print(f"  {table}: {extract_count(result)}")
 
     edge_tables = [
         "uses_integration", "appears_in", "co_used_with", "related_to_entity",
@@ -892,8 +952,7 @@ async def seed(db: AsyncSurreal):
     print("\nEdge counts:")
     for table in edge_tables:
         result = await db.query(f"SELECT count() FROM {table} GROUP ALL;")
-        count = result[0][0].get("count", 0) if result and result[0] else 0
-        print(f"  {table}: {count}")
+        print(f"  {table}: {extract_count(result)}")
 
 
 async def main():

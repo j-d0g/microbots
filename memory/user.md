@@ -7,7 +7,7 @@
 
 ## Who this user is
 
-Desmond is an AI engineer building agent memory infrastructure (`microbots`). He works across Slack, GitHub, Linear, Gmail, and Notion daily. His primary goals are building reusable memory layers for AI agents and automating triage and context management across integrations.
+Desmond is an AI engineer building agent memory infrastructure (`microbots`). He works across Slack, GitHub, Linear, Gmail, Notion, and Perplexity daily. His primary goals are building reusable memory layers for AI agents and automating triage and context management across integrations.
 
 **Key preferences:**
 - Async-first communication
@@ -21,7 +21,7 @@ Each layer has its own `agents.md` — drill into whichever is relevant.
 
 | Layer | File | Cost (tokens) | Description |
 |-------|------|--------------|-------------|
-| Integrations | [integrations/agents.md](integrations/agents.md) | ~600 | All 5 tools with behavioral metadata |
+| Integrations | [integrations/agents.md](integrations/agents.md) | ~600 | All 6 tools with behavioral metadata |
 | Entities | [entities/agents.md](entities/agents.md) | ~700 | People, channels, repos, projects, teams |
 | Chats | [chats/agents.md](chats/agents.md) | ~500 | Scraped/touched content by source |
 | Memories | [memories/agents.md](memories/agents.md) | ~400 | Distilled high-signal knowledge |

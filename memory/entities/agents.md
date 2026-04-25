@@ -13,7 +13,7 @@
 | Entity ID | Name | Role | Integrations |
 |-----------|------|------|-------------|
 | entity:alice | Alice Chen | Co-founder, infra lead | Slack (@alice), GitHub (alice-chen), Linear |
-| entity:bob | Bob Kim | Senior AI engineer, primary reviewer | Slack (@bob), GitHub (bob-kim), Linear |
+| entity:bob | Bob Kim | Senior AI engineer, primary reviewer | Slack (@bob), GitHub (bob-kim), Linear, Perplexity (research during review) |
 | entity:carol | Carol Diaz | Product designer | Slack (@carol), Linear |
 
 **Key facts:**
@@ -32,7 +32,7 @@
 
 | Entity ID | Name | Integration | Purpose |
 |-----------|------|-------------|---------|
-| entity:repo_microbots | microbots | GitHub | Primary active project (agent memory) |
+| entity:repo_microbots | microbots | GitHub, Perplexity | Primary active project (agent memory); vector and schema research in context of this repo |
 | entity:repo_taro_api | taro-api | GitHub | Backend API service |
 
 ## Projects
@@ -46,7 +46,7 @@
 
 | Entity ID | Name | Integrations | Members |
 |-----------|------|-------------|---------|
-| entity:team_engineering | Engineering | Slack, GitHub, Linear | Alice, Bob, Carol, Desmond |
+| entity:team_engineering | Engineering | Slack, GitHub, Linear, Perplexity | Alice, Bob, Carol, Desmond |
 
 ## Cross-entity relationships
 

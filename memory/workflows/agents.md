@@ -48,11 +48,11 @@
 ### PR Review Cycle
 **Trigger:** Starting work on a new feature or bug fix  
 **Outcome:** Feature merged to main, Linear ticket closed, PR linked  
-**Tools:** GitHub, Linear  
+**Tools:** GitHub, Linear, Perplexity  
 **Key entities:** Bob (reviewer), microbots repo
 
 **Steps (ordered skills):**
 1. [step 1] review_pr_checklist
 2. [step 2] create_linear_from_slack
 
-**Informing memories:** linear_before_pr, bob_reviewer
+**Informing memories:** linear_before_pr, bob_reviewer, surrealdb_hnsw

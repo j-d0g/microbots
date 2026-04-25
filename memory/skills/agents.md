@@ -15,7 +15,7 @@
 | skill:create_linear_from_slack | Create Linear ticket from Slack message | daily | Slack, Linear |
 | skill:deploy_to_staging | Deploy to staging | daily | Slack, GitHub |
 | skill:triage_incoming_bug | Triage incoming bug | weekly | Slack, Linear |
-| skill:review_pr_checklist | Review PR with checklist | daily | GitHub, Linear |
+| skill:review_pr_checklist | Review PR with checklist | daily | GitHub, Linear, Perplexity |
 
 ## Skill details
 
@@ -45,11 +45,12 @@ When a bug or task is raised in Slack, create a Linear ticket with full context.
 
 ### Review PR with checklist
 1. Check PR description links to a Linear ticket
-2. Verify all Python functions have type hints
-3. Check tests exist for new functionality
-4. For SurrealDB changes: verify SCHEMAFULL, HNSW dimensions, index correctness
-5. Run CI and confirm all checks pass
-6. Approve or request changes with specific, actionable comments
+2. For unfamiliar dependencies or APIs, verify current behavior in Perplexity (citations) before a deep line-by-line pass
+3. Verify all Python functions have type hints
+4. Check tests exist for new functionality
+5. For SurrealDB changes: verify SCHEMAFULL, HNSW dimensions, index correctness
+6. Run CI and confirm all checks pass
+7. Approve or request changes with specific, actionable comments
 
 ## Skill provenance (derived from chats)
 

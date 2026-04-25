@@ -1,0 +1,42 @@
+[
+  {
+    "source_id": "pr-microbots-30",
+    "source_type": "github_pr",
+    "title": "PR #30: Feature update for microbots (week 3)",
+    "content": "Bob Kim: LGTM overall. A few nits:\n1. Add type hints to the new functions.\n2. Link the Linear ticket in the description.\nDesmond: Good points, updated. Ready to merge.\nBob Kim: Merged.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-25T00:00:00+00:00"
+  },
+  {
+    "source_id": "pr-microbots-12",
+    "source_type": "github_pr",
+    "title": "PR #12: Feature update for microbots (week 1)",
+    "content": "Alice Chen: LGTM overall. A few nits:\n1. Add type hints to the new functions.\n2. Link the Linear ticket in the description.\nDesmond: Good points, updated. Ready to merge.\nAlice Chen: Merged.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-07T00:00:00+00:00"
+  },
+  {
+    "source_id": "pr-microbots-43",
+    "source_type": "github_pr",
+    "title": "PR #43: Feature update for microbots (week 4)",
+    "content": "Alice Chen: LGTM overall. A few nits:\n1. Add type hints to the new functions.\n2. Link the Linear ticket in the description.\nDesmond: Good points, updated. Ready to merge.\nAlice Chen: Merged.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-31T00:00:00+00:00"
+  },
+  {
+    "source_id": "pr-microbots-22",
+    "source_type": "github_pr",
+    "title": "PR #22: Feature update for microbots (week 2)",
+    "content": "Alice Chen: LGTM overall. A few nits:\n1. Add type hints to the new functions.\n2. Link the Linear ticket in the description.\nDesmond: Good points, updated. Ready to merge.\nAlice Chen: Merged.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-19T00:00:00+00:00"
+  },
+  {
+    "source_id": "pr-microbots-13",
+    "source_type": "github_pr",
+    "title": "PR #13: Feature update for microbots (week 1)",
+    "content": "Alice Chen: LGTM overall. A few nits:\n1. Add type hints to the new functions.\n2. Link the Linear ticket in the description.\nDesmond: Good points, updated. Ready to merge.\nAlice Chen: Merged.",
+    "signal_level": "high",
+    "occurred_at": "2025-01-10T00:00:00+00:00"
+  }
+]

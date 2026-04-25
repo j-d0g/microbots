@@ -1,0 +1,24 @@
+# Rubric for the workflow composition phase (Phase 3d)
+phase: workflow_composition
+criteria:
+  trigger_outcome_specificity:
+    weight: 0.25
+    description: "trigger and outcome fields describe a concrete, testable condition (not vague)"
+    scale: [0, 5]
+  skill_chain_coherence:
+    weight: 0.25
+    description: "The skills in the chain are ordered logically and each is necessary for the workflow"
+    scale: [0, 5]
+  distinctness:
+    weight: 0.20
+    description: "Workflows are not just restatements of individual skills — they add multi-step value"
+    scale: [0, 5]
+  coverage:
+    weight: 0.20
+    description: "expected_workflows from corpus_meta are present with min_skill_count met"
+    scale: [0, 5]
+  no_hallucination:
+    weight: 0.10
+    description: "All referenced skills exist in the skill graph"
+    scale: [0, 5]
+passing_threshold: 3.0
