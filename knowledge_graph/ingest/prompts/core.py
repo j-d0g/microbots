@@ -11,38 +11,62 @@ from ingest.pullers.base import RawItem
 def core_triage_instruction(integration_name: str) -> str:
     return f"""
 You are processing raw data from {integration_name} for a user's personal
-knowledge graph. Your job is to produce two outputs:
+knowledge graph. Your job is to produce two outputs.
+
+DETERMINISM RULE (read first, applies to every field below):
+You are an EXTRACTOR, not an interpreter. Every field you emit must be
+grounded in text that is OBJECTIVELY PRESENT in the input. Do not infer,
+guess, generalise, or fill gaps.
+- If a fact is not literally stated in the input, do NOT emit it.
+- If you cannot point to the exact substring(s) supporting a claim, do
+  NOT emit it.
+- Prefer omission over speculation. An empty list / "low" signal is the
+  correct answer when evidence is absent.
+- Do NOT promote a record's signal_level above what its literal contents
+  justify. Surprise, importance, or implication you "sense" but cannot
+  cite is not signal.
+- Do NOT invent entity types, roles, or relationships. If the data only
+  shows a name, emit only the name.
+- Verbatim quoting is preferred over paraphrasing for any specific claim.
 
 1. INTEGRATION_METADATA: Behavioral observations about how this user uses
-   {integration_name}. What is it for? Who are the key people? What channels/
-   repos/projects matter most? What patterns do you see? Only include
-   observations that would help an AI agent understand how to navigate and
-   use this tool on the user's behalf.
+   {integration_name} that are directly observable in the input batch.
+   What is it for? Who are the key people? What channels/repos/projects
+   appear? What patterns are repeated across multiple items?
+
+   Only include observations grounded in the items provided. Patterns
+   require multiple items showing the same behavior — a single occurrence
+   is not a pattern.
 
    Do NOT include: timestamps of individual actions, low-level click data,
    automated notifications unless they reveal something about the user's
-   setup, or anything that wouldn't help build a profile of the user's
-   intent and workflows.
+   setup, anything inferred beyond the literal data, or anything that
+   wouldn't help build a profile of the user's intent and workflows.
 
-   DO include: what the tool is used for, who the important entities are
-   and their roles, which areas are most active, any observable patterns
-   in how the user works.
+   DO include: what the tool is used for (as evidenced by the items),
+   entities that actually appear with their stated roles, areas with
+   visibly higher activity, repeated behaviors observed across items.
 
 2. CHAT_RECORDS: For each piece of content that has mid-to-high signal,
    create a chat record. Signal is NOT about volume — a single automated
-   notification about a major system change is high signal. Signal is about
-   how much this content tells you about:
-   - The person, their preferences, their decisions
-   - A project's state, direction, or blockers
-   - Important relationships between people, tools, or work
-   - Actions taken or requested
+   notification about a major system change is high signal IF the change
+   is explicitly described. Signal must be supported by what the text
+   actually says, not by what you suspect it might mean.
+
+   Signal is determined by literal content about:
+   - The person, their stated preferences, their stated decisions
+   - A project's state, direction, or blockers as described in the text
+   - Relationships between people/tools/work as evidenced by the text
+   - Actions explicitly taken or explicitly requested
 
    For each chat record, include:
-   - A concise summary (1-3 sentences)
-   - Signal level: "low", "mid", "high"
+   - A concise summary (1-3 sentences) drawn only from the input
+   - Signal level: "low", "mid", "high" — assigned by literal content
    - The content itself — keep it near-lossless. Quote important parts
      verbatim. Strip only truly irrelevant noise (repeated bot footers, etc.)
-   - Entities mentioned (people, channels, repos, projects — names only)
+   - Entities mentioned: only names that literally appear in the content
+     or metadata. Do not add aliases, full names, or related people that
+     are not in the input.
 
    Drop items that are genuinely low signal: routine bot pings with no
    informational value, duplicate notifications, empty messages, etc.

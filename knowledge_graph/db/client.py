@@ -17,6 +17,17 @@ from surrealdb import AsyncSurreal
 
 from config import Config
 from db.queries import NAMED_QUERIES, QueryDef
+from db.wiki import (
+    WikiPage,
+    WikiRevision,
+    WikiTreeNode,
+    WikiWriteResult,
+    get_wiki_page,
+    get_wiki_revisions,
+    list_wiki_tree,
+    reset_wiki,
+    write_wiki_page,
+)
 from ingest.db import unwrap_surreal_rows
 
 log = logging.getLogger(__name__)
@@ -108,6 +119,42 @@ class MicrobotsDB:
     @property
     def surreal(self) -> AsyncSurreal:
         return self._db
+
+    # ------------------------------------------------------------------
+    # Wiki page operations (see db/wiki.py)
+    # ------------------------------------------------------------------
+
+    async def get_wiki_page(self, path: str) -> WikiPage | None:
+        return await get_wiki_page(self._db, path)
+
+    async def list_wiki_tree(self) -> list[WikiTreeNode]:
+        return await list_wiki_tree(self._db)
+
+    async def write_wiki_page(
+        self,
+        path: str,
+        content: str,
+        *,
+        written_by: str = "wiki_agent",
+        rationale: str | None = None,
+        keep_revisions: int = 10,
+    ) -> WikiWriteResult:
+        return await write_wiki_page(
+            self._db,
+            path=path,
+            content=content,
+            written_by=written_by,
+            rationale=rationale,
+            keep_revisions=keep_revisions,
+        )
+
+    async def get_wiki_revisions(
+        self, path: str, limit: int = 10
+    ) -> list[WikiRevision]:
+        return await get_wiki_revisions(self._db, path, limit=limit)
+
+    async def reset_wiki(self) -> int:
+        return await reset_wiki(self._db)
 
 
 # ------------------------------------------------------------------

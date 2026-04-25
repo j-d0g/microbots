@@ -7,22 +7,46 @@ A SurrealDB v2-backed persistent behavioral memory graph for AI agents. Agents q
 ```
 user_profile → integration → entity → chat → memory → skill → workflow
                                                              ↓
-                                                        memory/ (agents.md)
+                                                        wiki_page (DB)
 ```
 
-All structured knowledge lives in SurrealDB. Markdown files in `memory/` are **generated navigation artifacts** for LLM consumption — produced and diff-updated by the wiki agent (Phase 4) from the live graph.
+Everything — graph nodes, edges, *and* the markdown navigation layer — lives in SurrealDB. The 18 navigation pages (`user.md`, `integrations/agents.md`, …) are stored as `wiki_page` rows and updated by the wiki agent (Phase 4) from the live graph. There is no on-disk `memory/` directory.
 
-**Start here:** [`memory/user.md`](memory/user.md)
+**Start here:** `make wiki-cat P=user.md` (or `P=tree` to list every page).
 
 ## Pipeline
 
 ```
 Phase 1–2  Composio pull → dedup → LLM triage → chat + integration records
 Phase 3    Enrichment: memory extraction → entity resolution → skill detection → workflow composition
-Phase 4    Wiki agent: graph → diff-update memory/ markdown files
+Phase 4    Wiki agent: graph → diff-update wiki_page rows in SurrealDB
 ```
 
-Phases 1–4 run automatically on `make ingest`. For local dev without Composio, use `make ingest-seed` to seed the DB with realistic data and regenerate the markdown layer directly.
+Phases 1–4 run automatically on `make ingest`. For local dev without Composio, use `make ingest-seed` to seed the DB with realistic data and run the wiki agent against it.
+
+## Where is the wiki stored?
+
+Two new SurrealDB tables hold the wiki layer (defined in `schema/02_wiki.surql`, seeded by `schema/04_wiki_seed.surql`):
+
+| Table | Role |
+|-------|------|
+| `wiki_page` | Current state of one navigation page. 18 rows on a fresh DB; `path` is unique, `content` starts empty and is filled by the wiki agent. |
+| `wiki_parent` | Edge `wiki_page → wiki_page`. 17 edges total: every non-root page has one parent (depth-3 → depth-2, depth-2 → `user.md`). |
+| `wiki_page_revision` | History. Each write archives the prior content; up to 10 most-recent revisions per page are kept. |
+
+Read the wiki from anywhere:
+
+```bash
+make wiki-cat P=user.md                                     # this Makefile
+uv run python knowledge_graph/seed/wiki_cat.py tree         # python helper
+```
+
+```surql
+SELECT path, content FROM wiki_page WHERE path = 'user.md';  -- raw SurrealDB
+SELECT path, depth FROM wiki_page ORDER BY depth, path;
+```
+
+`MicrobotsDB.get_wiki_page(path)` / `list_wiki_tree()` / `write_wiki_page(...)` are the typed Python entry points (see `knowledge_graph/db/wiki.py`).
 
 ## Setup
 
@@ -37,7 +61,8 @@ Phases 1–4 run automatically on `make ingest`. For local dev without Composio,
 # Copy env template and add credentials
 cp .env.example .env
 
-# Start SurrealDB, apply schema, seed with realistic data, generate memory/ markdowns
+# Start SurrealDB, apply schema (which includes the empty wiki skeleton), seed
+# the graph with realistic data, then run the wiki agent to fill every wiki_page.
 make db-up
 make db-schema
 make ingest-seed
@@ -45,13 +70,13 @@ make ingest-seed
 
 `make db-up` runs `uv sync` automatically — no manual dependency installation needed.
 
-### Full reset (wipes DB + regenerates memory/)
+### Full reset (wipes DB + repopulates wiki)
 
 ```bash
 make db-reset
 ```
 
-This stops the container, removes the volume, restarts, reapplies schema, re-seeds, and regenerates all markdown files.
+Stops the container, removes the volume, restarts, reapplies schema (including the 18-page wiki skeleton), reseeds the graph, and runs the wiki agent. To clear just the wiki without touching the graph: `make wiki-reset` (sets every `wiki_page.content` back to `""` and bumps the revision).
 
 ### Git and ignored files
 
@@ -64,13 +89,14 @@ The `.gitignore` excludes: `.env`, Python caches/virtualenvs, `.composio_cache/`
 | `make install` | Install Python deps via `uv sync` |
 | `make db-up` | Install deps, start SurrealDB, wait for health |
 | `make db-down` | Stop container |
-| `make db-schema` | Apply `schema/*.surql` in order |
+| `make db-schema` | Apply `schema/*.surql` in order (creates wiki skeleton: 18 empty `wiki_page` rows) |
 | `make db-seed` | Seed graph with realistic data (1 user, 6 integrations, 10 entities, 4 skills, 3 workflows) |
-| `make db-reset` | Full wipe: down + volume remove + up + schema + seed + memory-reset + wiki |
+| `make db-reset` | Full wipe: down + volume remove + up + schema + seed + wiki |
 | `make db-query` | Open interactive SurrealQL shell |
 | `make db-export` | Export database to `.surql` backup file |
-| `make ingest-seed` | Seed DB then run wiki agent to generate `memory/` markdowns (no Composio) |
-| `make memory-reset` | Delete all generated `memory/*.md` files |
+| `make ingest-seed` | Seed graph then run wiki agent to fill every `wiki_page` row (no Composio) |
+| `make wiki-reset` | Soft reset: blank every `wiki_page.content`, keep skeleton + edges, bump revision |
+| `make wiki-cat P=<path>` | Print one wiki page's content. `P=tree` lists every page. |
 | `make ingest` / `make composio-ingest` | Full Composio pipeline: pull → triage → enrich → wiki |
 | `make composio-auth` | Print one-time Composio CLI commands |
 | `make wiki` | Run wiki agent standalone against the live DB |
@@ -131,75 +157,60 @@ INGEST_SMOKE_USE_LLM=true uv run python -m ingest --smoke
 
 ## Repository layout
 
+All Python source lives under `knowledge_graph/` so other product surfaces can sit alongside it without import collisions.
+
 ```
-microbots/
+microbots/                            (git root)
 ├── .env.example                  # template; copy to .env
 ├── docker-compose.yml            # SurrealDB v2
-├── config.py                     # all pipeline + LLM + wiki config dataclasses
 ├── Makefile                      # lifecycle targets (see table above)
-├── pyproject.toml                # uv-managed dependencies
+├── pyproject.toml                # uv-managed dependencies + pytest config
 │
-├── schema/
-│   ├── 00_setup.surql            # namespace, database, analyzers
-│   ├── 01_nodes.surql            # 8 node tables
-│   ├── 02_relations.surql        # 16 relation tables + SCHEMAFULL constraints
-│   ├── 03_indexes.surql          # structural, FTS, and HNSW vector indexes
-│   └── apply.py                  # applies files in order
-│
-├── seed/
-│   ├── seed.py                   # realistic data: 1 user, 6 integrations, 10 entities, 4 skills, 3 workflows
-│   └── wiki_from_seed.py         # seed DB → run wiki agent → write memory/ markdowns
-│
-├── ingest/                       # Phase 1–2: Composio pull → triage → SurrealDB
-│   ├── __main__.py               # `python -m ingest`
-│   ├── pullers/                  # one module per integration
-│   ├── prompts/                  # per-integration LLM system prompts
-│   └── writers/                  # integration + chat record writers
-│
-├── enrich/                       # Phase 3: memory extraction → entity resolution → skill/workflow
-│   ├── orchestrator.py           # runs all 4 enrichment phases sequentially
-│   ├── memory_extractor.py
-│   ├── entity_resolver.py
-│   ├── skill_detector.py
-│   ├── workflow_composer.py
-│   ├── prompts/                  # enrichment LLM prompts
-│   └── writers/                  # memory, entity, skill, workflow writers
-│
-├── wiki/                         # Phase 4: Pydantic AI wiki agent
-│   ├── __main__.py               # `python -m wiki`
-│   ├── orchestrator.py           # depth-3 → depth-2 → depth-1 walker
-│   ├── targets.py                # derives target paths from live graph
-│   ├── agent.py                  # Pydantic AI agent + WikiUpdate model
-│   ├── tools.py                  # 5 tools: read/write md, list tree, query_graph, estimate_tokens
-│   ├── budgets.py                # token budgets per path depth
-│   ├── deps.py                   # WikiDeps dependency injection
-│   └── prompts/                  # system + per-file prompt templates
-│
-├── db/                           # Typed DB wrapper (used by wiki + tests)
-│   ├── client.py                 # MicrobotsDB: 10 whitelisted named queries
-│   ├── queries.py                # SurrealQL query registry
-│   └── models.py                 # Pydantic result models for all node types
-│
-├── memory/                       # Generated markdown navigation artifacts (gitignored in prod)
-│   ├── user.md                   # depth-1: root index (4000 token budget)
-│   ├── integrations/agents.md   # depth-2: all integrations summary
-│   ├── integrations/{slug}/agents.md  # depth-3: per-integration detail
-│   ├── entities/agents.md        # depth-2: all entity types
-│   ├── entities/{type}/agents.md # depth-3: per entity-type detail
-│   ├── chats/agents.md
-│   ├── memories/agents.md
-│   ├── skills/agents.md
-│   └── workflows/agents.md
-│
-└── tests/
-    ├── conftest.py               # ephemeral SurrealDB fixture, test_db_config
-    ├── unit/                     # pure unit tests (no DB for most)
-    ├── e2e/                      # seed → wiki → assert markdown files
-    ├── golden/                   # golden replay tests
-    ├── synth/                    # synthetic corpus generator
-    ├── eval/                     # closed-loop eval: judge, proposer, rubrics
-    └── fixtures/                 # train + holdout JSON payloads
+└── knowledge_graph/                  # all Python source for the agent memory product
+    ├── config.py                 # pipeline + LLM + wiki config dataclasses
+    │
+    ├── schema/
+    │   ├── 00_setup.surql        # namespace, database, analyzers
+    │   ├── 01_nodes.surql        # 8 node tables
+    │   ├── 02_relations.surql    # 16 graph-relation tables
+    │   ├── 02_wiki.surql         # wiki_page, wiki_parent, wiki_page_revision
+    │   ├── 03_indexes.surql      # structural, FTS, HNSW vector indexes
+    │   ├── 04_wiki_seed.surql    # 18 empty wiki_page rows + 17 parent edges
+    │   └── apply.py              # applies *.surql files in order
+    │
+    ├── seed/
+    │   ├── seed.py               # realistic graph data
+    │   ├── wiki_from_seed.py     # seed graph + run wiki agent
+    │   ├── wiki_reset.py         # soft reset every wiki_page.content
+    │   └── wiki_cat.py           # cat one page or print the tree
+    │
+    ├── ingest/                   # Phase 1–2: Composio pull → triage → SurrealDB
+    ├── enrich/                   # Phase 3: memory / entity / skill / workflow
+    │
+    ├── wiki/                     # Phase 4: Pydantic AI wiki agent
+    │   ├── __main__.py           # `python -m wiki`
+    │   ├── orchestrator.py       # depth-3 → depth-2 → user.md walker over wiki_page rows
+    │   ├── agent.py              # Pydantic AI agent + WikiUpdate model
+    │   ├── tools.py              # 5 tools: read/write/list (DB-backed), query_graph, estimate_tokens
+    │   ├── deps.py               # WikiDeps (db + config; no filesystem)
+    │   └── prompts/              # system + per-page prompt templates
+    │
+    ├── db/                       # Typed DB wrapper
+    │   ├── client.py             # MicrobotsDB: named queries + wiki page operations
+    │   ├── queries.py            # SurrealQL query registry
+    │   ├── models.py             # Pydantic result models for graph nodes
+    │   └── wiki.py               # WikiPage / WikiTreeNode / WikiRevision + read/write helpers
+    │
+    └── tests/
+        ├── conftest.py           # ephemeral SurrealDB fixture, test_db_config
+        ├── unit/                 # incl. test_wiki_db.py (DB layer round-trip)
+        ├── e2e/                  # seed → wiki agent → assert wiki_page rows
+        ├── golden/               # LLM golden replay tests
+        ├── synth/                # synthetic corpus generator
+        └── eval/                 # closed-loop eval: judge, proposer, rubrics
 ```
+
+Note: there is no `memory/` directory anywhere; the markdown layer is `wiki_page` rows in SurrealDB.
 
 ## Graph model
 
@@ -288,36 +299,36 @@ make eval-report
 
 E2E tests use `seed/seed.py` directly — no Composio, no LLM triage. The `live_llm` marker gates tests that make real LLM calls; they are skipped automatically when no API key is set.
 
-### End-to-end test suite (`tests/e2e/`)
+### Unit tests (`knowledge_graph/tests/unit/`)
 
-All 6 tests run against an ephemeral SurrealDB namespace spun up and torn down per-test by `conftest.py`. No production data is touched.
+`test_wiki_db.py` exercises the wiki DB layer directly (round-trip, idempotent hash dedup, revision archive + trim, schema-driven path whitelist, `reset_wiki()` blank-out). `test_db_wrapper.py` covers named-query routing, `test_schema.py` covers SCHEMAFULL constraints. All 30 unit + golden tests run in a few seconds against ephemeral DBs.
+
+### End-to-end test suite (`knowledge_graph/tests/e2e/`)
+
+All tests run against an ephemeral SurrealDB namespace spun up and torn down per-test by `conftest.py`. No production data is touched. The schema (including `04_wiki_seed.surql`) is reapplied per-test, so the 18-page wiki skeleton is always present.
 
 | Test | LLM? | What it checks |
 |------|------|----------------|
-| `test_seed_populates_graph` | No | Seeding produces the correct node counts: 1 user, 6 integrations, 10 entities, 6 chats, 6 memories, 4 skills, 3 workflows, 13 layer_index nodes |
-| `test_seed_derives_all_wiki_targets` | No | `derive_targets()` returns 18 ordered paths: 6 integration sub-layers + 5 entity-type sub-layers + 6 layer summaries + `user.md` last (depth 3 → 2 → 1) |
-| `test_wiki_writes_all_markdown_files` | **Yes** | Full pipeline: seed → wiki agent → asserts all 18 `memory/` files exist and are non-empty. Skipped automatically if no `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` is set |
-| `test_wiki_target_idempotency` | No | `derive_targets()` called twice on the same DB state returns the identical ordered list |
+| `test_seed_populates_graph` | No | Seeding produces the correct node counts: 1 user, 6 integrations, 10 entities, 6 chats, 6 memories, 4 skills, 3 workflows |
+| `test_wiki_skeleton_present_after_schema` | No | `list_wiki_tree()` returns exactly 18 `wiki_page` rows with the expected paths, `content=""` and `revision=0`. Verifies the 17 `wiki_parent` edges. |
+| `test_wiki_writes_all_pages_to_db` | **Yes** | Full pipeline: seed → wiki agent → every `wiki_page.content` is non-empty in the DB, every `revision >= 1`, every `updated_by="wiki_agent"`. Skipped if no LLM key. |
+| `test_wiki_run_idempotent_at_db_level` | **Yes** | Run the wiki agent twice on the same graph — every page still has non-empty content and its revision counter never rolls back. |
 | `test_seed_edge_invariants` | No | Structural graph invariants: `chat_from ≥ chat`, `chat_yields ≥ memory`, `skill_derived_from ≥ skill`, `workflow_contains_skill ≥ 2× workflow` |
-| `test_corpus_meta_annotations` | No | `tests/fixtures/corpus_meta.json` contains `expected_entities`, `expected_skills`, `expected_workflows` keys (skipped if file not present) |
+| `test_corpus_meta_annotations` | No | `tests/fixtures/corpus_meta.json` annotation keys (skipped if file not present) |
 
-**Latest run:** 6/6 passed (~60 s, `google/gemini-2.0-flash-001` via OpenRouter).
+**Latest run:** 5/5 e2e pass (1 skipped — corpus_meta), 30 unit/golden pass. ~92 s with two LLM-driven runs against `google/gemini-2.0-flash-001` via OpenRouter.
 
-The LLM test (`test_wiki_writes_all_markdown_files`) produces 18 files:
+The full pipeline produces 18 `wiki_page` rows, e.g.:
 
 ```
-chats/agents.md                       # chat summary across all integrations
-entities/agents.md                    # all entity types overview
-entities/{channel,person,project,repo,team}/agents.md  # 5 per-type pages
-integrations/agents.md                # all integrations overview
-integrations/{github,gmail,linear,notion,perplexity,slack}/agents.md  # 6 per-tool pages
-memories/agents.md                    # distilled memories summary
-skills/agents.md                      # 4 skills with steps
-user.md                               # root index
-workflows/agents.md                   # 3 workflows with trigger/outcome/skill chain
+user.md                                        rev=1 bytes=  ~70   # root index, links to all layer pages
+integrations/agents.md                         rev=1 bytes= ~120   # depth-2 layer summary
+integrations/slack/agents.md                   rev=1 bytes= ~140   # depth-3 per-integration page (with > Parent: link)
+entities/person/agents.md                      rev=1 bytes= ~700   # one row per known person from seed
+workflows/agents.md                            rev=1 bytes=~1700   # 3 workflows × trigger/outcome/skill chain
 ```
 
-The wiki agent runs depth-3 targets in parallel (configurable `max_concurrent`), then depth-2 sequentially, then `user.md` last so each level can reference the level below it.
+The wiki agent walks depth-3 pages in parallel (configurable `max_concurrent`), then depth-2 sequentially, then `user.md` last so each level can reference the level below it.
 
 ## Tech stack
 

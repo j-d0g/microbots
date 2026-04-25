@@ -121,16 +121,6 @@ def test_config(tmp_path):
 
 
 @pytest.fixture
-def memory_root(tmp_path) -> Path:
-    """Temporary memory/ directory for wiki tests."""
-    root = tmp_path / "memory"
-    root.mkdir()
-    for layer in ("integrations", "entities", "chats", "memories", "skills", "workflows"):
-        (root / layer).mkdir()
-    return root
-
-
-@pytest.fixture
 def fixtures_dir() -> Path:
     return ROOT / "tests" / "fixtures"
 

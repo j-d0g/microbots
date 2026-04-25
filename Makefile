@@ -4,7 +4,7 @@ export
 PYTHON := uv run python
 KG     := knowledge_graph
 
-.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest-seed memory-reset ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report
+.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest-seed wiki-reset wiki-cat ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report
 
 install:
 	uv sync
@@ -31,18 +31,19 @@ db-reset:
 	$(MAKE) db-up
 	$(MAKE) db-schema
 	$(MAKE) db-seed
-	$(MAKE) memory-reset
 	$(MAKE) wiki
 
-# Wipe and regenerate all memory/ markdown files from seed data (no Composio, no LLM triage needed)
+# Seed the graph then run the wiki agent to populate every wiki_page row
 ingest-seed: install
 	$(PYTHON) $(KG)/seed/wiki_from_seed.py
 
-# Remove all generated memory/ markdown files (preserves directory structure)
-memory-reset:
-	@echo "Clearing generated memory/ markdown files..."
-	@find $(KG)/memory/ -name "*.md" -delete 2>/dev/null || true
-	@echo "memory/ cleared."
+# Soft-reset every wiki_page.content to "" (keeps skeleton + edges)
+wiki-reset:
+	$(PYTHON) $(KG)/seed/wiki_reset.py
+
+# Print one wiki page's content. Usage: `make wiki-cat P=user.md`. `make wiki-cat P=tree` lists all pages.
+wiki-cat:
+	$(PYTHON) $(KG)/seed/wiki_cat.py $(P)
 
 db-query:
 	docker exec -it microbots-surrealdb surreal sql \
