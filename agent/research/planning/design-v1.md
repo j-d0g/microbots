@@ -1,4 +1,4 @@
-> **Snapshot status (overnight ralph loop):** v1 architectural design doc as of 2026-04-25 ~04:00. Several key decisions made *after* this doc — workflow=scheduled-agent-mission reframe, lifecycle live→consulting→rigid, supersedes/`valid_to`/retention by memory_type, four-quadrant confidence×complexity suggestion deck — are NOT yet incorporated. They live in HANDOFF.md and chat history pending a reconciliation pass into `agent/DESIGN.md`.
+> **Snapshot status (overnight ralph loop):** v1 architectural design doc as of 2026-04-25 ~04:00. Several key decisions made *after* this doc — workflow=scheduled-agent-mission reframe, lifecycle live→consulting→rigid, supersedes/`valid_to`/retention by memory_type, four-quadrant confidence×complexity suggestion deck — are NOT yet incorporated. They live in handoff.md and chat history pending a reconciliation pass into `agent/DESIGN.md`.
 >
 > Repo layout has reorganized since this was written: `schema/`, `scaffold/`, `docs/specs/` referenced here are superseded by `knowledge_graph/` for the DB layer and by `agent/` for harness work.
 >
@@ -13,7 +13,7 @@
 **Status:** Draft v1, awaiting team review
 **Branch:** `research/2026-04-25-overnight`
 
-> **How to read this doc:** start with [SKIMPLE.md](../../SKIMPLE.md) for the executive summary. This document is the formal spec the team references during implementation; it defers nuance to research files in `docs/research/`.
+> **How to read this doc:** start with [skimple.md](skimple.md) for the executive summary. This document is the formal spec the team references during implementation; it defers nuance to the other files in this `research/` folder.
 
 ---
 
@@ -455,7 +455,7 @@ Demo beat: side-by-side runs of the same task before/after a few uses, with Mubi
 
 ## 11. Demo plan
 
-See [SKIMPLE.md §"Demo narrative"](../../SKIMPLE.md). Five beats, ~3 minutes total.
+See [skimple.md §"Demo narrative"](skimple.md). Five beats, ~3 minutes total.
 
 ### 11.1 Demo data prep
 
@@ -525,15 +525,15 @@ Jordan has prior data showing CodeWords beats both on these. We replicate the ha
 
 ## 15. References
 
-- [SKIMPLE.md](../../SKIMPLE.md) — distilled top-of-mind
-- [HANDOFF.md](../../HANDOFF.md) — decisions taken, files touched
-- [PROGRESS.md](../../PROGRESS.md) — running activity log
-- [docs/research/](../research/) — 10 deep-dive research files (read SKIMPLE first)
-- [schema/](../../schema/) — SurrealQL schema (already committed)
-- [scaffold/](../../scaffold/) — agent loop interface contracts, iframe mock, render.yaml
-- WhatsApp thread: `/Users/jordantran/Agemo/microbots/WHATSAPP.md`
-- BRAINDUMP: `/Users/jordantran/Agemo/microbots/BRAINDUMP.md`
+- [skimple.md](skimple.md) — distilled top-of-mind
+- [handoff.md](handoff.md) — decisions taken, files touched
+- [progress.md](progress.md) — running activity log
+- [research index](../README.md) — routing index for the deep-dive research files
+- [knowledge_graph/schema/](../../../knowledge_graph/schema/) — SurrealQL schema (already committed)
+- `agent/scaffold/` — agent loop interface contracts, iframe mock, render.yaml (stale path; scaffold no longer present in this workspace)
+- WhatsApp thread: [`../raw/whatsapp.md`](../raw/whatsapp.md)
+- BRAINDUMP: [`../raw/braindump.md`](../raw/braindump.md)
 
 ---
 
-**Next step:** Read [docs/plans/2026-04-25-mvp-implementation-plan.md](../plans/2026-04-25-mvp-implementation-plan.md) for the bounded ordered task list.
+**Next step:** Read [plan-v1.md](plan-v1.md) for the bounded ordered task list.

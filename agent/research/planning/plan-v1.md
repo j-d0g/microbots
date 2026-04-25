@@ -11,7 +11,7 @@
 **Authors:** Claude (overnight ralph loop) — for review by Jordan, Desmond, Artem
 **Date:** 2026-04-25
 **Status:** Draft v1
-**Companion docs:** [SKIMPLE.md](../../SKIMPLE.md), [docs/specs/2026-04-25-microbots-design.md](../specs/2026-04-25-microbots-design.md)
+**Companion docs:** [skimple.md](skimple.md), [design-v1.md](design-v1.md)
 
 > Bounded, ordered tasks for Friday → Sunday. Each task has an owner suggestion, dependencies, time estimate, and a verification gate. Mark tasks complete only when the gate passes — not when the work feels finished.
 
@@ -66,7 +66,7 @@ These unblock everyone — do them first thing Friday morning.
   cd /Users/jordantran/Agemo/microbots
   git fetch
   git checkout research/2026-04-25-overnight  # the overnight branch
-  cat /Users/jordantran/Agemo/agent-workspace/SKIMPLE.md  # read first
+  cat /Users/jordantran/Agemo/agent-workspace/skimple.md  # read first
   ```
 - **Gate:** branch checked out; SKIMPLE read
 

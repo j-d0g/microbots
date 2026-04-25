@@ -10,10 +10,10 @@
 
 ## Wake-up checklist
 
-1. Read [SKIMPLE.md](SKIMPLE.md) — distilled overview, ~5 min
+1. Read [skimple.md](skimple.md) — distilled overview, ~5 min
 2. Skim this file (HANDOFF) — confirm decisions match what you'd have made
-3. Read [docs/specs/2026-04-25-microbots-design.md](docs/specs/2026-04-25-microbots-design.md) — formal spec
-4. Read [docs/plans/2026-04-25-mvp-implementation-plan.md](docs/plans/2026-04-25-mvp-implementation-plan.md) — Friday→Sunday tasks
+3. Read [design-v1.md](design-v1.md) — formal spec
+4. Read [plan-v1.md](plan-v1.md) — Friday→Sunday tasks
 5. If happy: `git checkout research/2026-04-25-overnight` from `microbots/`, divide tasks
 6. If something needs revising: edit + tell me / next session
 
@@ -53,26 +53,26 @@ These were settled tonight by research and contradict things I said earlier in o
 ## Files I created (all under `agent-workspace/`)
 
 ### Top-level navigation
-- `SKIMPLE.md` (2364 words) — first read for the team
-- `HANDOFF.md` — this file
-- `PROGRESS.md` — running log of overnight activity
+- `skimple.md` (2364 words) — first read for the team
+- `handoff.md` — this file
+- `progress.md` — running log of overnight activity
 - `.gitignore` — Python / pytest / .env.local / .DS_Store
 
 ### Research notes (10 files, ~13.8k words total)
-- `docs/research/agemo-agents.md` — agent + sub-agent + harness patterns from Agemo
-- `docs/research/agemo-runtime-pattern.md` — workflow execution architecture (PEP-723 server.py contract)
-- `docs/research/ralph-loop.md` — Geoffrey Huntley pattern, Stop-hook mechanism
-- `docs/research/atomic-sdk.md` — flora131/atomic, why we don't use it
-- `docs/research/kaig-martin.md` — Martin's SurrealDB-as-filesystem patterns
-- `docs/research/surrealdb.md` — live queries, HNSW, hybrid search, multi-tenancy
-- `docs/research/pydantic-stack.md` — pydantic-ai v1.86.1 + Logfire setup
-- `docs/research/composio.md` — multi-user OAuth, MCP integration with pydantic-ai
-- `docs/research/coding-agents-external.md` — Devin + PI disambiguation
-- `docs/research/sponsor-glue.md` — Mubit, Render, Anthropic OAuth findings
+- `../harness/agemo-agents.md` — agent + sub-agent + harness patterns from Agemo
+- `../harness/agemo-runtime-pattern.md` — workflow execution architecture (PEP-723 server.py contract)
+- `../harness/ralph-loop.md` — Geoffrey Huntley pattern, Stop-hook mechanism
+- `../harness/atomic-sdk.md` — flora131/atomic, why we don't use it
+- `../harness/kaig-martin.md` — Martin's SurrealDB-as-filesystem patterns
+- `../stack/surrealdb.md` — live queries, HNSW, hybrid search, multi-tenancy
+- `../stack/pydantic-stack.md` — pydantic-ai v1.86.1 + Logfire setup
+- `../stack/composio.md` — multi-user OAuth, MCP integration with pydantic-ai
+- `../harness/coding-agents-external.md` — Devin + PI disambiguation
+- `../stack/sponsor-glue.md` — Mubit, Render, Anthropic OAuth findings
 
 ### Specs and plans
-- `docs/specs/2026-04-25-microbots-design.md` (3370 words) — formal design doc
-- `docs/plans/2026-04-25-mvp-implementation-plan.md` — Friday→Sunday task list with verification gates
+- `design-v1.md` (3370 words) — formal design doc
+- `plan-v1.md` — Friday→Sunday task list with verification gates
 
 ### Scaffold (verifiable contracts, no live deps)
 - `scaffold/agent/contracts.py` — 5 Pydantic models, validated by 20-test pytest suite
@@ -125,7 +125,7 @@ These were settled tonight by research and contradict things I said earlier in o
 When you wake up:
 
 1. `cd /Users/jordantran/Agemo/microbots && git fetch && git checkout research/2026-04-25-overnight`
-2. `cat /Users/jordantran/Agemo/agent-workspace/SKIMPLE.md` (or open in editor)
+2. `cat /Users/jordantran/Agemo/agent-workspace/skimple.md` (or open in editor)
 3. Skim this file
 4. Read design doc + impl plan
 5. Drop the credentials in `microbots/.env.local`

@@ -38,13 +38,13 @@ The 90-second pitch:
 
 microbots' `layer_index` + `drills_into` + `indexed_by` graph pattern is functionally identical to Agemo's `consult_docs` filesystem-of-markdown — but **strictly better**: token budgets per layer, FTS + HNSW backing, polymorphic edges, live-query-able. The highest-ROI port from Agemo is wiring pydantic-ai to a `read_layer(layer_id)` tool that returns the budgeted markdown for that layer. The agent navigates the graph by drilling layers — not by stuffing all memory in context.
 
-→ See `docs/research/agemo-agents.md`
+→ See `../harness/agemo-agents.md`
 
 ### 2. Composio + pydantic-ai = zero-config via MCP
 
 Composio publishes a first-party MCP integration. One line: `composio.create(user_id, toolkits=[...]).mcp.url` → `MCPServerStreamableHTTP` plugged into pydantic-ai. **All Slack/Gmail/Linear/Notion/GitHub tools auto-register with full schemas.** Auth is in-product: we call `connected_accounts.initiate(user_id, auth_config_id, callback_url)` → Composio hosts the consent screen → we get a callback. **We never touch raw OAuth secrets.** Free tier = 20k calls/mo (plenty for hackathon).
 
-→ See `docs/research/composio.md`
+→ See `../stack/composio.md`
 
 ### 3. Workflow primitive locked: PEP-723 `server.py` → Render Web Service per microbot
 
@@ -55,7 +55,7 @@ Agemo's workflow contract: a single Python file with `# /// script` PEP-723 deps
 4. Agent registers it in SurrealDB as a `workflow:slug` node + `workflow_uses → integration` edges
 5. Render Cron Job hooks the schedule
 
-→ See `docs/research/agemo-runtime-pattern.md`
+→ See `../harness/agemo-runtime-pattern.md`
 
 ### 4. Live-query iframe is the demo weapon
 
@@ -71,13 +71,13 @@ const live = await db.live(new Table("memory"), (action, result) => {
 
 **Limit to know:** SurrealDB live queries are single-node-only in v2 — fine for one Render service, but not for clustered SurrealDB. Cluster comes later.
 
-→ See `docs/research/surrealdb.md` and `docs/research/kaig-martin.md`
+→ See `../stack/surrealdb.md` and `../harness/kaig-martin.md`
 
 ### 5. Ralph loop pattern → overnight consolidator scaffold
 
 Geoffrey Huntley's "Ralph Wiggum" technique (now a Claude plugin): a `while true` re-feeding the same prompt to Claude until it emits `<promise>DONE</promise>`, with a Stop-hook driver and a `.claude/<feature>.local.md` state file. **~190 LOC of bash.** We borrow the scaffold for the overnight consolidator (System 1) but replace the static prompt with a *templated reflect-and-replan* prompt that injects accumulated cluster state. Each iteration: read all chat/memory rows from the day, embed-cluster, propose new `workflow` candidates, write them as `pending=true`, exit when no new clusters surface for N iterations.
 
-→ See `docs/research/ralph-loop.md`
+→ See `../harness/ralph-loop.md`
 
 ## What's already in the repo
 
@@ -161,12 +161,12 @@ A FastAPI app hosts the agent loop and the chat UI. The agent loop is a pydantic
 
 ## What I built tonight
 
-- `SKIMPLE.md` (this file) — first read for the team
-- `HANDOFF.md` — every decision logged, every file touched
-- `PROGRESS.md` — running log of overnight activity
-- `docs/research/*.md` — 10 research distillations (~13.8k words total). Read SKIMPLE first, drill into specific research file only if a topic concerns you.
-- `docs/specs/2026-04-25-microbots-design.md` — formal design spec
-- `docs/plans/2026-04-25-mvp-implementation-plan.md` — bounded ordered tasks for the team
+- `skimple.md` (this file) — first read for the team
+- `handoff.md` — every decision logged, every file touched
+- `progress.md` — running log of overnight activity
+- `*.md` — 10 research distillations (~13.8k words total). Read SKIMPLE first, drill into specific research file only if a topic concerns you.
+- `design-v1.md` — formal design spec
+- `plan-v1.md` — bounded ordered tasks for the team
 - `scaffold/` — verifiable static scaffolding: agent loop interface contracts, iframe HTML mock, render.yaml, type definitions
 
 **Untouched:** the source `microbots/` checkout, your `.env`, all of `agemo/`, Mubit credit, Render dollars, GitHub remote.
@@ -174,10 +174,10 @@ A FastAPI app hosts the agent loop and the chat UI. The agent loop is a pydantic
 ## Where to look next (priority order Friday morning)
 
 1. **Read this file (you're here)**
-2. Skim `HANDOFF.md` — confirm my default decisions match what you'd have made
-3. Read `docs/specs/2026-04-25-microbots-design.md` — the formal spec to reference all weekend
-4. Read `docs/plans/2026-04-25-mvp-implementation-plan.md` — divide the work
+2. Skim `handoff.md` — confirm my default decisions match what you'd have made
+3. Read `design-v1.md` — the formal spec to reference all weekend
+4. Read `plan-v1.md` — divide the work
 5. Drop the 4 keys + sign up for Composio/Logfire (~10 min total)
 6. Run `make db-up && make db-schema && make db-seed` to confirm DB still wakes up
 7. Each teammate: pick top tasks from the plan, work on the shared worktree branch or their own
-8. Drill into specific `docs/research/*.md` only if you hit a question that file owns
+8. Drill into specific `*.md` only if you hit a question that file owns
