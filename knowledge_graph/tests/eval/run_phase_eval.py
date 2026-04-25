@@ -29,7 +29,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
+ROOT = Path(__file__).resolve().parent.parent.parent  # = knowledge_graph/
 REPO_ROOT = ROOT.parent
 FIXTURES = ROOT / "tests" / "fixtures"
 REPORTS_DIR = Path(__file__).parent / "reports"
