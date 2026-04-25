@@ -1,0 +1,178 @@
+# KAIG-style retrieval QA set — 15 questions, 5 per target.
+# Each question has graph-mode and wiki-mode scoring paths.
+# scoring_mode: exact_match | set_recall_at_k | free_form_judge
+
+# ---------------------------------------------------------------
+# Target 1: next_step (action recommendation / next-step prediction)
+# ---------------------------------------------------------------
+
+- id: ns-1
+  question: "The user just opened a PR on the microbots repo. What is the standard next step?"
+  target: next_step
+  expected_answer: "Request review from Bob Kim"
+  scoring_mode: free_form_judge
+  graph_query_name: skills_all
+  graph_query_params: { min_strength: 1 }
+  relevant_wiki_paths:
+    - memory/skills.md
+
+- id: ns-2
+  question: "Before opening a GitHub PR, what must the user create first?"
+  target: next_step
+  expected_answer: "Linear ticket"
+  scoring_mode: exact_match
+  graph_query_name: workflows_all
+  graph_query_params: {}
+  relevant_wiki_paths:
+    - memory/workflows.md
+
+- id: ns-3
+  question: "The user wants to deploy microbots to production. What steps should happen?"
+  target: next_step
+  expected_answer:
+    - "Post to #deployments before deploying"
+    - "Run smoke tests"
+    - "Post to #deployments after deploying"
+  scoring_mode: set_recall_at_k
+  graph_query_name: skills_all
+  graph_query_params: { min_strength: 1 }
+  relevant_wiki_paths:
+    - memory/skills.md
+    - memory/workflows.md
+
+- id: ns-4
+  question: "What is the standard workflow when a bug is triaged?"
+  target: next_step
+  expected_answer: "bug_triage_pipeline"
+  scoring_mode: free_form_judge
+  graph_query_name: workflows_all
+  graph_query_params: {}
+  relevant_wiki_paths:
+    - memory/workflows.md
+
+- id: ns-5
+  question: "After merging a PR, what deploy convention must be followed?"
+  target: next_step
+  expected_answer: "Post to #deployments before and after every production deploy"
+  scoring_mode: free_form_judge
+  graph_query_name: skills_all
+  graph_query_params: { min_strength: 1 }
+  relevant_wiki_paths:
+    - memory/skills.md
+    - memory/workflows.md
+
+# ---------------------------------------------------------------
+# Target 2: contact_lookup (contact / relationship lookup)
+# ---------------------------------------------------------------
+
+- id: cl-1
+  question: "Who should review PRs for the microbots repo?"
+  target: contact_lookup
+  expected_answer: "Bob Kim"
+  scoring_mode: exact_match
+  graph_query_name: entities_by_type
+  graph_query_params: { entity_type: person }
+  relevant_wiki_paths:
+    - memory/entities.md
+
+- id: cl-2
+  question: "Who is the Infrastructure Lead on the team?"
+  target: contact_lookup
+  expected_answer: "Alice Chen"
+  scoring_mode: exact_match
+  graph_query_name: entities_by_type
+  graph_query_params: { entity_type: person }
+  relevant_wiki_paths:
+    - memory/entities.md
+
+- id: cl-3
+  question: "What are the known aliases for Bob Kim across integrations?"
+  target: contact_lookup
+  expected_answer:
+    - "@bob"
+    - "bob-kim"
+    - "bob@company.com"
+    - "Bob K."
+  scoring_mode: set_recall_at_k
+  graph_query_name: entities_by_type
+  graph_query_params: { entity_type: person }
+  relevant_wiki_paths:
+    - memory/entities.md
+
+- id: cl-4
+  question: "Who should be tagged on infrastructure-touching PRs?"
+  target: contact_lookup
+  expected_answer: "Alice Chen"
+  scoring_mode: exact_match
+  graph_query_name: entities_by_type
+  graph_query_params: { entity_type: person }
+  relevant_wiki_paths:
+    - memory/entities.md
+
+- id: cl-5
+  question: "What role does Carol Diaz have on the team?"
+  target: contact_lookup
+  expected_answer: "Product Designer"
+  scoring_mode: free_form_judge
+  graph_query_name: entities_by_type
+  graph_query_params: { entity_type: person }
+  relevant_wiki_paths:
+    - memory/entities.md
+
+# ---------------------------------------------------------------
+# Target 3: optimisation_surface (recurring patterns / automation)
+# ---------------------------------------------------------------
+
+- id: os-1
+  question: "What recurring deploy pattern could be automated?"
+  target: optimisation_surface
+  expected_answer: "deploy_flow"
+  scoring_mode: free_form_judge
+  graph_query_name: skills_all
+  graph_query_params: { min_strength: 2 }
+  relevant_wiki_paths:
+    - memory/skills.md
+    - memory/workflows.md
+
+- id: os-2
+  question: "What code review pattern repeats frequently enough to automate?"
+  target: optimisation_surface
+  expected_answer: "pr_review_flow"
+  scoring_mode: free_form_judge
+  graph_query_name: skills_all
+  graph_query_params: { min_strength: 2 }
+  relevant_wiki_paths:
+    - memory/skills.md
+
+- id: os-3
+  question: "Which integrations are most frequently co-used together?"
+  target: optimisation_surface
+  expected_answer:
+    - "slack"
+    - "github"
+    - "linear"
+  scoring_mode: set_recall_at_k
+  graph_query_name: integrations_overview
+  graph_query_params: {}
+  relevant_wiki_paths:
+    - memory/integrations.md
+
+- id: os-4
+  question: "What multi-integration workflow spans the most tools?"
+  target: optimisation_surface
+  expected_answer: "cross_integration_deploy_pipeline"
+  scoring_mode: free_form_judge
+  graph_query_name: workflows_all
+  graph_query_params: {}
+  relevant_wiki_paths:
+    - memory/workflows.md
+
+- id: os-5
+  question: "Are there any action patterns where confidence is low due to contradictory information?"
+  target: optimisation_surface
+  expected_answer: "deploy_day_rule"
+  scoring_mode: free_form_judge
+  graph_query_name: memories_top
+  graph_query_params: { limit: 50, by: confidence }
+  relevant_wiki_paths:
+    - memory/memories.md

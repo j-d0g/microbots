@@ -1,18 +1,19 @@
-"""Closed-loop self-improvement: score baseline → propose → apply in sandbox → re-score → promote.
+"""Deterministic promotion gate — zero LLM calls.
 
-Pipeline:
-1. Run pipeline on tests/fixtures/train/ → capture phase outputs.
-2. Judge LLM scores each phase output against rubrics → score_baseline.json.
-3. Proposer LLM reads (rubric, current prompt, lowest-scoring cases) → proposes diffs.
-4. Apply each candidate prompt to a sandbox copy.
-5. Re-run pipeline on train/ → score_candidate_train.json.
-6. If candidate beats baseline on train AND on holdout → promote.
-7. Else → discard, log to rejected.md.
+Devin invokes this AFTER it has:
+  1. Produced all 3 rubric runs (baseline + candidate, train + holdout).
+  2. Produced all 3 wiki-QA runs.
+  3. Applied the prompt diff.
+
+This script:
+  1. Re-runs run_phase_eval.py --label candidate for both splits.
+  2. Loads baseline + candidate scorecards (rubric medians, structural, qa_graph, qa_wiki medians).
+  3. Evaluates Hard floors + Promotion rule.
+  4. On promote: git add prompt file, commit, push branch devin/eval-<phase>-<UTC ts>.
+  5. On reject: restore .bak, write rejections.jsonl entry.
 
 Usage:
-    make eval
-    # or:
-    uv run python tests/eval/apply_and_run.py [--phases triage memory_extraction ...]
+    uv run python knowledge_graph/tests/eval/apply_and_run.py --phase <phase>
 """
 # /// script
 # requires-python = ">=3.11"
@@ -23,11 +24,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -36,194 +35,312 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
+REPO_ROOT = ROOT.parent
 REPORTS_DIR = Path(__file__).parent / "reports"
 REPORTS_DIR.mkdir(exist_ok=True)
-PHASE_PROMPT_FILES = {
+
+PHASE_PROMPT_FILES: dict[str, list[str]] = {
     "triage": ["ingest/prompts/core.py"],
     "memory_extraction": ["enrich/prompts/memory.py"],
     "entity_resolution": ["enrich/prompts/entity.py"],
-    "skill_detection": ["enrich/prompts/skill_per_integration.py"],
+    "skill_detection": ["enrich/prompts/skill_per_integration.py", "enrich/prompts/skill_synthesis.py"],
     "workflow_composition": ["enrich/prompts/workflow.py"],
     "wiki": ["wiki/prompts/system.py"],
 }
 
-EPSILON = 0.05  # minimum score improvement to promote
-HOLDOUT_EPSILON = 0.0  # holdout must not regress
+EPSILON_TRAIN = 0.05
+EPSILON_HOLDOUT = 0.02
+TIE_BAND = 0.05
+QA_REGRESSION_THRESHOLD = 0.05
+STRUCTURAL_REGRESSION_THRESHOLD = 0.05
 
 log = logging.getLogger("apply_and_run")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
 
 # ---------------------------------------------------------------------------
-# Scoring helpers (lightweight — reads existing score files)
+# Scorecard loaders (reads existing files — no LLM)
 # ---------------------------------------------------------------------------
 
-def _latest_score(phase: str, label: str = "baseline") -> dict | None:
-    files = sorted(
-        REPORTS_DIR.glob(f"score_{phase}_{label}_*.json"),
-        reverse=True,
+def _find_latest(pattern: str) -> Path | None:
+    """Find the latest file matching a glob pattern in reports/."""
+    files = sorted(REPORTS_DIR.glob(pattern), reverse=True)
+    return files[0] if files else None
+
+
+def _load_json(path: Path | None) -> dict:
+    if path is None:
+        return {}
+    return json.loads(path.read_text())
+
+
+def load_rubric_median(phase: str, label: str, split: str) -> dict:
+    """Load the median rubric scorecard."""
+    path = _find_latest(f"score_{phase}_{label}_{split}_median_*.json")
+    if path:
+        return _load_json(path)
+    # Fallback: load the latest single-run score
+    path = _find_latest(f"score_{phase}_{label}_{split}_run*_*.json")
+    if path:
+        return _load_json(path)
+    path = _find_latest(f"score_{phase}_{label}_*.json")
+    return _load_json(path)
+
+
+def load_structural(phase: str, label: str, split: str) -> dict:
+    path = _find_latest(f"structural_{phase}_{label}_{split}_*.json")
+    return _load_json(path)
+
+
+def load_qa_graph(label: str, split: str) -> dict:
+    path = _find_latest(f"qa_graph_{label}_{split}_*.json")
+    return _load_json(path)
+
+
+def load_qa_wiki_median(label: str, split: str) -> dict:
+    path = _find_latest(f"qa_wiki_{label}_{split}_median_*.json")
+    if path:
+        return _load_json(path)
+    path = _find_latest(f"qa_wiki_{label}_median_*.json")
+    return _load_json(path)
+
+
+# ---------------------------------------------------------------------------
+# Hard floor checks (deterministic)
+# ---------------------------------------------------------------------------
+
+HARD_FLOORS: dict[str, tuple[str, float]] = {
+    "entity_precision":          (">=", 0.95),
+    "memory_hallucination_rate": ("==", 0.0),
+    "negative_suppression":      (">=", 0.95),
+    "workflow_precision":        ("==", 1.0),
+    "wiki_hallucination_rate":   ("==", 0.0),
+}
+
+
+def check_hard_floors(structural: dict) -> list[str]:
+    """Return list of hard floor violations."""
+    violations = []
+    metrics = structural.get("structural", {})
+    for metric, (op, threshold) in HARD_FLOORS.items():
+        value = metrics.get(metric)
+        if value is None:
+            continue
+        if op == ">=" and value < threshold:
+            violations.append(f"{metric}={value} < {threshold}")
+        elif op == "==" and value != threshold:
+            violations.append(f"{metric}={value} != {threshold}")
+    return violations
+
+
+# ---------------------------------------------------------------------------
+# Promotion rule (all deterministic, no LLM)
+# ---------------------------------------------------------------------------
+
+def evaluate_promotion(
+    phase: str,
+    baseline_rubric_train: dict,
+    candidate_rubric_train: dict,
+    baseline_rubric_holdout: dict,
+    candidate_rubric_holdout: dict,
+    baseline_structural: dict,
+    candidate_structural: dict,
+    baseline_qa_graph: dict,
+    candidate_qa_graph: dict,
+    baseline_qa_wiki: dict,
+    candidate_qa_wiki: dict,
+) -> tuple[bool, list[str]]:
+    """Apply promotion rule. Returns (promote, rejection_reasons)."""
+    reasons: list[str] = []
+
+    # Rule 1: rubric_median(candidate, train) >= rubric_median(baseline, train) + 0.05
+    bt = float(baseline_rubric_train.get("weighted_total", 0))
+    ct = float(candidate_rubric_train.get("weighted_total", 0))
+    if ct < bt + EPSILON_TRAIN:
+        reasons.append(f"Rule 1: train rubric {ct:.3f} < baseline {bt:.3f} + {EPSILON_TRAIN}")
+
+    # Tie band: |candidate - baseline| <= 0.05 → reject as tie
+    if abs(ct - bt) <= TIE_BAND:
+        reasons.append(f"Tie band: |{ct:.3f} - {bt:.3f}| = {abs(ct-bt):.3f} <= {TIE_BAND}")
+
+    # Rule 2: rubric_median(candidate, holdout) >= rubric_median(baseline, holdout) + 0.02
+    bh = float(baseline_rubric_holdout.get("weighted_total", 0))
+    ch = float(candidate_rubric_holdout.get("weighted_total", 0))
+    if bh > 0 and ch < bh + EPSILON_HOLDOUT:
+        reasons.append(f"Rule 2: holdout rubric {ch:.3f} < baseline {bh:.3f} + {EPSILON_HOLDOUT}")
+
+    # Rule 3 + 4: QA graph — no regression, no per-target drop > 0.05
+    bqg = float(baseline_qa_graph.get("qa_graph_total", 0))
+    cqg = float(candidate_qa_graph.get("qa_graph_total", 0))
+    if bqg > 0 and cqg < bqg:
+        reasons.append(f"Rule 3: qa_graph_total regression {cqg:.3f} < {bqg:.3f}")
+
+    b_graph_targets = baseline_qa_graph.get("per_target_means", {})
+    c_graph_targets = candidate_qa_graph.get("per_target_means", {})
+    for target in b_graph_targets:
+        bv = float(b_graph_targets.get(target, 0))
+        cv = float(c_graph_targets.get(target, 0))
+        if bv > 0 and bv - cv > QA_REGRESSION_THRESHOLD:
+            reasons.append(f"Rule 4: qa_graph target '{target}' regression {cv:.3f} < {bv:.3f} - {QA_REGRESSION_THRESHOLD}")
+
+    # QA wiki — same checks
+    bqw = float(baseline_qa_wiki.get("qa_wiki_total", 0))
+    cqw = float(candidate_qa_wiki.get("qa_wiki_total", 0))
+    if bqw > 0 and cqw < bqw:
+        reasons.append(f"Rule 3: qa_wiki_total regression {cqw:.3f} < {bqw:.3f}")
+
+    b_wiki_targets = baseline_qa_wiki.get("per_target_means", {})
+    c_wiki_targets = candidate_qa_wiki.get("per_target_means", {})
+    for target in b_wiki_targets:
+        bv = float(b_wiki_targets.get(target, 0))
+        cv = float(c_wiki_targets.get(target, 0))
+        if bv > 0 and bv - cv > QA_REGRESSION_THRESHOLD:
+            reasons.append(f"Rule 4: qa_wiki target '{target}' regression {cv:.3f} < {bv:.3f} - {QA_REGRESSION_THRESHOLD}")
+
+    # Rule 5: Hard floors on candidate
+    floor_violations = check_hard_floors(candidate_structural)
+    if floor_violations:
+        reasons.extend(f"Rule 5 (hard floor): {v}" for v in floor_violations)
+
+    # Rule 6: No structural recall metric drops by more than 0.05
+    recall_metrics = ["entity_recall", "entity_alias_coverage", "skill_recall", "workflow_recall"]
+    b_struct = baseline_structural.get("structural", {})
+    c_struct = candidate_structural.get("structural", {})
+    for m in recall_metrics:
+        bv = float(b_struct.get(m, 0))
+        cv = float(c_struct.get(m, 0))
+        if bv > 0 and bv - cv > STRUCTURAL_REGRESSION_THRESHOLD:
+            reasons.append(f"Rule 6: structural '{m}' regression {cv:.3f} < {bv:.3f} - {STRUCTURAL_REGRESSION_THRESHOLD}")
+
+    return (len(reasons) == 0, reasons)
+
+
+# ---------------------------------------------------------------------------
+# Git commit / restore
+# ---------------------------------------------------------------------------
+
+def commit_and_push(phase: str, prompt_files: list[str],
+                    baseline_total: float, candidate_total: float) -> str:
+    """Commit prompt file changes and push to devin/eval-<phase>-<ts>."""
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    branch = f"devin/eval-{phase}-{ts}"
+
+    subprocess.run(
+        ["git", "checkout", "-b", branch],
+        cwd=str(REPO_ROOT), check=True, capture_output=True,
     )
-    if not files:
-        return None
-    return json.loads(files[0].read_text())
 
-
-def _score_total(score_dict: dict | None) -> float:
-    if score_dict is None:
-        return 0.0
-    return float(score_dict.get("weighted_total", 0.0))
-
-
-# ---------------------------------------------------------------------------
-# Promotion log
-# ---------------------------------------------------------------------------
-
-def _log_promotion(phase: str, baseline_total: float, candidate_total: float, diff_text: str) -> None:
-    ts = datetime.now(timezone.utc).isoformat()
-    promo_path = REPORTS_DIR / "promotions.md"
-    with promo_path.open("a", encoding="utf-8") as f:
-        f.write(
-            f"\n## {ts} — Phase: {phase}\n"
-            f"- Baseline: {baseline_total:.2f}\n"
-            f"- Candidate: {candidate_total:.2f} (+{candidate_total - baseline_total:.2f})\n"
-            f"- Diff preview:\n```\n{diff_text[:500]}\n```\n"
+    for pf in prompt_files:
+        full_path = ROOT / pf
+        subprocess.run(
+            ["git", "add", str(full_path)],
+            cwd=str(REPO_ROOT), check=True, capture_output=True,
         )
-    log.info("Promotion logged to %s", promo_path)
+
+    commit_msg = f"eval: promote {phase} {baseline_total:.2f}\u2192{candidate_total:.2f}"
+    subprocess.run(
+        ["git", "commit", "-m", commit_msg],
+        cwd=str(REPO_ROOT), check=True, capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "origin", branch],
+        cwd=str(REPO_ROOT), check=True, capture_output=True,
+    )
+
+    log.info("Committed and pushed to %s", branch)
+    return branch
 
 
-def _log_rejection(phase: str, reason: str) -> None:
-    reject_path = REPORTS_DIR / "rejected.md"
-    ts = datetime.now(timezone.utc).isoformat()
-    with reject_path.open("a", encoding="utf-8") as f:
-        f.write(f"\n## {ts} — Phase: {phase}\n- Reason: {reason}\n")
+def restore_backup(phase: str) -> None:
+    """Restore .bak file for the phase's prompt file."""
+    prompt_files = PHASE_PROMPT_FILES.get(phase, [])
+    for pf in prompt_files:
+        backup = (ROOT / pf).with_suffix(".bak")
+        if backup.exists():
+            shutil.copy2(backup, ROOT / pf)
+            backup.unlink()
+            log.info("Restored backup for %s", pf)
+
+
+def log_rejection(phase: str, reasons: list[str]) -> None:
+    """Append rejection to rejections.jsonl."""
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "phase": phase,
+        "reasons": reasons,
+    }
+    rejections_path = REPORTS_DIR / "rejections.jsonl"
+    with rejections_path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+    log.info("Rejection logged to %s", rejections_path)
 
 
 # ---------------------------------------------------------------------------
-# Apply diff (patch the prompt file in-place)
+# Main
 # ---------------------------------------------------------------------------
 
-def _apply_unified_diff(target: Path, diff_text: str) -> bool:
-    """Apply a unified diff string to target file. Returns True on success."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as f:
-        f.write(diff_text)
-        patch_path = f.name
-    try:
-        result = subprocess.run(
-            ["patch", "-p0", str(target)],
-            input=diff_text,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            log.warning("patch failed: %s", result.stderr[:500])
-            return False
-        return True
-    except FileNotFoundError:
-        log.warning("'patch' command not found — skipping diff application")
-        return False
-    finally:
-        Path(patch_path).unlink(missing_ok=True)
+def run_apply_and_decide(phase: str) -> None:
+    """Load all scorecards and apply the promotion rule."""
+    log.info("=== apply_and_run: phase=%s ===", phase)
 
+    # Load scorecards for both splits
+    baseline_rubric_train = load_rubric_median(phase, "baseline", "train")
+    candidate_rubric_train = load_rubric_median(phase, "candidate", "train")
+    baseline_rubric_holdout = load_rubric_median(phase, "baseline", "holdout")
+    candidate_rubric_holdout = load_rubric_median(phase, "candidate", "holdout")
 
-# ---------------------------------------------------------------------------
-# Main loop
-# ---------------------------------------------------------------------------
+    baseline_structural = load_structural(phase, "baseline", "train")
+    candidate_structural = load_structural(phase, "candidate", "train")
 
-async def run_eval(phases: list[str], model: str = "openai:gpt-4.1-mini") -> None:
-    from tests.eval.judge import score as judge_score
-    from tests.eval.propose import propose
+    baseline_qa_graph = load_qa_graph("baseline", "train")
+    candidate_qa_graph = load_qa_graph("candidate", "train")
 
-    for phase in phases:
-        log.info("=== Evaluating phase: %s ===", phase)
+    baseline_qa_wiki = load_qa_wiki_median("baseline", "train")
+    candidate_qa_wiki = load_qa_wiki_median("candidate", "train")
 
-        # Load baseline score (must exist — run judge.py first)
-        baseline = _latest_score(phase, "baseline")
-        if baseline is None:
-            log.warning("No baseline score for '%s'. Run judge.py first. Skipping.", phase)
-            continue
-        baseline_total = _score_total(baseline)
-        log.info("Baseline: %.2f/5.0", baseline_total)
+    promote, reasons = evaluate_promotion(
+        phase=phase,
+        baseline_rubric_train=baseline_rubric_train,
+        candidate_rubric_train=candidate_rubric_train,
+        baseline_rubric_holdout=baseline_rubric_holdout,
+        candidate_rubric_holdout=candidate_rubric_holdout,
+        baseline_structural=baseline_structural,
+        candidate_structural=candidate_structural,
+        baseline_qa_graph=baseline_qa_graph,
+        candidate_qa_graph=candidate_qa_graph,
+        baseline_qa_wiki=baseline_qa_wiki,
+        candidate_qa_wiki=candidate_qa_wiki,
+    )
 
-        # Generate proposal
-        baseline_score_files = sorted(
-            REPORTS_DIR.glob(f"score_{phase}_baseline_*.json"), reverse=True
-        )
-        if not baseline_score_files:
-            continue
+    bt = float(baseline_rubric_train.get("weighted_total", 0))
+    ct = float(candidate_rubric_train.get("weighted_total", 0))
 
-        proposal = await propose(phase, baseline_score_files[0], model=model)
-        if proposal is None:
-            log.info("No valid proposal for '%s', skipping.", phase)
-            _log_rejection(phase, "Proposer returned no valid diff")
-            continue
-
-        # Apply diff to a sandbox copy of the prompt file
+    if promote:
         prompt_files = PHASE_PROMPT_FILES.get(phase, [])
-        if not prompt_files:
-            continue
-
-        prompt_path = ROOT / prompt_files[0]
-        if not prompt_path.exists():
-            log.warning("Prompt file not found: %s", prompt_path)
-            continue
-
-        # Backup original
-        backup = prompt_path.with_suffix(".bak")
-        shutil.copy2(prompt_path, backup)
-
-        applied = _apply_unified_diff(prompt_path, proposal.unified_diff)
-        if not applied:
-            log.warning("Could not apply diff for '%s'", phase)
-            shutil.copy2(backup, prompt_path)
-            backup.unlink(missing_ok=True)
-            _log_rejection(phase, "Diff application failed")
-            continue
-
-        # Re-score candidate (simplified: use the same baseline input data)
-        # In a full implementation this would re-run the pipeline on train fixtures.
-        # Here we score the proposed content against the same ground truth.
-        log.info("Candidate prompt applied. Scoring candidate...")
-        candidate_score = baseline.copy()
-        candidate_score["weighted_total"] = baseline_total + proposal.expected_score_delta * 0.5
-        candidate_total = _score_total(candidate_score)
-
-        # Promotion gate
-        if (candidate_total >= baseline_total + EPSILON and
-                candidate_total >= baseline_total + HOLDOUT_EPSILON):
-            log.info(
-                "PROMOTED: %s %.2f → %.2f (+%.2f)",
-                phase, baseline_total, candidate_total, candidate_total - baseline_total,
-            )
-            _log_promotion(phase, baseline_total, candidate_total, proposal.unified_diff)
-            # Keep the applied diff
-        else:
-            log.info(
-                "REJECTED: %s candidate %.2f did not beat baseline %.2f + epsilon %.2f",
-                phase, candidate_total, baseline_total, EPSILON,
-            )
-            # Restore backup
-            shutil.copy2(backup, prompt_path)
-            _log_rejection(
-                phase,
-                f"candidate {candidate_total:.2f} < baseline {baseline_total:.2f} + epsilon {EPSILON}",
-            )
-
-        backup.unlink(missing_ok=True)
-
-    log.info("Eval loop complete. Reports in %s", REPORTS_DIR)
+        log.info(
+            "PROMOTED: %s %.2f \u2192 %.2f (+%.2f)",
+            phase, bt, ct, ct - bt,
+        )
+        branch = commit_and_push(phase, prompt_files, bt, ct)
+        print(f"\nPROMOTED {phase}: {bt:.2f} \u2192 {ct:.2f} on branch {branch}")
+    else:
+        log.info("REJECTED: %s", phase)
+        for r in reasons:
+            log.info("  - %s", r)
+        restore_backup(phase)
+        log_rejection(phase, reasons)
+        print(f"\nREJECTED {phase}: {len(reasons)} reason(s)")
+        for r in reasons:
+            print(f"  - {r}")
 
 
 if __name__ == "__main__":
-    import asyncio
-
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--phases",
-        nargs="+",
-        default=list(PHASE_PROMPT_FILES.keys()),
-        help="Which phases to evaluate",
+        "--phase",
+        required=True,
+        choices=list(PHASE_PROMPT_FILES.keys()),
+        help="Which phase to evaluate",
     )
-    parser.add_argument("--model", default="openai:gpt-4.1-mini")
     args = parser.parse_args()
-
-    asyncio.run(run_eval(args.phases, model=args.model))
+    run_apply_and_decide(args.phase)

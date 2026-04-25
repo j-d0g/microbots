@@ -1,0 +1,186 @@
+# Adversarial test cases for the eval harness.
+# Merged into the main corpus by generate_corpus.py to stress-test
+# entity resolution, noise suppression, contradiction handling,
+# and multi-integration workflow detection.
+
+# --- Two Alices: must NOT merge ---
+two_alices:
+  - source_id: "adv-slack-alice-park-intro"
+    source_type: slack_thread
+    integration: slack
+    channel: "#general"
+    title: "New hire: Alice Park (Design)"
+    content: |
+      Alice Park: Hey everyone! I'm Alice, just joined the design team.
+      Desmond: Welcome Alice! Excited to have you.
+      Alice Park: Thanks! My email is alice.park@company.com and I'm @alice-park on Slack.
+    signal_level: high
+    week: 2
+    entity_hint:
+      name: Alice Park
+      type: person
+      aliases: ["@alice-park", "alice.park@company.com"]
+
+  - source_id: "adv-slack-alice-chen-infra"
+    source_type: slack_thread
+    integration: slack
+    channel: "#deployments"
+    title: "Alice Chen infra review"
+    content: |
+      Alice Chen: I reviewed the Terraform changes. LGTM, ship it.
+      Desmond: Thanks Alice! Deploying now. CC @alice on the deploy thread.
+    signal_level: high
+    week: 2
+
+# --- Low-signal noise (must yield zero memories) ---
+noise_chats:
+  - source_id: "adv-slack-noise-lunch"
+    source_type: slack_thread
+    integration: slack
+    channel: "#general"
+    title: "Lunch plans"
+    content: |
+      Bob Kim: Anyone up for tacos?
+      Carol Diaz: Yes! The new place on 5th?
+      Bob Kim: Perfect, noon works.
+    signal_level: low
+    week: 1
+
+  - source_id: "adv-slack-noise-holiday"
+    source_type: slack_thread
+    integration: slack
+    channel: "#general"
+    title: "Holiday greetings"
+    content: |
+      Desmond: Happy Friday everyone! Enjoy the long weekend.
+      Alice Chen: You too! Any fun plans?
+      Desmond: Just grilling and relaxing.
+    signal_level: low
+    week: 3
+
+  - source_id: "adv-slack-noise-gif"
+    source_type: slack_thread
+    integration: slack
+    channel: "#general"
+    title: "Friday vibes"
+    content: |
+      Carol Diaz: [GIF: dancing cat]
+      Bob Kim: lol
+      Desmond: haha classic
+    signal_level: low
+    week: 4
+
+# --- Contradiction: deploy day rule ---
+contradiction:
+  - source_id: "adv-slack-deploy-rule-w3"
+    source_type: slack_thread
+    integration: slack
+    channel: "#deployments"
+    title: "Deploy cadence discussion (week 3)"
+    content: |
+      Desmond: New rule: we only deploy to prod on Tuesdays. No exceptions.
+      Alice Chen: Makes sense, gives us Monday to prep and Wednesday to monitor.
+      Bob Kim: Agreed. Updating the runbook now.
+    signal_level: high
+    week: 3
+    contradiction_topic: deploy_day_rule
+
+  - source_id: "adv-slack-deploy-rule-w4"
+    source_type: slack_thread
+    integration: slack
+    channel: "#deployments"
+    title: "Deploy cadence update (week 4)"
+    content: |
+      Desmond: Actually, we're switching deploys to Thursdays starting next sprint. Tuesday is too tight after standup.
+      Alice Chen: Fine by me. I'll update the runbook.
+      Bob Kim: Thursday it is. Less context-switching.
+    signal_level: high
+    week: 4
+    contradiction_topic: deploy_day_rule
+
+# --- Multi-integration workflow: Linear -> GitHub -> Slack -> Notion ---
+multi_integration_workflow:
+  - source_id: "adv-linear-cross-intg"
+    source_type: linear_ticket
+    integration: linear
+    title: "MIC-99: Cross-integration deploy pipeline"
+    content: |
+      Project: Agent Memory
+      Assignee: Desmond
+      Status: In Progress -> Done
+      Description: Implement the full deploy pipeline. Steps:
+      1. Create Linear ticket for the release.
+      2. Open GitHub PR with the changes.
+      3. Post deploy notification to #deployments on Slack.
+      4. Update the deploy runbook in Notion.
+      PR linked: #99.
+    signal_level: curated
+    week: 3
+
+  - source_id: "adv-github-cross-intg"
+    source_type: github_pr
+    integration: github
+    title: "PR #99: Deploy pipeline automation"
+    content: |
+      Bob Kim: LGTM. The Linear ticket MIC-99 is linked.
+      Desmond: Thanks! Merging now. Will post to Slack and update Notion runbook.
+      Bob Kim: Merged.
+    signal_level: high
+    week: 3
+
+  - source_id: "adv-slack-cross-intg"
+    source_type: slack_thread
+    integration: slack
+    channel: "#deployments"
+    title: "Deploy pipeline shipped"
+    content: |
+      Desmond: Deploy pipeline (MIC-99, PR #99) is live. Notion runbook updated.
+      Alice Chen: Confirmed. All green.
+    signal_level: high
+    week: 3
+
+  - source_id: "adv-notion-cross-intg"
+    source_type: notion_page
+    integration: notion
+    title: "Deploy Runbook v2"
+    content: |
+      Updated deploy runbook with full pipeline:
+      Linear ticket -> GitHub PR -> Slack notification -> Notion runbook update.
+      Linked: MIC-99, PR #99. Approved by Alice Chen.
+    signal_level: high
+    week: 3
+
+# --- Alias drift for Bob ---
+alias_drift:
+  - source_id: "adv-github-bob-alias"
+    source_type: github_pr
+    integration: github
+    title: "PR #55: Bob's refactor"
+    content: |
+      bob-kim: Refactored the enrichment layer. Ready for review.
+      Desmond: @bob nice work. Approved.
+    signal_level: high
+    week: 2
+
+  - source_id: "adv-gmail-bob-alias"
+    source_type: gmail_thread
+    integration: gmail
+    title: "Re: API contract renewal"
+    content: |
+      From: bob@company.com
+      To: desmond@company.com
+      Bob K. here. I've reviewed the Anthropic contract. Looks good to renew.
+      - Bob K.
+    signal_level: mid
+    week: 3
+
+  - source_id: "adv-slack-bob-alias"
+    source_type: slack_thread
+    integration: slack
+    channel: "#code-review"
+    title: "Bob's code review"
+    content: |
+      @bob: I'll take the review for PR #55.
+      Desmond: Thanks Bob Kim!
+    signal_level: mid
+    week: 2
