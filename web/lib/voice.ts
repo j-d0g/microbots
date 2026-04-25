@@ -255,7 +255,7 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
     optsRef.current = opts;
   }, [opts]);
 
-  /* Active STT session. Set in onPress, consumed in onRelease. */
+  /* Active STT session. Set in onPress, consumed by the tail timer. */
   const sessionRef = useRef<SttSession | null>(null);
   /* Pending-release: set if the user lets go while onPress is still
    * awaiting mic permission / recorder warmup. Honoured at the tail
@@ -264,9 +264,28 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
   /* True while a finalizeRelease is in flight, so an immediate second
    * onPress doesn't try to stomp on it. */
   const finalizingRef = useRef(false);
+  /* Tail timer: when the user releases `.`, we keep the mic open for
+   * a short window (TAIL_MS) before flushing. This catches trailing
+   * words that landed at the same instant the user lifted their finger.
+   * If they re-press during the tail, we cancel the timer and resume
+   * the same session — no new mic prompt, no lost audio. */
+  const tailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cfgSttRef = useRef(cfg.stt);
   cfgSttRef.current = cfg.stt;
+
+  const TAIL_MS = 400;
+
+  const clearTailTimer = () => {
+    if (tailTimerRef.current !== null) {
+      clearTimeout(tailTimerRef.current);
+      tailTimerRef.current = null;
+    }
+  };
+
+  /* Tear down the tail timer on unmount so we don't fire after the
+   * component goes away. */
+  useEffect(() => () => clearTailTimer(), []);
 
   const finalize = useCallback(
     async (session: SttSession) => {
@@ -287,6 +306,16 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
   );
 
   const onPress = useCallback(async () => {
+    // Re-press during the tail window: cancel the pending stop and
+    // resume the existing session. No new mic prompt, no lost audio.
+    if (tailTimerRef.current !== null && sessionRef.current) {
+      clearTailTimer();
+      holdingRef.current = true;
+      setHolding(true);
+      setDock("listening");
+      return;
+    }
+
     if (holdingRef.current) return;
     holdingRef.current = true;
     pendingReleaseRef.current = false;
@@ -325,8 +354,14 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
       pendingReleaseRef.current = false;
       holdingRef.current = false;
       setHolding(false);
-      sessionRef.current = null;
-      await finalize(session);
+      // Even the synthetic-release path keeps the tail window so
+      // someone tapping `.` and immediately speaking still gets heard.
+      tailTimerRef.current = setTimeout(() => {
+        tailTimerRef.current = null;
+        if (sessionRef.current !== session) return;
+        sessionRef.current = null;
+        finalize(session);
+      }, TAIL_MS);
     }
   }, [setDock, clearTranscript, appendTranscript, finalize]);
 
@@ -340,12 +375,21 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
       return;
     }
 
-    const s = sessionRef.current;
-    sessionRef.current = null;
+    const session = sessionRef.current;
     holdingRef.current = false;
     pendingReleaseRef.current = false;
     setHolding(false);
-    await finalize(s);
+    // Stay in dock="listening" during the tail so the user gets the
+    // visual feedback that we're still capturing the last 400ms.
+
+    clearTailTimer();
+    tailTimerRef.current = setTimeout(() => {
+      tailTimerRef.current = null;
+      // If the session was swapped out (e.g. unmount), bail.
+      if (sessionRef.current !== session) return;
+      sessionRef.current = null;
+      void finalize(session);
+    }, TAIL_MS);
   }, [finalize]);
 
   return {
