@@ -53,3 +53,9 @@ Thumbs.db
 # --- Logs ---
 *.log
 logs/
+
+# --- External reference repos (cloned for reading, not part of microbots) ---
+kaig/
+
+# --- Worktrees ---
+.worktrees/
