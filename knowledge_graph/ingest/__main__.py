@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 
 # Writable Composio cache (before importing composio)
-_root = Path(__file__).resolve().parent.parent
+# parent.parent = knowledge_graph/, parent.parent.parent = git root
+_root = Path(__file__).resolve().parent.parent.parent
 _composio_cache = _root / ".composio_cache"
 _composio_cache.mkdir(exist_ok=True)
 os.environ.setdefault("COMPOSIO_CACHE_DIR", str(_composio_cache))

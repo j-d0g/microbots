@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 # Load .env before checking for keys so tests work when run directly
 load_dotenv()
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
 
 # Whether an LLM key is available in the environment
 _HAS_LLM_KEY = bool(

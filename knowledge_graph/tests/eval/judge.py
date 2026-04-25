@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 
 load_dotenv()
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
 RUBRICS_DIR = Path(__file__).parent / "rubrics"
 REPORTS_DIR = Path(__file__).parent / "reports"
 REPORTS_DIR.mkdir(exist_ok=True)
