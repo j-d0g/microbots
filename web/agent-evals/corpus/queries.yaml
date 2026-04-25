@@ -1,0 +1,335 @@
+# 80-query eval corpus for the microbots UI agent.
+# Categories weighted toward marginal (25) and multi_step (20).
+# Each query has: id, category, query, notes (optional).
+
+# ─── layout (10) ─────────────────────────────────────────────
+
+- id: layout-01
+  category: layout
+  query: "split the brief and the graph side by side"
+
+- id: layout-02
+  category: layout
+  query: "focus the workflow"
+
+- id: layout-03
+  category: layout
+  query: "clean slate"
+
+- id: layout-04
+  category: layout
+  query: "tile everything"
+
+- id: layout-05
+  category: layout
+  query: "put the stack on the right and the brief on the left"
+
+- id: layout-06
+  category: layout
+  query: "close the settings"
+
+- id: layout-07
+  category: layout
+  query: "show the graph full screen"
+
+- id: layout-08
+  category: layout
+  query: "open playbooks next to the workflow"
+
+- id: layout-09
+  category: layout
+  query: "minimize everything except the brief"
+
+- id: layout-10
+  category: layout
+  query: "i need a reading layout with the workflow and the stack"
+
+# ─── content (10) ────────────────────────────────────────────
+
+- id: content-01
+  category: content
+  query: "highlight notion-scribe in the stack"
+
+- id: content-02
+  category: content
+  query: "compare slack and gmail integrations"
+
+- id: content-03
+  category: content
+  query: "explain bp-001"
+
+- id: content-04
+  category: content
+  query: "filter the brief to high confidence only"
+
+- id: content-05
+  category: content
+  query: "show me the bug triage workflow steps"
+
+- id: content-06
+  category: content
+  query: "who is connected to notion in the graph?"
+
+- id: content-07
+  category: content
+  query: "expand the email routing proposal"
+
+- id: content-08
+  category: content
+  query: "filter the stack to warnings only"
+
+- id: content-09
+  category: content
+  query: "search the graph for maya"
+
+- id: content-10
+  category: content
+  query: "scroll to yesterday's proposals in the brief"
+
+# ─── multi_step (20) ────────────────────────────────────────
+
+- id: multi-01
+  category: multi_step
+  query: "show me what's broken and explain why"
+
+- id: multi-02
+  category: multi_step
+  query: "open the bug triage workflow, scroll to step 3, and explain it"
+
+- id: multi-03
+  category: multi_step
+  query: "open the brief, filter to high confidence, and expand the top one"
+
+- id: multi-04
+  category: multi_step
+  query: "show me the stack, highlight notion-scribe, and tell me what's wrong"
+
+- id: multi-05
+  category: multi_step
+  query: "put the graph and the workflow side by side and filter the graph to memories"
+
+- id: multi-06
+  category: multi_step
+  query: "open the brief and the stack, then compare what's broken with what's proposed"
+
+- id: multi-07
+  category: multi_step
+  query: "find everything related to notion in the graph and explain the rate limit warning"
+
+- id: multi-08
+  category: multi_step
+  query: "show me the morning brief, approve bp-001, then open the workflow"
+
+- id: multi-09
+  category: multi_step
+  query: "open settings, check which integrations are connected, then show me the graph filtered to gmail"
+
+- id: multi-10
+  category: multi_step
+  query: "clean the canvas, open just the stack, filter to warnings, and explain the warn"
+
+- id: multi-11
+  category: multi_step
+  query: "show the playbooks, search for standup, then open the workflow to compare"
+
+- id: multi-12
+  category: multi_step
+  query: "open the brief and graph together, then highlight bp-003 in the brief and search for it in the graph"
+
+- id: multi-13
+  category: multi_step
+  query: "focus the stack, select notion-scribe, and push a memory card about the rate limit"
+
+- id: multi-14
+  category: multi_step
+  query: "show the workflow list, select bug-triage-pipeline, then show its recipe"
+
+- id: multi-15
+  category: multi_step
+  query: "tile the brief, stack, and workflow, then filter the brief to low confidence"
+
+- id: multi-16
+  category: multi_step
+  query: "open the graph, zoom to fit, then filter by the slack integration"
+
+- id: multi-17
+  category: multi_step
+  query: "show me the morning brief, defer the newsletter cleanup, then focus on bug triage"
+
+- id: multi-18
+  category: multi_step
+  query: "put the graph full screen, search for raj, and show his neighbors"
+
+- id: multi-19
+  category: multi_step
+  query: "open the stack and the settings side by side, then check if notion is connected"
+
+- id: multi-20
+  category: multi_step
+  query: "show the workflow, toggle to dag view, and explain the first step"
+
+# ─── marginal (25) ──────────────────────────────────────────
+
+- id: marginal-01
+  category: marginal
+  query: "i'm anxious about friday"
+
+- id: marginal-02
+  category: marginal
+  query: "what should i worry about today?"
+
+- id: marginal-03
+  category: marginal
+  query: "give me a vibe check"
+
+- id: marginal-04
+  category: marginal
+  query: "how's the team doing?"
+
+- id: marginal-05
+  category: marginal
+  query: "anything urgent?"
+
+- id: marginal-06
+  category: marginal
+  query: "what happened while i was sleeping?"
+
+- id: marginal-07
+  category: marginal
+  query: "should i be worried about notion?"
+
+- id: marginal-08
+  category: marginal
+  query: "is raj keeping up?"
+
+- id: marginal-09
+  category: marginal
+  query: "catch me up"
+
+- id: marginal-10
+  category: marginal
+  query: "what's the health of the system?"
+
+- id: marginal-11
+  category: marginal
+  query: "am i behind on anything?"
+
+- id: marginal-12
+  category: marginal
+  query: "what did i miss yesterday?"
+
+- id: marginal-13
+  category: marginal
+  query: "how are the automations holding up?"
+
+- id: marginal-14
+  category: marginal
+  query: "tell me something useful"
+
+- id: marginal-15
+  category: marginal
+  query: "is everything running smoothly?"
+
+- id: marginal-16
+  category: marginal
+  query: "i feel like something is off"
+
+- id: marginal-17
+  category: marginal
+  query: "what's the biggest risk right now?"
+
+- id: marginal-18
+  category: marginal
+  query: "should i check on anything before standup?"
+
+- id: marginal-19
+  category: marginal
+  query: "how confident are we in the proposals?"
+
+- id: marginal-20
+  category: marginal
+  query: "what needs my attention?"
+
+- id: marginal-21
+  category: marginal
+  query: "give me the executive summary"
+
+- id: marginal-22
+  category: marginal
+  query: "i have five minutes before a meeting"
+
+- id: marginal-23
+  category: marginal
+  query: "is anything on fire?"
+
+- id: marginal-24
+  category: marginal
+  query: "what's the state of play?"
+
+- id: marginal-25
+  category: marginal
+  query: "help me prepare for the investor call"
+
+# ─── failure_recovery (10) ──────────────────────────────────
+
+- id: fail-01
+  category: failure_recovery
+  query: "approve the slack thing"
+
+- id: fail-02
+  category: failure_recovery
+  query: "show me the customer-onboarding workflow"
+
+- id: fail-03
+  category: failure_recovery
+  query: "open the dashboard"
+
+- id: fail-04
+  category: failure_recovery
+  query: "highlight bp-999"
+
+- id: fail-05
+  category: failure_recovery
+  query: "filter the stack to critical"
+
+- id: fail-06
+  category: failure_recovery
+  query: "close the calendar"
+
+- id: fail-07
+  category: failure_recovery
+  query: "show me the jenkins logs"
+
+- id: fail-08
+  category: failure_recovery
+  query: "select the deployment workflow"
+
+- id: fail-09
+  category: failure_recovery
+  query: "zoom into the slack node"
+
+- id: fail-10
+  category: failure_recovery
+  query: "open the X window"
+
+# ─── edge_case (5) ──────────────────────────────────────────
+
+- id: edge-01
+  category: edge_case
+  query: ""
+
+- id: edge-02
+  category: edge_case
+  query: "do nothing"
+
+- id: edge-03
+  category: edge_case
+  query: "open everything then close everything"
+
+- id: edge-04
+  category: edge_case
+  query: "🔥🔥🔥"
+
+- id: edge-05
+  category: edge_case
+  query: "open the brief close the brief open the brief close the brief"

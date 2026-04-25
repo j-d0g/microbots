@@ -13,7 +13,7 @@
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 
 let _client: ReturnType<typeof createOpenAICompatible> | null = null;
 

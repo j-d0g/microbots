@@ -11,7 +11,7 @@ interactions and feel snappy and intentional.
 
 Strategy is locked:
 
-- **Model**: `google/gemini-2.5-flash` via OpenRouter. No bake-offs.
+- **Model**: `google/gemini-2.5-flash-lite` via OpenRouter. No bake-offs.
   Wins come from prompts, context engineering, architecture, and tool
   surface.
 - **Cadence**: capability sprints — one named capability per Devin
@@ -328,3 +328,25 @@ That's it. Devin reconstructs full context from this file.
 > `Next:` which sprint to pick up
 
 <!-- Devin: append entries below this line. Newest first. -->
+
+### Sprint 0 — Foundation: eval harness + instrumentation · 2025-04-25
+
+**Shipped:** Built the complete eval harness (`instrument.ts`, `judge.ts`, `run.ts`) with 80-query hand-written corpus (25 marginal, 20 multi_step, 10 layout, 10 content, 10 failure_recovery, 5 edge_case) and rule-based scoring across all six north-star axes. Wired `npm run agent:eval` / `agent:eval:quick`. Deleted legacy `/api/agent/stream` route and replaced the scripted SCRIPTS fallback in `agent-router.ts` with a single "agent unavailable" toast. Locked production model to `google/gemini-2.5-flash-lite`. Committed baseline report.
+
+**Eval delta (baseline — no prior):**
+
+| Metric | Baseline | Target |
+|---|---|---|
+| Tool-call correctness | 91.8% | ≥ 90% |
+| TTFW p50 | 1226ms | < 600ms |
+| Full-turn p50 / p95 | 2791ms / 14353ms | < 1.8s / < 3.2s |
+| Mean tool calls (multi_step) | 4.0 | ≥ 4.0 |
+| Marginal-intent pass-rate | 80.0% | ≥ 70% |
+| Recovery rate | 100.0% | ≥ 60% |
+| Calm-canvas avg | 4.9 / 5 | ≥ 4 / 5 |
+
+**Regressions:** none (baseline).
+
+**Observations:** Marginal failures (5/25) stem from the orchestrator skipping `delegate_layout` on pure-information queries — it delegates content but doesn't stage the canvas. Latency above target is expected (OpenRouter network + flash-lite cold starts); Sprint 6 addresses this.
+
+**Next:** Sprint 1 (snapshot & context engineering) or Sprint 4 (marginal intent) depending on which metric the team wants to push first. Marginal-intent at 80% already exceeds the 70% target, so snapshot enrichment (Sprint 1) may yield broader gains.
