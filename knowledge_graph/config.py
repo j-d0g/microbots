@@ -14,7 +14,7 @@ load_dotenv()
 @dataclass
 class LLMConfig:
     provider: Literal["openrouter", "anthropic"] = "openrouter"
-    openrouter_model: str = "nvidia/nemotron-ultra-253b"
+    openrouter_model: str = "nvidia/nemotron-3-super-120b-a12b"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     anthropic_model: str = "claude-haiku-4-5-20251001"
     max_tokens: int = 4096
