@@ -63,7 +63,6 @@ export function Desktop() {
     <div
       className="fixed inset-0 overflow-hidden"
       data-testid="desktop-canvas"
-      style={{ bottom: 80 }}
     >
       <AnimatePresence mode="popLayout">
         {windows

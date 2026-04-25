@@ -8,6 +8,7 @@ import { OnboardingRoom } from "@/components/rooms/OnboardingRoom";
 import { AgentBridge } from "@/components/agent/AgentBridge";
 import { StoreBridge } from "@/components/agent/StoreBridge";
 import { SnapshotInspector } from "@/components/agent/SnapshotInspector";
+import { VoiceBridge } from "@/components/agent/VoiceBridge";
 import { useAgentStore } from "@/lib/store";
 
 export default function Home() {
@@ -27,6 +28,7 @@ export default function Home() {
     <div className="relative min-h-dvh bg-paper-0 text-ink-90">
       <StoreBridge />
       <AgentBridge />
+      <VoiceBridge />
       <Desktop />
       <CardStack />
       <FloatingDock />

@@ -82,7 +82,11 @@ const MIN_SIZES: Record<RoomKind, { w: number; h: number }> = {
 
 export function getMinSize(kind: RoomKind) { return MIN_SIZES[kind]; }
 
-const DOCK_HEIGHT = 80;
+/** The dock floats over windows now (translucent), so windows are
+ *  allowed to extend all the way to the viewport bottom. We still keep
+ *  a small visual reserve so a fully-bottom window doesn't sit behind
+ *  the dock pill by default. */
+const DOCK_VISUAL_RESERVE = 24;
 const GAP = 16;
 
 export type RoomState =
@@ -289,9 +293,9 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     const vh = typeof window !== "undefined" ? window.innerHeight : 768;
     const min = MIN_SIZES[kind];
     const dw = Math.max(opts?.rect?.w ?? Math.min(640, vw - GAP * 2), min.w);
-    const dh = Math.max(opts?.rect?.h ?? Math.min(500, vh - DOCK_HEIGHT - GAP * 2), min.h);
+    const dh = Math.max(opts?.rect?.h ?? Math.min(500, vh - DOCK_VISUAL_RESERVE - GAP * 2), min.h);
     const dx = opts?.rect?.x ?? Math.max(GAP, (vw - dw) / 2 + (s.windows.length % 5) * 32);
-    const dy = opts?.rect?.y ?? Math.max(GAP, (vh - DOCK_HEIGHT - dh) / 2 + (s.windows.length % 5) * 24);
+    const dy = opts?.rect?.y ?? Math.max(GAP, (vh - DOCK_VISUAL_RESERVE - dh) / 2 + (s.windows.length % 5) * 24);
 
     const id = `win-${++_modalId}`;
     const z = s.nextZ;
@@ -352,7 +356,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
         windows: s.windows.map((w) => {
           if (w.id !== id) return w;
           const cx = Math.max(0, Math.min(x, vw - 80));
-          const cy = Math.max(0, Math.min(y, vh - DOCK_HEIGHT - 40));
+          const cy = Math.max(0, Math.min(y, vh - 40));
           return { ...w, rect: { ...w.rect, x: cx, y: cy } };
         }),
       };
@@ -429,7 +433,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       ].slice(-6);
       const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
       const vh = typeof window !== "undefined" ? window.innerHeight : 768;
-      const usable = vh - DOCK_HEIGHT;
+      const usable = vh - DOCK_VISUAL_RESERVE;
       const visible = s.windows.filter((w) => !w.minimized);
       if (visible.length === 0) return s;
 
