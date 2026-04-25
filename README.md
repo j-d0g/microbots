@@ -22,8 +22,8 @@ All structured knowledge lives in SurrealDB. Markdown files in `memory/` are gen
 ### Quick start
 
 ```bash
-# Copy env and edit credentials if needed
-cp .env .env.local
+# Copy the env template and fill in any secrets
+cp .env.example .env
 
 # Start SurrealDB (installs Python deps automatically via uv)
 make db-up
@@ -63,10 +63,14 @@ make db-reset   # down + wipe volume + up + schema + seed
 ```
 microbots/
 ├── docker-compose.yml          # SurrealDB v2
-├── .env                        # credentials and config
+├── .env.example                # env template — copy to .env
 ├── Makefile                    # lifecycle targets
 ├── pyproject.toml              # uv-managed dependencies
 ├── requirements.txt            # legacy pip reference
+│
+├── microbots/                  # shared Python package
+│   ├── __init__.py             # public re-exports
+│   └── log.py                  # central Logfire-backed logging facade
 │
 ├── schema/
 │   ├── 00_setup.surql          # namespace, database, analyzers
@@ -78,6 +82,10 @@ microbots/
 ├── seed/
 │   └── seed.py                 # seeds realistic data (5 integrations, 10 entities, 5 chats, 6 memories, 4 skills, 3 workflows)
 │
+├── docs/
+│   ├── feature.md              # product / Render SDK notes
+│   └── logging.md              # observability guide (Logfire usage)
+│
 └── memory/                     # generated markdown navigation artifacts
     ├── user.md                 # root index
     ├── integrations/agents.md
@@ -88,6 +96,46 @@ microbots/
     ├── skills/agents.md
     └── workflows/agents.md
 ```
+
+## Observability
+
+All scripts and services in this repo log through a single facade in
+`microbots/log.py`, backed by [Pydantic Logfire](https://logfire.pydantic.dev).
+Four environment variables configure it; the same records are emitted
+to the local console **and** to Logfire (when a token is set) — same
+timestamps, same attributes, same per-run `correlation_id`.
+
+```bash
+# .env
+LOGFIRE_TOKEN=                                      # empty = local only
+LOGFIRE_SERVICE_NAME=microbots
+LOGFIRE_BASE_URL=https://logfire-eu.pydantic.dev    # EU by default
+LOGFIRE_ENVIRONMENT=dev
+```
+
+```python
+from microbots import get_logger, span, instrument, get_correlation_id
+
+log = get_logger(__name__)
+log.info("hello {user}", user="alice")
+
+with span("db.query", table="entity"):
+    rows = await db.query("SELECT * FROM entity;")
+
+@instrument("workflow.deploy_pipeline")
+async def deploy(branch: str) -> str: ...
+
+print("run:", get_correlation_id())                 # e.g. "8c3f1a902b77"
+```
+
+Every record automatically carries a 12-char `correlation_id` so a
+single run is one query in the Logfire UI:
+`correlation_id = "8c3f1a902b77"`. Override via `CORRELATION_ID` env
+var to link work across multiple processes.
+
+See [`docs/logging.md`](docs/logging.md) for the full guide — public
+API, every use-case (structured logs, spans, exceptions, async,
+correlation id propagation), and querying via the Logfire UI / MCP.
 
 ## Graph model summary
 
