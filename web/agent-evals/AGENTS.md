@@ -3,19 +3,43 @@
 This is the **living** plan Devin Cloud reads at the start of each session.
 Update the sprint log at the bottom every PR.
 
-The goal: take the microbots UI agent from "responds to clear UI commands"
-to "performatively stages the canvas in response to anything Maya says" —
-including queries only marginally related to the UI. The agent should
-naturally chain `open → arrange → scroll → select → highlight` style
-interactions and feel snappy and intentional.
+The goal: take the microbots UI agent from "responds to clear UI
+commands" to "performatively stages the canvas in response to anything
+Maya says" — including queries only marginally related to the UI. The
+agent should naturally chain `open → arrange → scroll → select →
+highlight` style interactions and feel snappy and intentional.
+
+**The single sharpest weakness today** is intent inference under
+low-signal-to-noise input. The agent already does well when the user
+spells out exactly what they want. Where it falls down is when the
+user is waffling — feelings, vague status checks, half-formed
+thoughts, conversational asides. **Every sprint must explicitly weight
+the `marginal` corpus subset** when picking what to ship next. The
+agent must extract real intent from waffle and stage the canvas
+anyway.
+
+Note: the existing implementation is already quite good. Sprints
+should be **tight, polish-oriented, and eval-gated** — not full
+rewrites. Stop early if metrics plateau.
 
 Strategy is locked:
 
 - **Model**: `google/gemini-2.5-flash-lite` via OpenRouter. No bake-offs.
   Wins come from prompts, context engineering, architecture, and tool
   surface.
+- **Production model (UI agent)**: `google/gemini-2.5-flash-lite` via
+  OpenRouter. Locked for cost control. Do not bake off; do not switch.
+  All wins come from prompts, context engineering, architecture, and
+  tool surface. The `OPENROUTER_API_KEY` powers ONLY the live UI agent
+  (orchestrator + layout-agent + content-agent).
+- **Eval corpus generation & LLM-judge**: Devin's own assistant model
+  (Claude / whichever Devin Cloud is running). Devin writes the seed
+  corpus in `corpus/queries.yaml` directly during Sprint 0 — no
+  OpenRouter calls for generation. The LLM-judge scoring also runs on
+  Devin's model via the standard agent loop, NOT via OpenRouter. This
+  keeps OpenRouter spend bounded to actual UI agent runs.
 - **Cadence**: capability sprints — one named capability per Devin
-  session, one PR with measurable deltas.
+  session, one PR with measurable deltas. Sprints should be short.
 - **Tools-first**: prefer adding/registering tools and richer snapshot
   state over new UI. New UI is allowed only with a written
   justification, MUJI rigor (existing tokens only), and rigorous tests.
@@ -27,16 +51,28 @@ Strategy is locked:
 Every PR must report these six metrics. The eval harness in this
 folder produces them deterministically.
 
-| Axis | Metric | Target |
-|---|---|---|
-| **Tool-call correctness** | golden-corpus pass-rate (LLM-judge + rule checks) | ≥ 90% |
-| **Latency** | TTFW (time-to-first-`ui.*`-event) p50; full-turn p50 / p95 | TTFW < 600ms · p50 < 1.8s · p95 < 3.2s |
-| **Multi-step performativity** | mean tool calls per turn on the *performative* corpus subset | ≥ 4.0 |
-| **Coverage / generality** | pass-rate on *marginal-intent* subset | ≥ 70% |
-| **Recovery** | fraction of failed tool calls followed by a successful retry | ≥ 60% |
-| **Calm canvas** | LLM-judge: post-turn windows match relevance, no stray opens | ≥ 4 / 5 |
+| Axis | Metric | Scoring | Target |
+|---|---|---|---|
+| **Tool-call correctness** | golden-corpus pass-rate | rules (`must_include_tools` / `must_not_include_tools` / `expected_windows_after`) | ≥ 90% |
+| **Latency** | TTFW (time-to-first-`ui.*`-event) p50; full-turn p50 / p95 | timer | TTFW < 600ms · p50 < 1.8s · p95 < 3.2s |
+| **Multi-step performativity** | mean tool calls per turn on the *performative* corpus subset | counted | ≥ 4.0 |
+| **Coverage / generality** | pass-rate on *marginal-intent* subset (the headline metric) | rules + Devin's judgement on the transcript | ≥ 70% |
+| **Recovery** | fraction of failed tool calls followed by a successful retry | counted from `agent.tool.retry` events | ≥ 60% |
+| **Calm canvas** | post-turn windows match relevance, no stray opens | Devin's judgement on the transcript | ≥ 4 / 5 |
 
-A PR that regresses any metric without justification cannot merge.
+5 of 6 metrics are purely deterministic (rules + timers + counters)
+and require no LLM at eval time — the runner produces them with no
+API beyond the actual UI-agent run. The two judgement axes (coverage
+nuance + calm-canvas) are scored by Devin reading the committed
+transcripts during the sprint, with scores written into the report
+alongside a one-line rationale per query. This means the eval costs
+**only the OpenRouter calls to flash-lite for the actual UI-agent
+runs** — nothing else.
+
+A PR that regresses any metric without written justification cannot
+merge. **`marginal-intent` pass-rate is the headline.** Other metrics
+matter, but if the agent is still bad at extracting intent from
+waffle, the sprint hasn't moved the needle.
 
 ---
 
@@ -46,16 +82,22 @@ A PR that regresses any metric without justification cannot merge.
 web/agent-evals/
   AGENTS.md                  ← this file
   corpus/
-    queries.yaml             ← 80 versioned queries, 6 categories
-    expected.yaml            ← per-query loose schema (ideal/forbidden tools, post-state)
-  judge.ts                   ← LLM-judge prompt + scoring rubrics
+    queries.yaml             ← 80 versioned queries, marginal-weighted (see below)
+    expected.yaml            ← per-query rules: must_include_tools, must_not_include_tools, expected_windows_after, judge_tags
   instrument.ts              ← wraps runOrchestrator: per-step timing, retry tracking
-  run.ts                     ← runs corpus in-process, writes a report
+  run.ts                     ← runs corpus in-process, writes a transcript-rich report
+  judge.md                   ← rubric Devin uses when scoring the two judgement axes by hand
   reports/
-    YYYYMMDD-<sprint>-<sha>.json
+    YYYYMMDD-<sprint>-<sha>.json   ← deterministic metrics + transcripts + judge scores
+    screenshots/                    ← Playwright captures from snapshot-rooms.mjs
   scripts/
-    snapshot-rooms.mjs       ← Playwright capture of post-turn screenshots
+    snapshot-rooms.mjs       ← Playwright capture of post-turn canvas state
 ```
+
+No `judge.ts`. The judgement axes are scored by Devin Cloud reading
+the transcripts during the sprint, then committing scores into the
+JSON report. This is intentional — it keeps the eval free of any
+non-OpenRouter LLM dependency and makes the scoring auditable.
 
 Wired into `web/package.json` as:
 
@@ -100,27 +142,87 @@ later sprint relies on the eval delta to gate merges.
 
 **Build**:
 
-- `web/agent-evals/corpus/queries.yaml` with **80 queries** across
-  six categories:
-  - `layout` (15) — clear window manipulation: "split brief and graph", "focus the workflow", "clean slate"
-  - `content` (15) — pure content asks: "highlight notion-scribe", "compare slack and gmail", "explain bp-001"
-  - `multi_step` (20) — performative chains: "show me what's broken and explain why", "open the bug-triage workflow, scroll to step 3, and explain it"
-  - `marginal` (15) — tangentially UI-related: "I'm anxious about Friday", "what should I worry about today?", "give me a vibe check"
-  - `failure_recovery` (10) — wrong slug, missing window, ambiguous reference: "approve the slack thing", "show me the X workflow" where X doesn't exist
-  - `edge_case` (5) — empty query, hostile, contradictory: "", "do nothing", "open everything then close everything"
-- `web/agent-evals/corpus/expected.yaml` — per query: `must_include_tools[]`, `must_not_include_tools[]`, `expected_window_kinds_after[]`, `judge_tags[]`. Loose; the judge fills gaps.
-- `web/agent-evals/judge.ts` — LLM-judge prompt mirrors `knowledge_graph/tests/eval/rubrics/*.yaml` style. Returns 0-5 per axis + a one-sentence rationale per query.
-- `web/agent-evals/instrument.ts` — wraps `runOrchestrator` and the sub-agent factories. Captures per-tool start/end ms, retries, snapshot tokens, model tokens. Exports `runOrchestratorInstrumented(ctx, query)`.
-- `web/agent-evals/run.ts` — for each query: build a fresh in-memory `AgentToolCtx`, run instrumented orchestrator, collect events into a transcript, score with judge + rules, accumulate. Writes `reports/<date>-baseline-<sha>.json` and prints a markdown delta table to stdout (used in PR body).
-- `web/agent-evals/scripts/snapshot-rooms.mjs` — Playwright capture of post-turn canvas state for the `layout` and `multi_step` subsets, written to `reports/screenshots/`.
+- `web/agent-evals/corpus/queries.yaml` with **80 queries**.
+  Devin writes these by hand (no synthetic generation, no LLM fanout
+  — the seed corpus is curated, versioned, and small enough to read).
+  Distribution intentionally **biased toward `marginal` and
+  `multi_step`** since those are where the agent is weakest:
 
-**Wire**: `npm run agent:eval` and `npm run agent:eval:quick` (10 queries, one per category).
+  - `layout` (10) — clear window manipulation
+    *("split brief and graph", "focus the workflow", "clean slate")*
+  - `content` (10) — pure content asks
+    *("highlight notion-scribe", "compare slack and gmail", "explain bp-001")*
+  - `multi_step` (20) — performative chains
+    *("show me what's broken and explain why", "open the bug-triage workflow, scroll to step 3, and explain it")*
+  - `marginal` (25) ← **headline subset**, weighted up. Tangentially
+    UI-related, low signal-to-noise, waffly:
+    *"I'm anxious about Friday"*,
+    *"things feel off today, idk"*,
+    *"hmm, can you check on stuff for me"*,
+    *"my head's a bit foggy this morning"*,
+    *"I keep forgetting what we said about the slack thing yesterday"*,
+    *"it's like, you know, the integrations… I dunno"*,
+    *"give me a vibe check"*,
+    *"is everything fine?"*
+    Devin should specifically craft queries that have real intent
+    buried under conversational filler.
+  - `failure_recovery` (10) — wrong slug, missing window, ambiguous
+    reference: *"approve the slack thing"*, *"show me the X workflow"*
+    where X doesn't exist
+  - `edge_case` (5) — empty, hostile, contradictory:
+    *""*, *"do nothing"*, *"open everything then close everything"*
+
+- `web/agent-evals/corpus/expected.yaml` — per query:
+  `must_include_tools[]`, `must_not_include_tools[]`,
+  `expected_windows_after[]`, `judge_tags[]`. Strict-ish; the
+  `marginal` entries deliberately allow multiple acceptable tool
+  paths — the rule only requires that *some* meaningful canvas
+  action happened (no empty turns) and that forbidden tools were not
+  fired. Devin's judgement scores nuance later.
+
+- `web/agent-evals/instrument.ts` — wraps `runOrchestrator` and the
+  sub-agent factories. Captures per-tool start/end ms, retries,
+  snapshot tokens, model tokens. Exports
+  `runOrchestratorInstrumented(ctx, query)`.
+
+- `web/agent-evals/run.ts` — for each query: build a fresh in-memory
+  `AgentToolCtx`, run instrumented orchestrator against the live
+  flash-lite endpoint, collect every event into a transcript, score
+  the deterministic metrics, accumulate. Writes
+  `reports/<date>-<sprint>-<sha>.json` containing
+  `{ summary, metrics, queries: [{ query, transcript, deterministic, judge: null }] }`.
+  Prints a markdown delta table to stdout (used in PR body).
+
+- `web/agent-evals/judge.md` — short rubric Devin uses when reading
+  transcripts to fill the `judge` field for each query (0-5 per
+  axis + one-sentence rationale). Devin commits the updated report.
+
+- `web/agent-evals/scripts/snapshot-rooms.mjs` — Playwright capture
+  of post-turn canvas state for the `layout` and `multi_step`
+  subsets, written to `reports/screenshots/`.
+
+**Secrets**:
+
+- `OPENROUTER_API_KEY` is required to run the eval. **Devin Cloud
+  must request it via the secure secret-input flow** — do not
+  hardcode, do not commit to `.env.example` with a value, do not echo.
+  If the key isn't available, Devin opens a PR with the harness +
+  corpus only and skips the baseline run, leaving a `BLOCKED:
+  awaiting OPENROUTER_API_KEY` note in the sprint log.
+
+**Wire**: `npm run agent:eval` (full 80) and `npm run agent:eval:quick`
+(15 queries — 5 marginal + 5 multi-step + 1 each from the rest).
 
 **Done means**:
 
-- baseline report committed
+- corpus + harness + rubric committed
+- baseline report committed (or `BLOCKED` note if no key)
 - all six north-star metrics have a current number
-- PR template (`.github/PULL_REQUEST_TEMPLATE.md`) requires a delta table
+- PR template (`.github/PULL_REQUEST_TEMPLATE.md`) requires a delta
+  table — already in place; verify still works
+- legacy `web/app/api/agent/stream/route.ts` deleted; scripted
+  `SCRIPTS` array in `web/lib/agent-router.ts` replaced with a single
+  toast on missing key
 
 ---
 
@@ -294,10 +396,24 @@ Every Devin PR must include:
 Each Devin Cloud handoff is one line:
 
 > *Run Sprint N from `web/agent-evals/AGENTS.md` ([name]). Read the
-> plan, run baseline `npm run agent:eval:quick`, ship the listed work,
-> attach before/after report to PR body, update the sprint log.*
+> plan, request `OPENROUTER_API_KEY` via secure-secret-input if you
+> don't have it, run baseline `npm --prefix web run agent:eval:quick`,
+> ship the listed work, attach before/after report to PR body, update
+> the sprint log.*
 
 That's it. Devin reconstructs full context from this file.
+
+**Reminder for every handoff**:
+
+- Production model is `google/gemini-2.5-flash-lite`. Locked. Don't
+  switch.
+- The OpenRouter key is for the live UI agent only. Eval scoring's
+  judgement axes are filled by Devin Cloud directly reading the
+  committed transcripts — no other LLM calls.
+- The headline metric is **marginal-intent pass-rate**. Optimize
+  there first.
+- Existing implementation is already solid. Sprints should be tight
+  and stop early if metrics plateau.
 
 ---
 
