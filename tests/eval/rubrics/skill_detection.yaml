@@ -1,0 +1,24 @@
+# Rubric for the skill detection phase (Phase 3c)
+phase: skill_detection
+criteria:
+  precision:
+    weight: 0.30
+    description: "Each detected skill is a real, repeated behavior (not a one-off or description of a tool)"
+    scale: [0, 5]
+  recall_vs_expected:
+    weight: 0.25
+    description: "expected_skills from corpus_meta are all detected with min_strength met"
+    scale: [0, 5]
+  step_quality:
+    weight: 0.20
+    description: "steps list is actionable and ordered; each step is a distinct atomic action"
+    scale: [0, 5]
+  strength_calibration:
+    weight: 0.15
+    description: "strength score reflects observed frequency (daily → ≥3, weekly → 2, rare → 1)"
+    scale: [0, 5]
+  no_hallucination:
+    weight: 0.10
+    description: "No skills are detected that have zero evidence in the chat/memory corpus"
+    scale: [0, 5]
+passing_threshold: 3.0

@@ -35,7 +35,7 @@ def _parse_occurred(oa: str) -> str:
 
 async def write_chat_record(
     record: dict[str, Any], integration_slug: str, db: AsyncSurreal
-) -> None:
+) -> RecordID:
     ext = record.get("external_id") or ""
     chat_part = _chat_id_part(str(ext))
     title = str(record.get("title") or "")[:500]
@@ -112,3 +112,4 @@ async def write_chat_record(
             },
         )
     log.info("Wrote chat type::thing('chat', %s)", chat_part)
+    return c_rec

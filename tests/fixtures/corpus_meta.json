@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-04-25T11:14:07.519312+00:00",
+  "seed": 42,
+  "persona": {},
+  "total_items": {
+    "slack": 8,
+    "github": 20,
+    "linear": 16,
+    "gmail": 8,
+    "notion": 8,
+    "perplexity": 12
+  },
+  "expected_entities": [
+    {
+      "name": "Alice Chen",
+      "type": "person",
+      "aliases": [
+        "@alice",
+        "alice-chen",
+        "alice@company.com"
+      ]
+    },
+    {
+      "name": "Bob Kim",
+      "type": "person",
+      "aliases": [
+        "@bob",
+        "bob-kim",
+        "bob@company.com"
+      ]
+    },
+    {
+      "name": "Carol Diaz",
+      "type": "person",
+      "aliases": [
+        "@carol",
+        "carol-diaz"
+      ]
+    },
+    {
+      "name": "microbots",
+      "type": "repo",
+      "aliases": [
+        "microbots",
+        "github.com/org/microbots"
+      ]
+    },
+    {
+      "name": "Agent Memory",
+      "type": "project",
+      "aliases": [
+        "Agent Memory",
+        "agent-memory"
+      ]
+    }
+  ],
+  "expected_skills": [
+    {
+      "slug": "deploy_flow",
+      "min_strength": 2
+    },
+    {
+      "slug": "pr_review_flow",
+      "min_strength": 2
+    }
+  ],
+  "expected_workflows": [
+    {
+      "slug": "bug_triage_pipeline",
+      "min_skill_count": 2
+    }
+  ]
+}

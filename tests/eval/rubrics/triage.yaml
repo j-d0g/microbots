@@ -1,0 +1,24 @@
+# Rubric for the triage phase (Phase 2: raw payload → chat_record)
+phase: triage
+criteria:
+  completeness:
+    weight: 0.25
+    description: "Every input item is represented in the output (no silently dropped items)"
+    scale: [0, 5]
+  signal_level_accuracy:
+    weight: 0.30
+    description: "signal_level (high/mid/low/curated/noise) matches expected annotations in corpus_meta"
+    scale: [0, 5]
+  entity_stub_recall:
+    weight: 0.20
+    description: "Person names, channel names, and repo names from the input appear as entity stubs or in content"
+    scale: [0, 5]
+  summary_quality:
+    weight: 0.15
+    description: "Summaries are concise (≤3 sentences), accurate, and capture the decision/action from the input"
+    scale: [0, 5]
+  json_schema_validity:
+    weight: 0.10
+    description: "Output validates against the expected chat_record JSON schema (no missing required fields)"
+    scale: [0, 5]
+passing_threshold: 3.0

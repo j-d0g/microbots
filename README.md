@@ -93,7 +93,8 @@ composio whoami
 
 From the docs: the usual flow is `composio execute …` first; if the CLI says the toolkit is not connected, run `composio link <toolkit>` and retry. You can also connect from the [Composio dashboard](https://app.composio.dev) (connected accounts).
 
-**`COMPOSIO_USER_ID` in `.env` (default `default`)** must be the same [user id](https://docs.composio.dev/docs/connected-accounts) Composio uses for those connections (v3 terminology: `user_id`, not “entity id”).
+**`COMPOSIO_USER_ID` in `.env` (default `default`)** must be the same [user id](https://docs.composio.dev/docs/connected-accounts) Composio uses for those connections (v3 terminology: `user_id`, not “entity id”).  
+In some workspaces Composio links are stored under a consumer-style user id (`consumer-<id>-<org_id>`). Ingest now preflights connected accounts and can auto-resolve common aliases; setting `COMPOSIO_ORG_ID` helps this resolution.
 
 **Discovering tool slugs** (if you see 404 “Tool not found”): use the CLI or dashboard, e.g. `composio tools list github`, `composio search "list my repositories" --toolkits github`, or the [toolkit docs](https://docs.composio.dev/tools/github). Then align names in `ingest/pullers/` with the catalog.
 

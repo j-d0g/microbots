@@ -3,7 +3,7 @@ export
 
 PYTHON := uv run python
 
-.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest composio-ingest composio-auth
+.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report
 
 install:
 	uv sync
@@ -52,6 +52,27 @@ composio-auth:
 	@echo "  composio whoami"
 	@echo "Discovery: composio tools list github   |   composio search \"...\" --toolkits github"
 	@echo "See README → Composio ingestion → Prerequisite"
+
+wiki:
+	$(PYTHON) -m wiki
+
+test:
+	uv run pytest tests/unit tests/golden -v
+
+e2e:
+	uv run pytest tests/e2e -v
+
+synth-corpus:
+	$(PYTHON) tests/synth/generate_corpus.py
+
+rerecord-goldens:
+	LLM_MODE=record uv run pytest tests/golden -v
+
+eval:
+	$(PYTHON) tests/eval/apply_and_run.py
+
+eval-report:
+	$(PYTHON) tests/eval/judge.py --report
 
 db-export:
 	docker exec microbots-surrealdb surreal export \

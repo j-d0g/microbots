@@ -16,6 +16,7 @@ os.environ.setdefault("COMPOSIO_CACHE_DIR", str(_composio_cache))
 
 from config import Config, load_config
 from composio import Composio
+from ingest.composio_user import resolve_composio_user_id
 from ingest.dedup import dedup
 from ingest.db import surreal_session
 from ingest.e2e_smoke import run_smoke, smoke_should_run_llm
@@ -71,6 +72,22 @@ async def _run(integration_names: list[str], config: Config) -> dict[str, int]:
         log.error("COMPOSIO_API_KEY is not set")
         return {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
 
+    try:
+        resolved = resolve_composio_user_id(
+            api_key=config.composio_api_key,
+            requested_user_id=config.composio_user_id,
+            integrations=integration_names,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.error("Composio preflight failed: %s", e)
+        return {"success": 0, "failed": len(integration_names), "skipped_dedup": 0, "dropped": 0}
+
+    if resolved.user_id != config.composio_user_id:
+        log.warning("Composio user_id override: %s", resolved.reason)
+        config.composio_user_id = resolved.user_id
+    else:
+        log.info("Composio preflight: %s", resolved.reason)
+
     composio = Composio(api_key=config.composio_api_key)
 
     if not (config.openrouter_api_key or config.anthropic_api_key):
@@ -78,6 +95,7 @@ async def _run(integration_names: list[str], config: Config) -> dict[str, int]:
         return {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
 
     results = {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
+    new_chat_ids = []
 
     async with surreal_session(config) as db:
         for name in integration_names:
@@ -114,9 +132,37 @@ async def _run(integration_names: list[str], config: Config) -> dict[str, int]:
                 for chat in tr.get("chat_records", []):
                     if str(chat.get("signal_level", "mid")).lower() == "low":
                         continue
-                    await write_chat_record(chat, name, db)
+                    chat_rec_id = await write_chat_record(chat, name, db)
+                    new_chat_ids.append(chat_rec_id)
                     results["success"] += 1
                 results["dropped"] += len(tr.get("items_dropped", []))
+
+    # Phase 3: Enrichment (separate session, same cycle's chat IDs)
+    if results["success"] > 0:
+        log.info("▶ Starting enrichment layer (%d new chats)…", results["success"])
+        from enrich.orchestrator import run_enrichment
+        enrich_results = await run_enrichment(new_chat_ids, config)
+        log.info(
+            "  Enrichment: %d memories, %d entities resolved, %d skills, %d workflows",
+            enrich_results["memories"],
+            enrich_results["entities_resolved"],
+            enrich_results["skills"],
+            enrich_results["workflows"],
+        )
+
+        # Phase 4: Wiki agent — diff-update the memory/ markdown layer
+        log.info("▶ Starting wiki agent (Phase 4)…")
+        try:
+            from wiki.orchestrator import run_wiki
+            wiki_results = await run_wiki(config)
+            log.info(
+                "  Wiki: %d files updated, %d unchanged, %d failed",
+                wiki_results.updated,
+                wiki_results.unchanged,
+                wiki_results.failed,
+            )
+        except Exception as e:  # noqa: BLE001
+            log.error("  Wiki agent failed (non-fatal): %s", e)
 
     return results
 

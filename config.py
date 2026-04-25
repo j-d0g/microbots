@@ -53,11 +53,45 @@ class PipelineConfig:
 
 
 @dataclass
+class EnrichmentConfig:
+    memory_max_new_chats_per_call: int = 100
+    memory_max_old_summaries_per_call: int = 500
+    entity_max_stubs_per_call: int = 200
+    entity_max_chat_context: int = 100
+    skill_max_chats_per_integration: int = 200
+    skill_max_memories_per_integration: int = 100
+    skill_max_candidates_for_synthesis: int = 100
+    workflow_max_skills: int = 50
+    workflow_max_chat_context: int = 200
+    skill_min_strength: int = 2
+
+
+@dataclass
+class WikiConfig:
+    """Configuration for the Phase 4 wiki agent."""
+    # Pydantic AI model string. Uses OpenRouter by default (set OPENROUTER_API_KEY).
+    # Alternatives: "anthropic:claude-haiku-4-5-20251001" or "openai:gpt-4.1-mini"
+    model: str = "openai:gpt-4.1-mini"
+    openrouter_model: str = "openrouter:nvidia/nemotron-nano-9b-v2"
+    max_concurrent: int = 4
+    token_budgets: dict[str, int] = field(
+        default_factory=lambda: {
+            "user.md": 4000,
+            "layer/agents.md": 600,
+            "sublayer/agents.md": 300,
+        }
+    )
+    write_dry_run: bool = False  # if True, agent runs but no files are written
+
+
+@dataclass
 class Config:
     llm: LLMConfig = field(default_factory=LLMConfig)
     backfill: BackfillConfig = field(default_factory=BackfillConfig)
     scopes: IntegrationScopes = field(default_factory=IntegrationScopes)
     pipeline: PipelineConfig = field(default_factory=PipelineConfig)
+    enrichment: EnrichmentConfig = field(default_factory=EnrichmentConfig)
+    wiki: WikiConfig = field(default_factory=WikiConfig)
     surreal_url: str = field(
         default_factory=lambda: os.getenv("SURREAL_URL", "ws://localhost:8000/rpc")
     )
@@ -93,4 +127,6 @@ def load_config() -> Config:
         backfill=BackfillConfig(),
         scopes=IntegrationScopes(),
         pipeline=PipelineConfig(),
+        enrichment=EnrichmentConfig(),
+        wiki=WikiConfig(),
     )

@@ -1,0 +1,56 @@
+[
+  {
+    "source_id": "slack-1-cr-b2a4ece0e48f05a9",
+    "source_type": "slack_thread",
+    "title": "PR review request: week 1 changes",
+    "content": "Desmond: @bob PR #5 is ready for review — microbots enrichment layer.\nBob Kim: On it. Will review today.",
+    "channel": "#code-review",
+    "signal_level": "mid",
+    "occurred_at": "2025-01-06T13:00:00+00:00"
+  },
+  {
+    "source_id": "slack-3-deploy-964a24370480e04b",
+    "source_type": "slack_thread",
+    "title": "Deploy: microbots v0.3 to staging",
+    "content": "Desmond: Deploying microbots v0.3 to staging now. Linear: MIC-30.\nAlice Chen: Looks good from infra side. Green light.\nDesmond: Deployed. All smoke tests passing.",
+    "channel": "#deployments",
+    "signal_level": "high",
+    "occurred_at": "2025-01-21T18:00:00+00:00"
+  },
+  {
+    "source_id": "slack-1-ai-eng-31211503a11510a9",
+    "source_type": "slack_thread",
+    "title": "Week 1: microbots SurrealDB progress",
+    "content": "Desmond: Pushed schema updates for week 1. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
+    "channel": "#ai-engineering",
+    "signal_level": "high",
+    "occurred_at": "2025-01-07T12:00:00+00:00"
+  },
+  {
+    "source_id": "slack-4-ai-eng-aca2c6eba3d7cef3",
+    "source_type": "slack_thread",
+    "title": "Week 4: microbots SurrealDB progress",
+    "content": "Desmond: Pushed schema updates for week 4. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
+    "channel": "#ai-engineering",
+    "signal_level": "high",
+    "occurred_at": "2025-01-30T11:00:00+00:00"
+  },
+  {
+    "source_id": "slack-4-deploy-5b54cc5478034e53",
+    "source_type": "slack_thread",
+    "title": "Deploy: microbots v0.4 to staging",
+    "content": "Desmond: Deploying microbots v0.4 to staging now. Linear: MIC-40.\nAlice Chen: Looks good from infra side. Green light.\nDesmond: Deployed. All smoke tests passing.",
+    "channel": "#deployments",
+    "signal_level": "high",
+    "occurred_at": "2025-01-30T09:00:00+00:00"
+  },
+  {
+    "source_id": "slack-2-ai-eng-32ed5df067a29f96",
+    "source_type": "slack_thread",
+    "title": "Week 2: microbots SurrealDB progress",
+    "content": "Desmond: Pushed schema updates for week 2. HNSW indexes are looking good.\nBob Kim: Nice! Did you verify the embedding DIMENSION matches?\nDesmond: Yes, 1536 — matches the OpenAI embeddings. All green.",
+    "channel": "#ai-engineering",
+    "signal_level": "high",
+    "occurred_at": "2025-01-13T17:00:00+00:00"
+  }
+]

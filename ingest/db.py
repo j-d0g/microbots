@@ -52,6 +52,29 @@ def unwrap_surreal_rows(res: Any) -> list[dict[str, Any]]:
     return out
 
 
+async def relate_unique(
+    db: AsyncSurreal,
+    frm: Any,
+    relation: str,
+    to: Any,
+    content: dict[str, Any] | None = None,
+) -> None:
+    """RELATE only if this exact (in, out) pair doesn't already exist."""
+    res = await db.query(
+        f"SELECT id FROM {relation} WHERE in = $f AND out = $t LIMIT 1",
+        {"f": frm, "t": to},
+    )
+    if unwrap_surreal_rows(res):
+        return
+    if content:
+        await db.query(
+            f"RELATE $f->{relation}->$t CONTENT $c",
+            {"f": frm, "t": to, "c": content},
+        )
+    else:
+        await db.query(f"RELATE $f->{relation}->$t", {"f": frm, "t": to})
+
+
 async def select_source_ids_in(
     db: AsyncSurreal, source_ids: Sequence[str]
 ) -> set[str]:
