@@ -3,7 +3,7 @@ export
 
 PYTHON := uv run python
 
-.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report
+.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest-seed memory-reset ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report
 
 install:
 	uv sync
@@ -30,6 +30,18 @@ db-reset:
 	$(MAKE) db-up
 	$(MAKE) db-schema
 	$(MAKE) db-seed
+	$(MAKE) memory-reset
+	$(MAKE) wiki
+
+# Wipe and regenerate all memory/ markdown files from seed data (no Composio, no LLM triage needed)
+ingest-seed: install
+	$(PYTHON) seed/wiki_from_seed.py
+
+# Remove all generated memory/ markdown files (preserves directory structure)
+memory-reset:
+	@echo "Clearing generated memory/ markdown files..."
+	@find memory/ -name "*.md" -delete 2>/dev/null || true
+	@echo "memory/ cleared."
 
 db-query:
 	docker exec -it microbots-surrealdb surreal sql \
