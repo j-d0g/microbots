@@ -598,7 +598,22 @@ export function applyToolToSnapshot(
         ok: true,
       };
 
-    default:
+    default: {
+      // Per-window tools (brief_*, workflow_*, stack_*, waffle_*,
+      // playbooks_*, settings_*) are client-side dispatches the
+      // simulator doesn't model — record success so the recovery
+      // metric and snapshotToPrompt stay truthful.
+      const roomPrefixes = ["brief_", "workflow_", "stack_", "waffle_", "playbooks_", "settings_"];
+      if (roomPrefixes.some((p) => tool.startsWith(p))) {
+        return {
+          snapshot: {
+            ...snap,
+            recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+          },
+          message: `${tool} dispatched.`,
+          ok: true,
+        };
+      }
       return {
         snapshot: {
           ...snap,
@@ -607,6 +622,7 @@ export function applyToolToSnapshot(
         message: `Unknown tool ${tool}.`,
         ok: false,
       };
+    }
   }
 }
 
