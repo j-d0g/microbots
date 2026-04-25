@@ -1,3 +1,11 @@
+# Core microbots runtime
 surrealdb>=1.0.0
 python-dotenv>=1.0.0
 logfire>=2.0.0
+
+# render_sdk runtime deps (kept in sync with render_sdk/pyproject.toml)
+docker>=7.0
+requests>=2.31
+portalocker>=2.8
+pyngrok>=7.0
+click>=8.1
