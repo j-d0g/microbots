@@ -81,10 +81,8 @@ export function CommandBar() {
     clearReply();
   }, [setOpen, clearReply]);
 
-  const handleSubmit = useCallback(
-    async (e?: FormEvent) => {
-      e?.preventDefault();
-      const q = input.trim();
+  const submitQuery = useCallback(
+    async (q: string) => {
       if (!q || busy) return;
       setBusy(true);
       const ctrl = new AbortController();
@@ -99,7 +97,15 @@ export function CommandBar() {
         setInput("");
       }
     },
-    [input, busy],
+    [busy],
+  );
+
+  const handleSubmit = useCallback(
+    async (e?: FormEvent) => {
+      e?.preventDefault();
+      submitQuery(input.trim());
+    },
+    [input, submitQuery],
   );
 
   const handleInputKey = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -236,8 +242,7 @@ export function CommandBar() {
                           type="button"
                           onClick={() => {
                             setInput(s);
-                            // submit on next tick so input value is set
-                            setTimeout(() => handleSubmit(), 0);
+                            submitQuery(s);
                           }}
                           className="text-left font-mono text-[12px] text-ink-60 hover:text-ink-90 transition-colors"
                         >
