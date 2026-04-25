@@ -164,14 +164,65 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
   const clearTranscript = useAgentStore((s) => s.clearTranscript);
 
   const [holding, setHolding] = useState(false);
+  /* Synchronous mirror of `holding` so onPress/onRelease can see the
+   * current state without waiting for React to re-render. Without this
+   * a fast tap (down → up in the same frame) would call onRelease
+   * before React had committed onPress's setState, the closure-captured
+   * `holding` would still be false, and onRelease would early-return —
+   * stranding the STT session in "started but never stopped" land. */
+  const holdingRef = useRef(false);
+  /* Latest opts callback, so onRelease always uses the freshest one
+   * without re-creating the callback identity (which would also
+   * re-bind the global `.` listener in <VoiceBridge>). */
+  const optsRef = useRef(opts);
+  useEffect(() => {
+    optsRef.current = opts;
+  }, [opts]);
+
   const browserRecRef = useRef<SpeechRecognitionLike | null>(null);
   const browserTextRef = useRef("");
   const elevenSessionRef = useRef<{
     stop: () => Promise<string>;
   } | null>(null);
+  /* True if the user released `.` while we were still awaiting the
+   * mic-permission prompt. The pending start is then immediately
+   * stopped once it resolves so we don't strand the recording. */
+  const pendingReleaseRef = useRef(false);
+
+  const finalizeRelease = useCallback(async () => {
+    let transcript = "";
+
+    if (cfg.stt === "elevenlabs" && elevenSessionRef.current) {
+      setDock("thinking");
+      try {
+        transcript = await elevenSessionRef.current.stop();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("[voice] STT stop failed", err);
+      }
+      elevenSessionRef.current = null;
+    } else {
+      const rec = browserRecRef.current;
+      if (rec) {
+        try {
+          rec.stop();
+        } catch {
+          /* already stopped */
+        }
+        browserRecRef.current = null;
+      }
+      transcript = browserTextRef.current.trim();
+      setDock("thinking");
+    }
+
+    setDock("idle");
+    if (transcript) optsRef.current.onTranscript?.(transcript);
+  }, [cfg.stt, setDock]);
 
   const onPress = useCallback(async () => {
-    if (holding) return;
+    if (holdingRef.current) return;
+    holdingRef.current = true;
+    pendingReleaseRef.current = false;
     setHolding(true);
     setDock("listening");
     clearTranscript();
@@ -185,8 +236,19 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn("[voice] mic permission failed", err);
+        holdingRef.current = false;
+        pendingReleaseRef.current = false;
         setHolding(false);
         setDock("idle");
+        return;
+      }
+      // If the user already let go while we were awaiting the mic,
+      // honour that release now.
+      if (pendingReleaseRef.current) {
+        pendingReleaseRef.current = false;
+        holdingRef.current = false;
+        setHolding(false);
+        await finalizeRelease();
       }
       return;
     }
@@ -217,48 +279,45 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
       }
     };
     rec.onerror = () => {
+      holdingRef.current = false;
+      pendingReleaseRef.current = false;
       setHolding(false);
       setDock("idle");
     };
     rec.onend = () => {
       // handled in onRelease
     };
-    rec.start();
+    try {
+      rec.start();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("[voice] webspeech start failed", err);
+      holdingRef.current = false;
+      pendingReleaseRef.current = false;
+      setHolding(false);
+      setDock("idle");
+      return;
+    }
     browserRecRef.current = rec;
-  }, [holding, cfg.stt, setDock, clearTranscript, appendTranscript]);
+  }, [cfg.stt, setDock, clearTranscript, appendTranscript, finalizeRelease]);
 
   const onRelease = useCallback(async () => {
-    if (!holding) return;
-    setHolding(false);
+    if (!holdingRef.current) return;
 
-    let transcript = "";
-
-    if (cfg.stt === "elevenlabs" && elevenSessionRef.current) {
-      setDock("thinking");
-      try {
-        transcript = await elevenSessionRef.current.stop();
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn("[voice] STT stop failed", err);
-      }
-      elevenSessionRef.current = null;
-    } else {
-      const rec = browserRecRef.current;
-      if (rec) {
-        try {
-          rec.stop();
-        } catch {
-          /* already stopped */
-        }
-        browserRecRef.current = null;
-      }
-      transcript = browserTextRef.current.trim();
-      setDock("thinking");
+    // Mic-permission prompt or recorder warmup hasn't finished yet —
+    // schedule the stop so onPress's tail can pick it up.
+    const elevenInflight =
+      cfg.stt === "elevenlabs" && elevenSessionRef.current === null;
+    if (elevenInflight) {
+      pendingReleaseRef.current = true;
+      return;
     }
 
-    setDock("idle");
-    if (transcript) opts.onTranscript?.(transcript);
-  }, [holding, cfg.stt, opts, setDock]);
+    holdingRef.current = false;
+    pendingReleaseRef.current = false;
+    setHolding(false);
+    await finalizeRelease();
+  }, [cfg.stt, finalizeRelease]);
 
   return {
     holding,

@@ -60,13 +60,20 @@ export function VoiceBridge() {
 
   const ptt = usePushToTalk({ onTranscript: submitTranscript });
 
+  /* Stable handle so the global key listeners can call into the latest
+   * onPress/onRelease without re-binding. Re-binding on every ptt
+   * identity change would wipe the closure-local `pressed` flag and
+   * could drop a keyup that landed mid-render — leaving the mic on. */
+  const pttRef = useRef(ptt);
+  pttRef.current = ptt;
+
   // Expose for VoiceDot — the dot still wants pointer-driven hold-to-talk.
   useEffect(() => {
     if (typeof window === "undefined") return;
     (window as unknown as { __voice?: typeof ptt }).__voice = ptt;
   }, [ptt]);
 
-  /* ---------- `.` hold-to-talk -------------------------------------- */
+  /* ---------- `.` hold-to-talk (installed once) --------------------- */
   useEffect(() => {
     let pressed = false;
 
@@ -86,7 +93,7 @@ export function VoiceBridge() {
       e.preventDefault();
       if (!pressed) {
         pressed = true;
-        void ptt.onPress();
+        void pttRef.current.onPress();
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -94,15 +101,25 @@ export function VoiceBridge() {
       if (!pressed) return;
       pressed = false;
       e.preventDefault();
-      void ptt.onRelease();
+      void pttRef.current.onRelease();
+    };
+    /* Window blur (alt-tab, switch tab, focus stolen by another app)
+     * counts as a release — otherwise the user comes back to a stuck
+     * "listening" dot and a recorder that never stopped. */
+    const onBlur = () => {
+      if (!pressed) return;
+      pressed = false;
+      void pttRef.current.onRelease();
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
     };
-  }, [ptt]);
+  }, []);
 
   /* ---------- Auto read-back on reply.done -------------------------- */
   /* The agent stream sets dock="speaking" when streaming reply chunks
