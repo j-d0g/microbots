@@ -180,7 +180,14 @@ export function WindowFrame({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 muji-scroll">
+      <div
+        className={cn(
+          "flex-1 muji-scroll",
+          win.kind === "graph"
+            ? "relative overflow-hidden"
+            : "overflow-y-auto overflow-x-hidden p-4",
+        )}
+      >
         {children}
       </div>
 

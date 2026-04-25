@@ -113,6 +113,79 @@ const TOOLS = [
       },
     },
   },
+  /* --- graph window tools --- */
+  {
+    type: "function" as const,
+    function: {
+      name: "graph_focus_node",
+      description: "Center the memory graph on a specific node and zoom in. Use when answering questions about a person, integration, memory, skill, or workflow.",
+      parameters: { type: "object", properties: { node_id: { type: "string", description: "node id, e.g. user-maya, ent-product-bugs, wf-bug-triage" } }, required: ["node_id"] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "graph_zoom_fit",
+      description: "Reset the memory graph viewport to fit all visible nodes.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "graph_select",
+      description: "Open the node inspector panel on a memory graph node. Shows details + neighbors. Pass empty string to close.",
+      parameters: { type: "object", properties: { node_id: { type: "string" } }, required: ["node_id"] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "graph_neighbors",
+      description: "Highlight a node and its 1-hop neighbors in the memory graph. Other nodes fade.",
+      parameters: { type: "object", properties: { node_id: { type: "string" } }, required: ["node_id"] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "graph_path",
+      description: "Highlight the shortest path between two nodes in the memory graph. Use to visualise how two entities relate.",
+      parameters: { type: "object", properties: { from: { type: "string" }, to: { type: "string" } }, required: ["from", "to"] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "graph_filter_layer",
+      description: "Filter the memory graph to a single layer (user, integration, entity, memory, skill, workflow). Pass empty string or 'all' to clear.",
+      parameters: { type: "object", properties: { layer: { type: "string" } }, required: ["layer"] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "graph_filter_integration",
+      description: "Filter the memory graph to nodes related to one integration (slack, github, linear, gmail, notion, perplexity). Empty string clears.",
+      parameters: { type: "object", properties: { integration: { type: "string" } }, required: ["integration"] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "graph_search",
+      description: "Filter the memory graph by a label substring. Empty string clears.",
+      parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "graph_clear",
+      description: "Clear all memory graph filters, highlights, paths, and selection. Returns the graph to its calm full view.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are the microbots stage manager -- a calm, minimal AI that controls a desktop of floating windows for Maya Chen, founder of Inkwell (B2B sales-coaching SaaS, 8-person team).
@@ -193,6 +266,24 @@ function toolCallToEvents(name: string, args: Record<string, unknown>): Array<Re
         ttl: args.ttl,
       },
     });
+  } else if (name.startsWith("graph_")) {
+    const graphToolMap: Record<string, string> = {
+      graph_focus_node: "focus_node",
+      graph_zoom_fit: "zoom_fit",
+      graph_select: "select",
+      graph_neighbors: "neighbors",
+      graph_path: "path",
+      graph_filter_layer: "filter_layer",
+      graph_filter_integration: "filter_integration",
+      graph_search: "search",
+      graph_clear: "clear",
+    };
+    const tool = graphToolMap[name];
+    if (tool) {
+      // Make sure the graph window is open before invoking a tool on it.
+      events.push({ type: "ui.room", room: "graph" });
+      events.push({ type: "ui.tool", room: "graph", tool, args });
+    }
   }
 
   return events;

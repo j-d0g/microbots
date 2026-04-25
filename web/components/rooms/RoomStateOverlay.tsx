@@ -26,7 +26,11 @@ export function RoomStateOverlay({
   const showOverlay = state && state !== "ready";
 
   return (
-    <div className="relative" data-testid={`room-${room}`} data-room-state={state ?? "ready"}>
+    <div
+      className="relative h-full w-full"
+      data-testid={`room-${room}`}
+      data-room-state={state ?? "ready"}
+    >
       {children}
       <AnimatePresence>
         {showOverlay && (

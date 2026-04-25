@@ -9,3 +9,8 @@ dist
 .vercel
 .turbo
 coverage
+
+# Playwright artifacts
+tests/screenshots
+playwright-report
+test-results

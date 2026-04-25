@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.41",
+    "ai": "^6.0.168",
     "clsx": "^2.1.1",
     "eventsource-parser": "^3.0.0",
     "framer-motion": "^11.11.17",
@@ -19,9 +21,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-force-graph-2d": "^1.27.0",
+    "zod": "^4.3.6",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.0.0-beta.6",
     "@types/node": "^22.9.0",
     "@types/react": "^19.0.1",
