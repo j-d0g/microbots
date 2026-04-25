@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent  # = knowledge_graph/
 FIXTURES = ROOT / "tests" / "fixtures"
 SYNTH_DIR = ROOT / "tests" / "synth"
 PERSONA_FILE = SYNTH_DIR / "persona.yaml"
+ADVERSARIAL_FILE = SYNTH_DIR / "adversarial.yaml"
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger("generate_corpus")
@@ -236,6 +237,100 @@ def build_perplexity_items(persona: dict, week: int, base_dt: datetime, rng: ran
 
 
 # ---------------------------------------------------------------------------
+# Adversarial item builder
+# ---------------------------------------------------------------------------
+
+def build_adversarial_items(base_dt: datetime) -> tuple[
+    dict[str, list[dict]],
+    list[str],
+    list[dict],
+    list[dict],
+    list[dict],
+]:
+    """Load adversarial.yaml and return (items_by_integration, negative_ids,
+    alias_clusters, multi_intg_workflows, contradictions)."""
+    if not ADVERSARIAL_FILE.exists():
+        return {}, [], [], [], []
+
+    raw = yaml.safe_load(ADVERSARIAL_FILE.read_text())
+    items: dict[str, list[dict]] = {}
+    negative_ids: list[str] = []
+    alias_clusters: list[dict] = []
+    multi_intg_workflows: list[dict] = []
+    contradictions: list[dict] = []
+    seen_contradiction_topics: set[str] = set()
+
+    def _add(item: dict) -> None:
+        intg = item.get("integration", "slack")
+        week = item.get("week", 1)
+        dt = _week_start(week - 1, base_dt) + timedelta(days=2, hours=12)
+        entry = {
+            "source_id": item["source_id"],
+            "source_type": item.get("source_type", "slack_thread"),
+            "title": item.get("title", ""),
+            "content": item.get("content", ""),
+            "signal_level": item.get("signal_level", "mid"),
+            "occurred_at": _ts(dt),
+        }
+        if "channel" in item:
+            entry["channel"] = item["channel"]
+        items.setdefault(intg, []).append(entry)
+
+    # Two Alices
+    for case in raw.get("two_alices", []):
+        _add(case)
+        hint = case.get("entity_hint")
+        if hint:
+            alias_clusters.append({
+                "canonical": hint["name"],
+                "type": hint["type"],
+                "aliases": hint["aliases"],
+            })
+
+    # Noise chats (expected negative)
+    for case in raw.get("noise_chats", []):
+        _add(case)
+        negative_ids.append(case["source_id"])
+
+    # Contradictions
+    for case in raw.get("contradiction", []):
+        _add(case)
+        topic = case.get("contradiction_topic", "unknown")
+        if topic not in seen_contradiction_topics:
+            contradictions.append({
+                "topic": topic,
+                "min_memories": 2,
+                "max_avg_confidence": 0.7,
+            })
+            seen_contradiction_topics.add(topic)
+
+    # Multi-integration workflow
+    multi_intg_integrations: set[str] = set()
+    for case in raw.get("multi_integration_workflow", []):
+        _add(case)
+        multi_intg_integrations.add(case.get("integration", "slack"))
+    if multi_intg_integrations:
+        multi_intg_workflows.append({
+            "slug": "cross_integration_deploy_pipeline",
+            "min_integrations": min(len(multi_intg_integrations), 3),
+        })
+
+    # Alias drift
+    bob_aliases: list[str] = []
+    for case in raw.get("alias_drift", []):
+        _add(case)
+    # Bob's full alias set (from persona + adversarial)
+    bob_aliases = ["@bob", "bob-kim", "bob@company.com", "Bob K."]
+    alias_clusters.append({
+        "canonical": "Bob Kim",
+        "type": "person",
+        "aliases": bob_aliases,
+    })
+
+    return items, negative_ids, alias_clusters, multi_intg_workflows, contradictions
+
+
+# ---------------------------------------------------------------------------
 # Main generator
 # ---------------------------------------------------------------------------
 
@@ -269,6 +364,13 @@ def generate(seed: int = 42, split: float = 0.75) -> None:
         all_items["notion"].extend(build_notion_items(persona, week, base_dt, rng))
         all_items["perplexity"].extend(build_perplexity_items(persona, week, base_dt, rng))
 
+    # Merge adversarial cases
+    adv_items, negative_ids, alias_clusters, multi_intg_wfs, contradictions = (
+        build_adversarial_items(base_dt)
+    )
+    for intg, cases in adv_items.items():
+        all_items.setdefault(intg, []).extend(cases)
+
     log.info("Generated corpus: %s", {k: len(v) for k, v in all_items.items()})
 
     # Split into train / holdout
@@ -298,6 +400,10 @@ def generate(seed: int = 42, split: float = 0.75) -> None:
         "expected_entities": persona.get("expected_entities", []),
         "expected_skills": persona.get("expected_skills", []),
         "expected_workflows": persona.get("expected_workflows", []),
+        "expected_negative_chats": negative_ids,
+        "expected_alias_clusters": alias_clusters,
+        "expected_multi_integration_workflows": multi_intg_wfs,
+        "expected_contradictions": contradictions,
     }
     meta_path = FIXTURES / "corpus_meta.json"
     meta_path.write_text(json.dumps(corpus_meta, indent=2), encoding="utf-8")
