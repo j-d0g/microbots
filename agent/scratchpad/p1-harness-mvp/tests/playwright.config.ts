@@ -2,7 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./playwright",
-  timeout: 60_000,
+  // Generous per-test budget — Workflows cold start can add 5-10s on top of LLM time.
+  timeout: 180_000,
   fullyParallel: false,
   workers: 1,
   reporter: [["list"]],

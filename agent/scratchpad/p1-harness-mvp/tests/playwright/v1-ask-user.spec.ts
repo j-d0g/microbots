@@ -12,7 +12,7 @@ test("v1 ask_user — agent asks before destructive action, user answers, agent 
 
   // The ask_user prompt UI must appear.
   const prompt = page.getByTestId("ask-user-prompt");
-  await expect(prompt.first()).toBeVisible({ timeout: 30_000 });
+  await expect(prompt.first()).toBeVisible({ timeout: 90_000 });
 
   // User clicks "no" (or types the answer if no options were provided).
   const noButton = prompt.first().getByTestId("ask-user-option").filter({ hasText: /^no$/i });
@@ -25,8 +25,8 @@ test("v1 ask_user — agent asks before destructive action, user answers, agent 
 
   // The agent must continue and produce a final response acknowledging the answer.
   const assistantText = page.locator('[data-role="assistant"] [data-testid="message-text"]');
-  await expect(assistantText.last()).toBeVisible({ timeout: 30_000 });
-  await expect(assistantText.last()).toContainText(/no|cancel|abort|won'?t|will not|skip/i, { timeout: 30_000 });
+  await expect(assistantText.last()).toBeVisible({ timeout: 90_000 });
+  await expect(assistantText.last()).toContainText(/no|cancel|abort|won'?t|will not|skip/i, { timeout: 90_000 });
 
   await expect(page.getByTestId("chat-error")).toHaveCount(0);
 });

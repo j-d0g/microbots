@@ -2,3 +2,4 @@ mcp
 uvicorn[standard]
 starlette
 httpx
+render_sdk>=0.6.0

@@ -2,7 +2,60 @@
 
 Chronological diary so a fresh agent can pick up cold. Latest at top.
 
-## 2026-04-26 ~05:30 UTC — v0 + v1 done
+## 2026-04-26 ~05:55 UTC — M1 plumbing done
+
+**Built:**
+- `agent/harness/workflows/main.py` — replaced `run_user_code` stub with real exec(): captures stdout/stderr, runs optional `main(args)` entry point, returns `{result, stdout, stderr, error}`. Bundled httpx/requests/beautifulsoup4 in Workflows image.
+- `agent/harness/mcp/server.py` — added 4 tools (`run_code`, `find_examples`, `save_workflow`, `ask_user`). `run_code` calls Render Workflows via `start_task` + polling (avoids `run_task` SSE hang inside asyncio). `ask_user` is server-declared but client-resolved. Switched transport from Streamable HTTP to **SSE** for compatibility with Vercel AI SDK MCP client.
+- `agent/harness/mcp/templates/index.json` — copy of frontend templates seeded for MCP-side `find_examples`.
+- `agent/harness/mcp/requirements.txt` — added `render_sdk>=0.6.0`.
+- `agent/harness/frontend/app/api/chat/route.ts` — replaced inline tool defs with `experimental_createMCPClient` connection over SSE+bearer. Tools fetched dynamically from MCP. `ask_user` overridden as a no-execute tool() so AI SDK treats it as client-resolved.
+- `agent/harness/frontend/.env.local` — added `MCP_URL` and `MCP_API_TOKEN`.
+- `agent/scratchpad/p1-harness-mvp/tests/playwright.config.ts` — bumped per-test timeout to 180s for Workflows latency.
+- All 5 spec files — bumped per-assertion timeouts from 30/45s → 90s.
+- `v1-save-workflow.spec.ts` — fixed SAVED_DIR to point at `harness/mcp/saved/` instead of `harness/frontend/saved/` (the file now lives on the MCP server).
+
+**Verified end-to-end:**
+- Curl `/api/chat` "compute square of 7" → tools served from MCP → run_code hits Workflows → 49 returned in ~10s.
+- All 5 Playwright tests green in 49.5s through full MCP+Workflows plumbing.
+- Adversarial agent + evaluator agent verification: see latest notes.
+
+**Architecture (M1 shape):**
+```
+Browser → Next.js /api/chat (local) → MCP server (local SSE :8765, bearer)
+       → MCP run_code → Render Workflows /task-runs (cloud)
+       → Workflows runner exec() → result back through MCP → through chat → browser
+```
+
+**Issues + fixes during M1:**
+- `render_sdk.run_task` hangs forever when called from inside an asyncio event loop (it long-polls SSE, blocks the loop). Fixed by switching to `start_task` + sync polling of `get_task_run`, wrapped in `asyncio.to_thread`.
+- Vercel AI SDK MCP client only supports SSE transport (not Streamable HTTP). Switched FastMCP server to `mcp.sse_app()`.
+- Port 8000 occupied by Docker (SurrealDB). Used 8765 for MCP locally.
+- Stale `.next` after `npm run build` then `npm run dev` causes 404 on static chunks. Fix: `rm -rf .next` + clean restart.
+
+**Run from cold:**
+```bash
+# Terminal 1: MCP server
+cd agent/harness/mcp
+RENDER_API_KEY=$(grep RENDER_API_KEY ../../.env | cut -d= -f2) \
+  MCP_API_TOKEN=dev-token-local PORT=8765 \
+  .venv/bin/python server.py
+
+# Terminal 2: frontend
+cd agent/harness/frontend
+npm install   # first time only
+npm run dev
+
+# Terminal 3: tests
+cd agent/scratchpad/p1-harness-mvp/tests
+npx playwright test
+```
+
+**M1 Done = pending evaluator verdict.** Once evaluator returns CONTRACT FULFILLED, flip M1 to ✅ in `02-v0-v1-contract.md` milestone table.
+
+---
+
+## 2026-04-26 ~05:30 UTC — M0 (v0+v1 lean local) done
 
 **Built (one autonomous session):**
 - `agent/harness/frontend/app/api/chat/route.ts` — Next.js POST handler with Anthropic Sonnet 4.6 (via `@ai-sdk/anthropic`), 4 tools defined inline, streamText + maxSteps:8.

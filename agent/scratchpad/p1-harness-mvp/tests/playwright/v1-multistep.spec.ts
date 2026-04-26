@@ -19,11 +19,11 @@ test("v1 multistep — agent makes 2+ run_code calls in one turn", async ({ page
   await expect(async () => {
     const count = await page.locator('[data-tool-name="run_code"][data-tool-state="result"]').count();
     expect(count).toBeGreaterThanOrEqual(2);
-  }).toPass({ timeout: 45_000 });
+  }).toPass({ timeout: 90_000 });
 
   // First 5 primes: 2,3,5,7,11. Sum = 28.
   const assistantText = page.locator('[data-role="assistant"] [data-testid="message-text"]');
-  await expect(assistantText.last()).toContainText("28", { timeout: 45_000 });
+  await expect(assistantText.last()).toContainText("28", { timeout: 90_000 });
 
   await expect(page.getByTestId("chat-error")).toHaveCount(0);
 });
