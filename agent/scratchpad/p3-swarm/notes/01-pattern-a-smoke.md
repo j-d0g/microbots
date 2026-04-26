@@ -172,6 +172,22 @@ Exit code: `0` PASS, `2` FAIL, `1` timeout.
 
 ## Open follow-ups
 
-- Apply the fix above to `agent/harness/workflows/main.py`, push to `jordan/microbot_harness_v0`, wait for Render to roll out the new version, re-run the smoke. Expected wall-clock: ≤7 s cold, ≤3 s warm.
-- After PASS, lock in the numbers in `notes/02-bench-swarm.md` once Lane C's benchmark runs.
+- ~~Apply the fix above to `agent/harness/workflows/main.py`, push to `jordan/microbot_harness_v0`, wait for Render to roll out the new version, re-run the smoke.~~ Done — see "Re-run after fix" below.
+- ~~After PASS, lock in the numbers in `notes/02-bench-swarm.md` once Lane C's benchmark runs.~~ Done — `notes/02-bench-swarm.md`.
 - Consider hardening: cap `urls` length (e.g. 100) and surface a clear error if `args["urls"]` is missing/wrong type. Out of scope for v0; useful before the demo.
+
+## Re-run after fix (commit `b3f3bde`)
+
+After the async fix landed and Render redeployed (~2 min), re-ran `smoke_pattern_a.py`:
+
+```
+verdict     = PASS
+wall_clock  = 4.75s (goal <8.0s)
+n_results   = 10
+queue_s     = 1.34s
+exec_s      = 3.41s
+```
+
+stdout from the run shows all 10 fetches completed via internal `asyncio.gather`; the gather itself reported `total 10 urls in 0.20s` — meaning the 4.75 s wall-clock is dominated by container cold-start + httpx import, not network.
+
+**Pattern A confirmed.** Phase 0 verdict: PASS.
