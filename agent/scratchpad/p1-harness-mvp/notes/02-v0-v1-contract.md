@@ -2,16 +2,65 @@
 
 **Owner:** this Claude session, autonomous execution. Sole agent.
 **Started:** 2026-04-26 ~05:00 UTC
-**Promise:** finish v0 + v1 before stopping. Verify with Playwright + adversarial sub-agent + evaluator sub-agent. Don't hand off.
 
-## Out of scope (deferred to v2)
+## Milestone log
 
-- Render Workflows fan-out / swarm (the "fanning")
-- `save_workflow` actually deploying to Render (mock URL is fine)
-- Knowledge graph integration (Desmond's track)
-- MCP server connection from frontend (use inline tool defs in `/api/chat` for v0; MCP integration is a v2 concern)
-- Multi-user, auth, persistence
-- Streaming-tool-call UI polish
+| Milestone | Status | Verified by | Commit |
+|---|---|---|---|
+| **M0: lean local v0** — chat loop runs locally with inline tools + subprocess `run_code` | ✅ DONE 2026-04-26 ~05:30 UTC | 5 Playwright tests + adversarial 5/5 + evaluator CONTRACT FULFILLED | `f52fc78` |
+| **M1: v0 plumbing** — MCP server hosts the 4 tools; `run_code` executes via Render Workflows; frontend `/api/chat` consumes tools from MCP | 🟡 IN PROGRESS | _Playwright tests must pass against MCP-backed + Workflows-backed loop_ | — |
+| **M2: v1 tuning** — UX polish, error handling, frontend deploys to Render, end-to-end public URL works | ⏳ pending | _Playwright tests pass against deployed URL_ | — |
+| **M3: v2 swarm** — recursive fan-out demo for Render prize (`pitch/render.md` + `pitch/microbots-fractal.md`) | ⏳ pending — out of scope until M1+M2 | _Live dashboard shows ≥50 parallel containers in 90s demo_ | — |
+
+**Promise:** finish each milestone before declaring done. Verify with Playwright + adversarial sub-agent + evaluator sub-agent. Don't hand off mid-milestone.
+
+## Out of scope (deferred to later milestones)
+
+- Render Workflows recursive fan-out / swarm — M3 only
+- `save_workflow` actually deploying user code to Render (mock URL fine through M1; real deploy may land in M2)
+- Knowledge graph integration (Desmond's track) — out of project scope
+- Multi-user, auth, persistence — not in M0–M3
+- Streaming-tool-call UI polish — M2
+
+## Milestone definitions (additive)
+
+### M0 (lean local v0) — DONE
+
+Chat loop works locally end-to-end. Tools defined inline in `/api/chat`. `run_code` uses local Python subprocess. Verified by Playwright + adversarial agent + evaluator. See "M0 done criteria" below.
+
+### M1 (v0 plumbing) — current target
+
+Same observable behavior as M0, but the architecture matches the original spec:
+- 4 tools live on the **MCP server** (`agent/harness/mcp/server.py`), exposed via FastMCP + bearer auth.
+- `/api/chat` connects to the deployed MCP server using `experimental_createMCPClient` and consumes the tools it advertises.
+- `run_code` (on the MCP server) executes via **Render Workflows** `run_user_code` task, NOT local subprocess. Latency goes up to ~5s — acceptable for plumbing milestone, tuned in M2.
+- `find_examples` and `save_workflow` move to MCP server filesystem (templates/ and saved/ live there).
+- `ask_user` stays as a client-resolved tool surfaced through MCP (declared on server, no execute, frontend handles).
+- Workflows service stays auto-deployed; MCP server stays auto-deployed via Blueprint.
+- Frontend stays local for now (deploy is M2).
+
+**M1 Done criteria:**
+1. MCP server (`agent/harness/mcp/server.py`) advertises 4 tools when queried via `mcp/list_tools`.
+2. `/api/chat` no longer defines tools inline — tools come from MCP client.
+3. `run_code` invocation triggers a real Render Workflows task run (visible in the Render dashboard).
+4. All 5 existing Playwright tests still pass against the new architecture (latency budget bumped to 60s/test for Workflows cold start).
+5. Adversarial sub-agent re-runs 5 scenarios and gets ≥4/5 PASS.
+6. Evaluator sub-agent verifies contract.
+7. Notes (`03-progress-log.md`) updated with M1 entry.
+8. Commits + push.
+
+### M2 (v1 tuning) — pending
+
+Frontend deploys to Render. End-to-end public URL works. Tool-call UI polished. Error handling smoothed. Cold-start mitigations applied (e.g. keep-alive ping for Workflows). Pre-pitch demo video.
+
+### M3 (v2 swarm) — pending
+
+The recursive fan-out demo. Out of scope until M1 + M2 land.
+
+---
+
+## M0 done criteria (preserved as historical reference)
+
 
 ## v0 — minimum viable chat loop
 
