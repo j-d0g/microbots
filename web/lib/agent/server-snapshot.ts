@@ -609,11 +609,276 @@ export function applyToolToSnapshot(
     case "graph_zoom_fit":
     case "graph_select":
     case "graph_neighbors":
+    case "graph_highlight":
+    case "graph_zoom_to":
     case "graph_path":
     case "graph_filter_layer":
     case "graph_filter_integration":
     case "graph_search":
     case "graph_clear":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: chat --- */
+    case "chat_scroll_to":
+    case "chat_search":
+    case "chat_filter_by_role":
+    case "chat_summarize_turn":
+    case "chat_export":
+    case "chat_jump_to_turn":
+    case "chat_read_meta":
+    case "chat_set_viewport":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: ask_user --- */
+    case "askuser_update_question":
+    case "askuser_set_options":
+    case "askuser_set_position":
+    case "askuser_set_priority":
+    case "askuser_mark_answered":
+    case "askuser_cancel":
+    case "askuser_retry":
+    case "askuser_read_state":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: settings --- */
+    case "settings_read_user_id":
+    case "settings_update_user_id":
+    case "settings_read_ui_mode":
+    case "settings_update_ui_mode":
+    case "settings_read_connections":
+    case "settings_update_connection":
+    case "settings_read_health":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: profile --- */
+    case "profile_read_name":
+    case "profile_update_name":
+    case "profile_read_role":
+    case "profile_update_role":
+    case "profile_read_goals":
+    case "profile_update_goals":
+    case "profile_read_preferences":
+    case "profile_update_preferences":
+    case "profile_read_context_window":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: integrations --- */
+    case "integrations_list":
+    case "integrations_filter_by_category":
+    case "integrations_filter_by_connected":
+    case "integrations_sort":
+    case "integrations_search":
+    case "integrations_open_detail":
+    case "integrations_filter_by_cousage":
+    case "integrations_read_co_usage_matrix":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: integration_detail --- */
+    case "integrationdetail_read_metadata":
+    case "integrationdetail_read_config":
+    case "integrationdetail_update_config":
+    case "integrationdetail_read_entities":
+    case "integrationdetail_read_memories":
+    case "integrationdetail_test_connection":
+    case "integrationdetail_sync":
+    case "integrationdetail_open_entities_tab":
+    case "integrationdetail_open_memories_tab":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: entities --- */
+    case "entities_list":
+    case "entities_filter_by_type":
+    case "entities_sort":
+    case "entities_search":
+    case "entities_quick_add":
+    case "entities_open_detail":
+    case "entities_filter_by_integration":
+    case "entities_read_types":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: entity_detail --- */
+    case "entitydetail_read_properties":
+    case "entitydetail_read_relationships":
+    case "entitydetail_read_memories":
+    case "entitydetail_read_metadata":
+    case "entitydetail_read_integrations":
+    case "entitydetail_add_note":
+    case "entitydetail_open_memory":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: memories --- */
+    case "memories_list":
+    case "memories_sort_by_confidence":
+    case "memories_sort_by_recency":
+    case "memories_filter_by_type":
+    case "memories_filter_by_source":
+    case "memories_search":
+    case "memories_add_memory":
+    case "memories_open_entity":
+    case "memories_read_timeline":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: skills --- */
+    case "skills_list":
+    case "skills_filter_by_strength":
+    case "skills_search":
+    case "skills_open_detail":
+    case "skills_toggle_active":
+    case "skills_read_categories":
+    case "skills_filter_by_category":
+    case "skills_sort_by_frequency":
+    case "skills_read_co_dependency":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: workflows --- */
+    case "workflows_list":
+    case "workflows_filter_by_trigger":
+    case "workflows_search":
+    case "workflows_open_detail":
+    case "workflows_toggle_active":
+    case "workflows_execute":
+    case "workflows_duplicate":
+    case "workflows_read_stats":
+    case "workflows_browse_chain":
+    case "workflows_edit_skill_chain":
+    case "workflows_run_simulation":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: wiki --- */
+    case "wiki_read_page":
+    case "wiki_navigate_to":
+    case "wiki_edit_page":
+    case "wiki_save_page":
+    case "wiki_cancel_edit":
+    case "wiki_list_children":
+    case "wiki_go_to_parent":
+    case "wiki_search":
+    case "wiki_read_revision_history":
+    case "wiki_revert_to_revision":
+    case "wiki_new_page":
+    case "wiki_delete_page":
+    case "wiki_go_to_index":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window-specific tools: chats_summary --- */
+    case "chatsummary_read_stats":
+    case "chatsummary_read_recent":
+    case "chatsummary_filter_by_source":
+    case "chatsummary_filter_by_date_range":
+    case "chatsummary_sort_by_signal_level":
+    case "chatsummary_search":
+    case "chatsummary_read_entity_mentions":
+    case "chatsummary_open_source_chat":
+    case "chatsummary_export_summary":
+    case "chatsummary_refresh":
+    case "chatsummary_read_by_integration":
+    case "chatsummary_jump_to_full_chat":
+      return {
+        snapshot: {
+          ...snap,
+          recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
+        },
+        message: `${tool} dispatched.`,
+      };
+
+    /* --- window management tools --- */
+    case "winman_move_to_position":
+    case "winman_arrange_preset":
+    case "winman_set_centre_arrangement":
+    case "winman_swap_positions":
+    case "winman_pin_window":
+    case "winman_unpin_window":
+    case "winman_toggle_pin":
+    case "winman_read_pinned":
+    case "winman_bring_to_front":
+    case "winman_send_to_back":
+    case "winman_read_focused":
+    case "winman_resize_window":
+    case "winman_maximize_window":
+    case "winman_minimize_window":
+    case "winman_close_all_except":
+    case "winman_cascade_windows":
+    case "winman_tile_windows":
+    case "winman_read_layout_state":
+    case "winman_read_window_list":
       return {
         snapshot: {
           ...snap,

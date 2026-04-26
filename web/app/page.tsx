@@ -7,7 +7,10 @@ import { Desktop } from "@/components/stage/Desktop";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import { AgentBridge } from "@/components/agent/AgentBridge";
 import { StoreBridge } from "@/components/agent/StoreBridge";
-import { SnapshotInspector } from "@/components/agent/SnapshotInspector";
+// SnapshotInspector retired — the canvas snapshot it surfaced is no
+// longer informative now that windows are schema-driven. Re-import
+// and re-mount if a debug surface is needed again.
+// import { SnapshotInspector } from "@/components/agent/SnapshotInspector";
 import { VoiceBridge } from "@/components/agent/VoiceBridge";
 import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
 import { useAgentStore } from "@/lib/store";
@@ -23,7 +26,6 @@ export default function Home() {
         <VoiceBridge />
         <ChatLayout />
         <CardStack />
-        <SnapshotInspector />
         <OnboardingOverlay />
       </div>
     );
@@ -38,7 +40,6 @@ export default function Home() {
       <CardStack />
       <FloatingDock />
       <CommandBar />
-      <SnapshotInspector />
       <OnboardingOverlay />
     </div>
   );

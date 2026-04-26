@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { resolveMount, DOCK_PX_H } from "./agent/mount-points";
 import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
+import type { ConversationTurn, IntentSummary } from "./agent/conversation-types";
 
 /**
  * Window kinds, schema-driven (v2).
@@ -41,6 +42,7 @@ export type DockState =
   | "listening"
   | "thinking"
   | "speaking"
+  | "conversing"
   | "hidden";
 
 export type CardKind = "memory" | "entity" | "source" | "diff" | "toast";
@@ -364,6 +366,21 @@ export interface AgentStoreState {
   /* --- room states --- */
   roomStates: Partial<Record<RoomKind, RoomState>>;
   setRoomState: (room: RoomKind, state: RoomState) => void;
+
+  /* --- conversation mode --- */
+  conversationMode: boolean;
+  setConversationMode: (enabled: boolean) => void;
+  toggleConversationMode: () => void;
+  isAgentSpeaking: boolean;
+  setIsAgentSpeaking: (speaking: boolean) => void;
+
+  /* --- conversation state (ElevenLabs agent) --- */
+  conversationHistory: ConversationTurn[];
+  currentIntent: IntentSummary | null;
+  setConversationHistory: (history: ConversationTurn[]) => void;
+  setCurrentIntent: (intent: IntentSummary | null) => void;
+  addConversationTurn: (turn: ConversationTurn) => void;
+  clearConversation: () => void;
 }
 
 const MAX_VISIBLE_CARDS = 3;

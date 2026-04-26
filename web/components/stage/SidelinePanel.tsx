@@ -21,10 +21,23 @@ import {
 } from "lucide-react";
 import { useAgentStore, type WindowState, type WindowKind } from "@/lib/store";
 import { cn } from "@/lib/cn";
-import { WINDOW_LABEL, WINDOW_SIDELINE_HINT } from "./window-labels";
+import { WINDOW_LABEL } from "./window-labels";
 import { ShapeButton } from "./ShapeButton";
 import { MAX_LEFT_SIDELINE } from "@/lib/stage-manager";
 import { ChatWindow } from "@/components/windows/ChatWindow";
+import { GraphSideline } from "./sideline/GraphSideline";
+import { AskUserSideline } from "./sideline/AskUserSideline";
+import { SettingsSideline } from "./sideline/SettingsSideline";
+import { ProfileSideline } from "./sideline/ProfileSideline";
+import { IntegrationsSideline } from "./sideline/IntegrationsSideline";
+import { IntegrationDetailSideline } from "./sideline/IntegrationDetailSideline";
+import { EntitiesSideline } from "./sideline/EntitiesSideline";
+import { EntityDetailSideline } from "./sideline/EntityDetailSideline";
+import { MemoriesSideline } from "./sideline/MemoriesSideline";
+import { SkillsSideline } from "./sideline/SkillsSideline";
+import { WorkflowsSideline } from "./sideline/WorkflowsSideline";
+import { WikiSideline } from "./sideline/WikiSideline";
+import { ChatsSummarySideline } from "./sideline/ChatsSummarySideline";
 
 /**
  * A window currently sitting on the sideline.
@@ -218,10 +231,6 @@ export function SidelinePanel({
       >
         {win.kind === "chat" ? (
           <>
-            {/* Live transcript. Slightly faded so the sideline reads
-               as background relative to centre stage; pointer-events
-               disabled so the wrapper's promote-on-click takes
-               precedence over any inner scrolling. */}
             <div className="pointer-events-none h-full opacity-90">
               <ChatWindow />
             </div>
@@ -235,18 +244,11 @@ export function SidelinePanel({
             </span>
           </>
         ) : (
-          <div className="flex h-full flex-col p-3 text-left">
-            <p className="text-[13px] leading-snug text-ink-90">
-              {summary(win)}
-            </p>
-            {win.openedBy === "agent" && (
-              <span className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-35">
-                opened by agent
-              </span>
-            )}
+          <div className="relative flex h-full flex-col overflow-hidden">
+            <SidelineBody win={win} />
             <span
               className={cn(
-                "mt-auto font-mono text-[9px] uppercase tracking-wider transition-colors",
+                "pointer-events-none absolute bottom-2 right-3 font-mono text-[9px] uppercase tracking-wider transition-colors",
                 hovering ? "text-accent-indigo" : "text-ink-35",
               )}
             >
@@ -276,12 +278,21 @@ const ICONS: Partial<Record<WindowKind, typeof Sunrise>> = {
   chats_summary: BarChart3,
 };
 
-function summary(win: WindowState): string {
-  // The agent can stuff a `summary` string into the payload; honour
-  // it before falling back to a generic per-kind label.
-  const fromAgent =
-    typeof win.payload?.summary === "string"
-      ? (win.payload.summary as string)
-      : null;
-  return fromAgent ?? WINDOW_SIDELINE_HINT[win.kind] ?? "";
+function SidelineBody({ win }: { win: WindowState }) {
+  switch (win.kind) {
+    case "graph":            return <GraphSideline win={win} />;
+    case "ask_user":         return <AskUserSideline win={win} />;
+    case "settings":         return <SettingsSideline win={win} />;
+    case "profile":          return <ProfileSideline win={win} />;
+    case "integrations":     return <IntegrationsSideline win={win} />;
+    case "integration_detail": return <IntegrationDetailSideline win={win} />;
+    case "entities":         return <EntitiesSideline win={win} />;
+    case "entity_detail":    return <EntityDetailSideline win={win} />;
+    case "memories":         return <MemoriesSideline win={win} />;
+    case "skills":           return <SkillsSideline win={win} />;
+    case "workflows":        return <WorkflowsSideline win={win} />;
+    case "wiki":             return <WikiSideline win={win} />;
+    case "chats_summary":    return <ChatsSummarySideline win={win} />;
+    default:                 return null;
+  }
 }
