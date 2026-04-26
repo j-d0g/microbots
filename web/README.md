@@ -20,22 +20,57 @@ Opens at http://localhost:3000. First load lands on the onboarding screen (a cen
 
 To run against the real agent (OpenRouter → `google/gemini-2.5-flash-lite`):
 
-1. Get a key from https://openrouter.ai (a few dollars of credit goes a long way at Flash-Lite rates).
-2. Set `OPENROUTER_API_KEY=...` in `web/.env.local`.
-3. Set `NEXT_PUBLIC_MOCK_AGENT=false`.
-4. Restart `npm run dev`.
+1. Get a key:
+   - Sign in at https://openrouter.ai
+   - Open https://openrouter.ai/keys and create a key (any name, default scope is fine).
+   - Verify it works before pasting it in: `curl -H "Authorization: Bearer $KEY" https://openrouter.ai/api/v1/models | head` — you should see JSON, not a `401`.
+   - A few dollars of OpenRouter credit goes a long way at Flash-Lite rates.
+2. Set `OPENROUTER_API_KEY=...` in `web/.env.local`. (`.env.local` is gitignored — treat it as your secrets file.)
+3. Set `NEXT_PUBLIC_MOCK_AGENT=false` in the same file.
+4. Stop the running dev server (`Ctrl-C` in the terminal that started it; or `kill <pid>` if you backgrounded it) and run `npm run dev` again — `.env.local` is only read on boot.
 
 The orchestrator chat itself runs entirely on OpenRouter and needs no other keys. The graph room and the integration rooms additionally read from a FastAPI backend (`app/main.py` in the repo root); without it they degrade to empty / "backend offline" states without crashing the rest of the UI.
 
-### Port conflicts
+### Port conflicts and dev-server locks
 
-If port 3000 is taken (common when running this alongside the harness frontend at `agent/harness/frontend/`, which also defaults to 3000), pass `--port`:
+If port 3000 is taken (common when running this alongside the harness frontend at `agent/harness/frontend/`, which also defaults to 3000), pass `--port` with any free port:
 
 ```bash
-npx next dev --port 3001
+npx next dev --port 3002   # any free port works; 3001 is also commonly taken
 ```
 
-Nothing in the app config hard-codes 3000 — the dev server's port is the only thing that cares.
+**Parallel dev from the same `web/` dir**: Next.js 16 keeps a singleton lockfile at `.next/dev/lock`. If another `next dev` already owns this directory — a teammate's instance, a different worktree's instance, or a backgrounded one you've forgotten about — `next dev` will fail with `Another next dev server is already running` *no matter what `--port` you pass*. The error message includes the holding PID. Either:
+
+- `kill <pid>` the holder if you don't need it, or
+- Give your second instance its own dist dir + lock:
+
+  ```bash
+  NEXT_DIST_DIR=.next-alt npx next dev --port 3002
+  ```
+
+  `next.config.ts` already reads `NEXT_DIST_DIR` (defaults to `.next`), so any value gives you a fresh `<value>/lock`.
+
+### Smoke test
+
+Confirm the dev server is up and configured the way you think it is:
+
+```bash
+PORT=3000   # change to whatever your dev server bound
+
+# Page renders:
+curl -s -o /dev/null -w "GET / -> %{http_code}\n" http://localhost:$PORT
+
+# Agent route reachable + correctly wired (real vs mock):
+curl -sN -D - -X POST http://localhost:$PORT/api/agent/orchestrate \
+  -H 'content-type: application/json' \
+  -d '{"query":"hi","snapshot":{"viewport":{"w":1440,"h":900},"windows":[],"focusedId":null,"recentActions":[],"user":{"query":"hi"},"ui":{"mode":"windowed"}}}' \
+  | head -20
+```
+
+Read the response headers:
+
+- `x-agent-model: google/gemini-2.5-flash-lite` — real OpenRouter agent is wired in.
+- `x-agent-fallback: local` (with status `503`) — `OPENROUTER_API_KEY` isn't being loaded. Re-check `web/.env.local` and that you fully restarted the dev server. Mock-agent runs (`NEXT_PUBLIC_MOCK_AGENT=true`) intentionally short-circuit on the client and won't hit this route at all.
 
 ## Structure
 
