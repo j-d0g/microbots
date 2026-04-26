@@ -77,3 +77,6 @@ playwright/.cache/
 
 # --- Runtime artifacts ---
 agent/harness/frontend/saved/
+
+# --- Curated demo snapshot (contains real teammate data — do not commit) ---
+knowledge_graph/seed/demo_snapshot.surql

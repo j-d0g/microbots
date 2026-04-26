@@ -15,12 +15,16 @@ def execute_tool(
     arguments: dict[str, Any],
     user_id: str,
 ) -> dict[str, Any] | None:
-    out = composio.tools.execute(
-        slug,
-        arguments,
-        user_id=user_id,
-        dangerously_skip_version_check=True,
-    )
+    try:
+        out = composio.tools.execute(
+            slug,
+            arguments,
+            user_id=user_id,
+            dangerously_skip_version_check=True,
+        )
+    except Exception as e:  # tool slug missing, network error, etc.
+        log.warning("Composio tool %s raised: %s", slug, e)
+        return None
     if not out.get("successful"):
         log.warning("Composio tool %s failed: %s", slug, out.get("error"))
         return None

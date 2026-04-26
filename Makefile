@@ -4,7 +4,7 @@ export
 PYTHON := uv run python
 KG     := knowledge_graph
 
-.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest-seed wiki-reset wiki-cat ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report
+.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest-seed wiki-reset wiki-cat ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report surface snapshot restore-demo daemon-cycle scrub
 
 install:
 	uv sync
@@ -97,3 +97,31 @@ db-export:
 		--database $(SURREAL_DB) \
 		- > backup_$(shell date +%Y%m%d_%H%M%S).surql
 	@echo "Export complete."
+
+# --- Candidate surfacing (daemon batch job) ---
+# Reads the current graph and writes Tier 1-4 candidates to the
+# `automation_candidate` table. Re-running is idempotent. Also re-renders the
+# `automations.md` wiki dashboard with all open candidates.
+surface:
+	cd $(KG) && $(PYTHON) -m candidates.surface
+
+# Dump curated demo state (hand-created candidates + entities + wiki pages)
+# to a re-seedable SurrealQL file at knowledge_graph/seed/demo_snapshot.surql.
+# Run after every significant manual curation.
+snapshot:
+	cd $(KG) && $(PYTHON) -m candidates.snapshot
+
+# Apply the snapshot (e.g., after `make db-reset` wipes the curated state).
+restore-demo:
+	cd $(KG) && $(PYTHON) -m candidates.snapshot --apply
+
+# Full daemon cycle: ingest -> surface candidates. Wraps what a scheduler
+# would invoke periodically. Doesn't auto-snapshot (curated state is
+# preserved separately by `make snapshot`).
+daemon-cycle: ingest surface
+
+# Scrub sensitive specifics (coupon codes, personal emails, internal URLs)
+# while preserving relationships so the demo story still works.
+# Add `--dry` for a preview: `make scrub ARGS=--dry`.
+scrub:
+	cd $(KG) && $(PYTHON) -m candidates.scrub $(ARGS)

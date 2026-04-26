@@ -56,8 +56,12 @@ CORRELATION_ID: str = os.getenv("CORRELATION_ID") or uuid.uuid4().hex[:12]
 # matching backend so a user who created their token on logfire.pydantic.dev
 # (US) doesn't get a 401 from logfire-eu.pydantic.dev (and vice versa).
 _TOKEN_REGION_MAP = {
+    # v1 tokens
     "pylf_v1_eu_": "https://logfire-eu.pydantic.dev",
     "pylf_v1_us_": "https://logfire-us.pydantic.dev",
+    # v2 tokens (current default issued by Logfire UI as of 2026-04)
+    "pylf_v2_eu_": "https://logfire-eu.pydantic.dev",
+    "pylf_v2_us_": "https://logfire-us.pydantic.dev",
 }
 _DEFAULT_BASE_URL = "https://logfire-eu.pydantic.dev"
 

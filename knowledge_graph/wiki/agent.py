@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
+from pathlib import Path
 from typing import Union
 
 from pydantic import BaseModel
@@ -22,7 +24,20 @@ from wiki.tools import (
     tool_write_markdown,
 )
 
+# Make the project root importable regardless of how the wiki entrypoint is
+# launched (knowledge_graph is its own pythonpath root in pyproject.toml).
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from microbots import instrument_pydantic_ai, setup_logging  # noqa: E402
+
 log = logging.getLogger(__name__)
+
+# Idempotent — every WikiAgent instantiation re-asserts that Pydantic AI
+# auto-instrumentation is on. Cheap (single bool check after first call).
+setup_logging()
+instrument_pydantic_ai()
 
 _OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 

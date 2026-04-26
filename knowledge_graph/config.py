@@ -13,7 +13,7 @@ load_dotenv()
 
 @dataclass
 class LLMConfig:
-    provider: Literal["openrouter", "anthropic"] = "openrouter"
+    provider: Literal["openrouter", "anthropic"] = "anthropic"
     openrouter_model: str = "google/gemini-2.5-flash"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     anthropic_model: str = "claude-haiku-4-5-20251001"

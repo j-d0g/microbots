@@ -29,11 +29,22 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(REPO_ROOT / ".env")
 
 from app.mcp import build_devin_mcp_asgi, build_mcp_asgi  # noqa: E402  (env must load first)
-from app.routes import api_composio, api_devin, api_health, api_kg
+from app.routes import api_composio, api_devin, api_health, api_kg, api_logfire
 from app.services.devin_poller import shutdown_devin_poller
+from microbots import (  # noqa: E402  (env must load first)
+    instrument_fastapi,
+    instrument_httpx,
+    setup_logging,
+)
+
+# Configure Logfire BEFORE FastAPI is created so the ``instrument_fastapi``
+# call below has a configured exporter to attach to. ``setup_logging`` also
+# routes stdlib ``logging`` records through Logfire, so the existing
+# ``logger.info`` call sites keep working — they just gain a remote sink.
+setup_logging()
+instrument_httpx()
 
 logger = logging.getLogger("microbots")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 
 
 def create_app() -> FastAPI:
@@ -92,6 +103,12 @@ def create_app() -> FastAPI:
     app.include_router(api_composio.router, prefix="/api")
     app.include_router(api_kg.router, prefix="/api")
     app.include_router(api_devin.router, prefix="/api")
+    app.include_router(api_logfire.router, prefix="/api")
+
+    # Logfire HTTP-level instrumentation — every request becomes a span
+    # with route, status, duration, and is correlated to any downstream
+    # spans (KG MCP, Composio, etc.) emitted from inside handlers.
+    instrument_fastapi(app)
 
     return app
 
