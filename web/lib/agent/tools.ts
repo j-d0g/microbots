@@ -50,7 +50,7 @@ function applyAndEmit(
   for (const e of uiEvents) ctx.emit(e);
   const result = applyToolToSnapshot(ctx.snapshot, toolName, args);
   ctx.snapshot = result.snapshot;
-  ctx.emit({ type: "agent.tool.done", name: toolName, ok: true });
+  ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok });
   return result.message;
 }
 
@@ -233,7 +233,7 @@ export function layoutTools(ctx: AgentToolCtx) {
         ctx.emit({
           type: "agent.tool.done",
           name: "arrange_windows",
-          ok: true,
+          ok: result.ok,
         });
         return result.message;
       },

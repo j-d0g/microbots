@@ -61,8 +61,9 @@ function dispatchRoomTool(
     }).snapshot;
   }
   ctx.emit({ type: "ui.tool", room: kind, tool, args });
-  ctx.snapshot = applyToolToSnapshot(ctx.snapshot, fullName, args).snapshot;
-  ctx.emit({ type: "agent.tool.done", name: fullName, ok: true });
+  const result = applyToolToSnapshot(ctx.snapshot, fullName, args);
+  ctx.snapshot = result.snapshot;
+  ctx.emit({ type: "agent.tool.done", name: fullName, ok: result.ok });
   return `${fullName} dispatched.`;
 }
 

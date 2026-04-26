@@ -445,6 +445,32 @@ That's it. Devin reconstructs full context from this file.
 
 <!-- Devin: append entries below this line. Newest first. -->
 
+### Sprint 1.5 — Snappy + truthful + always-stage · 2026-04-26 · #5
+
+**Shipped:** Three surgical changes in one PR. (1) **Recovery metric truth**: added `ok: boolean` to `ToolApplyResult`, threaded real success/failure from `applyToolToSnapshot` into `agent.tool.done` events across `applyAndEmit`, `arrange_windows`, and `dispatchRoomTool`; added room-prefix fallback (`brief_*`, `workflow_*`, `stack_*`, `waffle_*`, `playbooks_*`, `settings_*`, `graph_*`) in the default case so per-window and graph tools aren't false-failed. (2) **Marginal prompt polish**: added ALWAYS-STAGE RULE to `ORCH_SYSTEM` — emotional/status/vague queries must trigger `delegate_layout` in parallel with `delegate_content`, with 2 concrete examples and a narrow exception clause (~12 lines). (3) **Latency interventions**: temperature 0.3→0.2 on orchestrator + content-agent; sub-agent step caps 4→3 (prompts + docstrings aligned); replaced `for-await textStream` drain with `await result.steps` in both sub-agents.
+
+**Eval delta:**
+
+| Metric | Before | After | Δ |
+|---|---|---|---|
+| Tool-call correctness | 91.8% | 100.0% | **+8.2 pp** |
+| TTFW p50 | 1226ms | 1704ms | +478ms ⚠️ |
+| Full-turn p50 / p95 | 2791 / 14353ms | 3554 / 15446ms | +763 / +1093ms ⚠️ |
+| Mean tool calls (multi_step) | 4.0 | 4.3 | +0.3 |
+| Marginal-intent pass-rate | 80.0% | **100.0%** | **+20 pp** |
+| Recovery rate | 100.0% (vacuous) | 0.0% (truthful) | now real |
+| Calm-canvas avg | 4.9 / 5 | 4.9 / 5 | 0 |
+
+**Regressions:** Latency regressed across all three measures. The ALWAYS-STAGE rule increases delegation frequency (more `delegate_layout` calls on marginal queries that previously skipped layout), adding LLM round-trips. Temperature reduction (0.3→0.2) and `await result.steps` replacement did not offset this. Recovery rate is 0% because the metric is now truthful — tool failures exist but the agent does not yet retry (Sprint 2 addresses this with adaptive step budgets and `agent.tool.retry` events).
+
+**Latency interventions tried that did NOT help:**
+- Temperature 0.3→0.2: no measurable latency improvement (model sampling overhead is negligible vs. network + generation time)
+- `for-await textStream` → `await result.steps`: functionally equivalent, no timing difference
+- Sub-agent step caps 4→3: reduces max steps but most queries already complete in 1–2 sub-agent steps; the cap rarely fires
+- The dominant latency contributor is **LLM round-trip count**, which *increased* due to ALWAYS-STAGE adding more delegation. True latency wins require system-prefix caching (Sprint 6) or connection pre-warming.
+
+**Next:** Sprint 2 (self-correction & dynamic step budget) to make the recovery metric meaningful. Sprint 6 (latency optimization) when latency becomes the priority — system-prefix caching + OpenRouter connection pre-warming are the most promising levers.
+
 ### Sprint 0 — Foundation: eval harness + instrumentation · 2025-04-25
 
 **Shipped:** Built the complete eval harness (`instrument.ts`, `judge.ts`, `run.ts`) with 80-query hand-written corpus (25 marginal, 20 multi_step, 10 layout, 10 content, 10 failure_recovery, 5 edge_case) and rule-based scoring across all six north-star axes. Wired `npm run agent:eval` / `agent:eval:quick`. Deleted legacy `/api/agent/stream` route and replaced the scripted SCRIPTS fallback in `agent-router.ts` with a single "agent unavailable" toast. Locked production model to `google/gemini-2.5-flash-lite`. Committed baseline report.
