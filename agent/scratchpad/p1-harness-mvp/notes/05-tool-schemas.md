@@ -2,6 +2,8 @@
 
 For a designer / frontend friend mocking the harness UI without running the code.
 
+> **Updated 2026-04-26 ~07:55 UTC** — surface grew from 4 → 8 tools after merging `jordan/p2-v1-tools`. New tools: `view_workflow`, `run_workflow`, `list_workflows`, `search_memory`. `save_workflow` gained an `overwrite` flag + size caps.
+
 ## Figma boards
 
 | Board | Purpose | URL |
@@ -9,7 +11,7 @@ For a designer / frontend friend mocking the harness UI without running the code
 | Reference (Cody / maximalist baseline) | The 17-tool agent the v0 cuts down from. Shows the full surface to compare against. | https://www.figma.com/board/FTupkkCSesUX3heUvxCNHg |
 | microbots v0 (lean) | The 4-tool harness being built. | https://www.figma.com/board/QaFaWoBRqd1aoOrrTXSgTL |
 
-## The 4 tools
+## The 8 tools
 
 ### 1. `run_code`
 
@@ -37,13 +39,71 @@ Use when: agent suspects a relevant template exists. Substring match over title 
 ### 3. `save_workflow`
 
 ```ts
-input:  { name: string; code: string }
-output: { url: string; saved_to: string; bytes: number }
+input:  { name: string; code: string; overwrite?: boolean }   // overwrite default false
+output:
+  | { url: string; saved_to: string; bytes: number }                          // success
+  | { error: "exists"; slug: string; existing_bytes: number; hint: string }   // collision
+  | { error: "code too large"; bytes: number; max_bytes: number }             // > 1MB
+  | { error: string }                                                         // other
 ```
 
 Use when: user wants to persist / promote / publish. v0 returns mock URL (`https://example.com/workflows/<slug>`); v2 returns real deployed URL.
 
-### 4. `ask_user`  *(client-resolved)*
+**Collision behavior** (after p2 hardening): refuses to overwrite by default. Surface the `error: "exists"` to the user so they can pick a new name or call again with `overwrite=true`. Slug is capped at 64 chars; code size capped at 1MB.
+
+### 4. `view_workflow`
+
+```ts
+input:  { name: string }
+output:
+  | { name: string; slug: string; code: string; bytes: number; modified_at: string }
+  | { error: "not found"; slug: string; available?: string[] }
+```
+
+Use when: agent wants to inspect / read back a previously saved workflow before editing or running it. Read-back partner of `save_workflow`. UI: code-block render of `code`, with metadata.
+
+### 5. `run_workflow`
+
+```ts
+input:  { name: string; args?: Record<string, any> }
+output:
+  | { result: any | null; stdout: string; stderr: string; error: string | null }
+  | { error: "not found"; slug: string; available?: string[] }
+```
+
+Use when: user wants to invoke an already-saved workflow (their own past work or a template just installed). Loads `saved/<slug>.py`, runs it through the same Render Workflows substrate as `run_code`. Same output shape as `run_code` on success.
+
+### 6. `list_workflows`
+
+```ts
+input:  {}
+output: {
+  count: number;
+  workflows: Array<{
+    slug: string;
+    summary: string;        // first docstring line or non-comment line
+    bytes: number;
+    modified_at: string;    // ISO timestamp
+  }>;
+}
+```
+
+Sorted by most-recently-modified first. Use when user asks "what have I built?" or refers ambiguously to a past workflow.
+
+### 7. `search_memory`
+
+```ts
+input:  { query: string; scope?: "kg" | "recent_chats" | "all" }   // default "all"
+output: {
+  results: Array<{ source: "kg" | "recent_chats"; ... }>;
+  count: number;
+  scope: string;
+}
+```
+
+Use when: agent wants context grounded in the user's own data (Slack, Notion, Gmail, Linear, GitHub via KG). Proxies to a separate `kg_mcp` service. `recent_chats` scope is a stub in v1 — pipeline TBD.
+
+### 8. `ask_user`  *(client-resolved)*
 
 ```ts
 input:  { question: string; options?: string[] }   // options up to 5
