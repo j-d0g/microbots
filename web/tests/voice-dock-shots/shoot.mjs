@@ -54,8 +54,8 @@ async function setup(page) {
     for (const c of [...s.cards]) s.dismissCard(c.id);
     s.setAgentStatus("");
     s.setOnboarded(true);
-    s.openWindow("brief");
     s.openWindow("graph");
+    s.openWindow("settings");
     s.arrangeWindows("split");
   });
   await page.waitForTimeout(900);

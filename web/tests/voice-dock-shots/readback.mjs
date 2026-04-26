@@ -44,7 +44,7 @@ async function setup(page) {
     for (const c of [...s.cards]) s.dismissCard(c.id);
     s.setAgentStatus("");
     s.setOnboarded(true);
-    s.openWindow("brief");
+    s.openWindow("graph");
   });
   // Stub speechSynthesis so we observe how many times the read-back
   // pipeline kicks off without depending on the headless browser

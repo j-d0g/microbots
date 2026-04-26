@@ -9,10 +9,10 @@ import { AgentBridge } from "@/components/agent/AgentBridge";
 import { StoreBridge } from "@/components/agent/StoreBridge";
 import { SnapshotInspector } from "@/components/agent/SnapshotInspector";
 import { VoiceBridge } from "@/components/agent/VoiceBridge";
+import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
 import { useAgentStore } from "@/lib/store";
 
 export default function Home() {
-  const windows = useAgentStore((s) => s.windows);
   const uiMode = useAgentStore((s) => s.uiMode);
 
   if (uiMode === "chat") {
@@ -24,6 +24,7 @@ export default function Home() {
         <ChatLayout />
         <CardStack />
         <SnapshotInspector />
+        <OnboardingOverlay />
       </div>
     );
   }
@@ -38,6 +39,7 @@ export default function Home() {
       <FloatingDock />
       <CommandBar />
       <SnapshotInspector />
+      <OnboardingOverlay />
     </div>
   );
 }
