@@ -7,22 +7,38 @@ we were emitting empty arrays. Fixed.
 
 ## What we now ship
 
-Every span carries 3-5 tags automatically; every classified trace
-carries 12 tags. Run the live tab and rows look like:
+Three layers of tagging, each visible as chips in the Logfire UI:
+
+1. **Auto-tags on every span** (free, every emit).
+   ``retrieved_doc`` and ``failure_mode`` events get 3-5 chips
+   automatically: ``[retrieval, kind:template, tool:find_examples,
+   relevance:high]``.
+
+2. **Rule-based 12-dim classifier** (``microbots/tagger.py``).
+   Fast, deterministic, no LLM. Reads the last N minutes of traces
+   and emits a ``task_classified`` span per trace with mechanical
+   tags: ``intent:compose-workflow``, ``outcome:success``,
+   ``complexity:multi-step``, ``token-band:large``, etc.
+
+3. **LLM semantic classifier** (``microbots/llm_tagger.py``).
+   The Cody-shape. One Claude Haiku call per trace via OpenRouter
+   classifies into a controlled taxonomy
+   (``industry/* / task-type/* / friction/* / experience/* / quality/*``)
+   and writes a ``task_classified_llm`` span with both the tags and
+   a one-line rationale.
+
+Run the Live tab filtered by these and you get rows like:
 
 ```
-17:02:46  task_classified  [intent:compose-workflow] [outcome:success]
-                            [complexity:multi-step] [token-band:large]
-                            [has-llm-call:yes] [context-source:best-practice]
-                            [has-retrieval:yes] [has-failure:no]
-                            [friction:none] [latency-band:fast]
-                            [tools-used-band:single] [novel-failure:no]
+task_classified_llm  [industry/internal-tools] [task-type/composition]
+                     [friction/tool-misfire] [experience/recovered]
+                     [quality/high-signal]
+   "Workflow composition with best-practice retrieval; compose tool
+    misfired but recovered via examples."
 ```
 
-That's the Cody view. We get it from the ``microbots/tagger.py`` pass
-classifying recent traces and emitting one ``task_classified`` span
-per trace with the full chip cloud. Rule-based v1; pluggable to LLM
-v2 later.
+That's the Cody view, with the bonus that *the agent itself can
+introspect these tags via SQL* through the new MCP tools.
 
 ## The actual demo flow
 
@@ -32,12 +48,13 @@ v2 later.
 # 1. Seed realistic agent traces
 uv run python test/seed_demo_traces.py
 
-# 2. Wait 8s for ingestion, then classify
+# 2. Wait 8s for ingestion, then run BOTH classifiers
 sleep 10
-uv run python -m microbots.tagger 5
+uv run python -m microbots.tagger 5         # rule-based (12 dims)
+uv run python -m microbots.llm_tagger 5 12  # LLM semantic (5 dims, ~12 traces)
 ```
 
-(Re-run before going on stage to make the timestamps fresh.)
+(Re-run all three before going on stage to keep timestamps fresh.)
 
 ### Demo arc — 3 acts, ~90s
 
@@ -128,11 +145,22 @@ time.
 
 ## Cheat-sheet queries (paste into Logfire search bar)
 
+Rule-based view:
 - All classified tasks: `span_name = 'task_classified'`
 - Just failures: `span_name = 'task_classified' AND attributes->>'outcome' = 'failure'`
 - Compose-workflow only: `tags @> ARRAY['intent:compose-workflow']`
 - Slow tasks: `tags @> ARRAY['latency-band:slow'] OR tags @> ARRAY['latency-band:very-slow']`
-- The doc-attribution traces: `tags @> ARRAY['retrieval'] OR tags @> ARRAY['failure']`
+
+LLM-semantic view (Cody-shape):
+- All LLM-classified: `span_name = 'task_classified_llm'`
+- Just devops industry: `tags @> ARRAY['industry/devops']`
+- Tool misfires: `tags @> ARRAY['friction/tool-misfire']`
+- Recovered tasks: `tags @> ARRAY['experience/recovered']`
+- High-signal compositions: `tags @> ARRAY['quality/high-signal'] AND tags @> ARRAY['task-type/composition']`
+
+Cross-cutting:
+- Doc-attribution traces: `tags @> ARRAY['retrieval'] OR tags @> ARRAY['failure']`
+- Both classifiers agreed it failed: `tags @> ARRAY['outcome:failure'] AND tags @> ARRAY['experience/negative']`
 
 ## Falls-back if live demo flakes
 
