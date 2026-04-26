@@ -87,8 +87,13 @@ export function applyAgentEvent(evt: AgentEvent): void {
   switch (evt.type) {
     case "ui.room":
       if (chat) {
-        // Single-room mode: just swap the focused room.
+        // Chat mode: swap the focused room AND ensure a window of
+        // that kind exists so EmbeddedRoom renders with the agent's
+        // payload (not the dummy fallback). Resize is intentionally
+        // ignored — chat mode is single-focal, the right pane fills
+        // the available space regardless.
         s.setChatRoom(evt.room);
+        s.openWindow(evt.room, { payload: evt.payload });
       } else {
         s.openWindow(evt.room, { rect: evt.rect, payload: evt.payload });
       }
@@ -129,6 +134,10 @@ export function applyAgentEvent(evt: AgentEvent): void {
     case "ui.tool.open": {
       // Open the tool's window with payload (or update if already open).
       s.openWindow(evt.kind, { payload: evt.payload });
+      // In chat mode the right pane shows whichever kind is the
+      // active `chatRoom`; surface this newly-opened window there
+      // so the user actually sees what the agent just pulled up.
+      if (chat) s.setChatRoom(evt.kind);
       break;
     }
     case "ui.tool.update": {
@@ -189,13 +198,33 @@ export function applyAgentEvent(evt: AgentEvent): void {
       break;
     case "reply.start":
       // Clear any stale agentReply from the previous turn. The chat-
-      // history slot is created lazily in reply.chunk below so tools-
-      // only turns (no text) don't leave empty agent bubbles.
+      // history slot for the AGENT is created lazily in reply.chunk
+      // below so tools-only turns (no text) don't leave empty agent
+      // bubbles. The USER message is recorded here so windowed-mode
+      // input (CommandBar / VoiceBridge) lands in the transcript
+      // identically to chat-mode input.
       s.startReply(evt.query);
+      if (evt.query.trim().length > 0) {
+        const last = useAgentStore.getState().chatMessages.at(-1);
+        // Skip the push if ChatPanel already pushed this exact query
+        // a tick ago (its onSend appends synchronously before the SSE
+        // turns it into a reply.start).
+        const alreadyRecorded =
+          last?.role === "user" && last.text === evt.query;
+        if (!alreadyRecorded) {
+          s.appendChatMessage({
+            id: `user-${Date.now()}`,
+            role: "user",
+            text: evt.query,
+            ts: Date.now(),
+            room: s.chatRoom,
+          });
+        }
+      }
       break;
     case "reply.chunk":
       s.appendReply(evt.text);
-      if (chat) {
+      {
         const last = useAgentStore.getState().chatMessages.at(-1);
         if (last?.role === "agent" && last.status === "streaming") {
           s.appendToLastAgentMessage(evt.text);
@@ -211,14 +240,13 @@ export function applyAgentEvent(evt: AgentEvent): void {
         }
       }
       break;
-    case "reply.done":
-      if (chat) {
-        const last = useAgentStore.getState().chatMessages.at(-1);
-        if (last?.role === "agent" && last.status === "streaming") {
-          s.finalizeLastAgentMessage();
-        }
+    case "reply.done": {
+      const last = useAgentStore.getState().chatMessages.at(-1);
+      if (last?.role === "agent" && last.status === "streaming") {
+        s.finalizeLastAgentMessage();
       }
       break;
+    }
     case "agent.delegate":
       // Mirror into the recent-actions ring so the SnapshotInspector
       // reflects the delegation; sidecar UI will read this too.

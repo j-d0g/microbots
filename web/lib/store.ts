@@ -4,19 +4,33 @@ import { create } from "zustand";
 import { resolveMount, DOCK_PX_H } from "./agent/mount-points";
 import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
 
-/** V1 window kinds — the 8 harness tools + graph + settings + chat. */
+/**
+ * Window kinds, schema-driven (v2).
+ *
+ * Every kind here corresponds to a concrete `/api/kg/*` endpoint (or a
+ * cross-cutting UX primitive: `graph`, `chat`, `ask_user`, `settings`).
+ * The legacy harness-flavoured kinds (run_code, save_workflow, …)
+ * have been removed because the KG contract has no endpoint backing
+ * them; if a code-execution surface returns later, add a new kind
+ * once the endpoint is part of the contract.
+ */
 export type WindowKind =
-  | "run_code"
-  | "save_workflow"
-  | "view_workflow"
-  | "run_workflow"
-  | "list_workflows"
-  | "find_examples"
-  | "search_memory"
-  | "ask_user"
+  // cross-cutting
   | "graph"
+  | "chat"
+  | "ask_user"
   | "settings"
-  | "chat";
+  // schema-backed
+  | "profile"
+  | "integrations"
+  | "integration_detail"
+  | "entities"
+  | "entity_detail"
+  | "memories"
+  | "skills"
+  | "workflows"
+  | "wiki"
+  | "chats_summary";
 
 /** Backward-compat alias — consumers migrating to WindowKind. */
 export type RoomKind = WindowKind;
@@ -83,17 +97,20 @@ export interface ActionRecord {
 export type LayoutPreset = "focus" | "split" | "grid" | "stack-right";
 
 const MIN_SIZES: Record<WindowKind, { w: number; h: number }> = {
-  run_code: { w: 400, h: 360 },
-  save_workflow: { w: 400, h: 320 },
-  view_workflow: { w: 400, h: 320 },
-  run_workflow: { w: 400, h: 320 },
-  list_workflows: { w: 400, h: 300 },
-  find_examples: { w: 520, h: 360 },
-  search_memory: { w: 400, h: 320 },
-  ask_user: { w: 360, h: 200 },
   graph: { w: 480, h: 400 },
-  settings: { w: 480, h: 400 },
   chat: { w: 380, h: 480 },
+  ask_user: { w: 360, h: 200 },
+  settings: { w: 480, h: 400 },
+  profile: { w: 460, h: 460 },
+  integrations: { w: 520, h: 420 },
+  integration_detail: { w: 520, h: 460 },
+  entities: { w: 520, h: 440 },
+  entity_detail: { w: 480, h: 460 },
+  memories: { w: 480, h: 440 },
+  skills: { w: 520, h: 420 },
+  workflows: { w: 560, h: 460 },
+  wiki: { w: 600, h: 480 },
+  chats_summary: { w: 520, h: 380 },
 };
 
 export function getMinSize(kind: RoomKind) { return MIN_SIZES[kind]; }
@@ -394,12 +411,22 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     set((s) => {
       const next: UiMode = s.uiMode === "windowed" ? "chat" : "windowed";
       // When entering chat, inherit the topmost windowed room as
-      // the focused one so context persists across the switch.
+      // the focused one so context persists across the switch — and
+      // collapse the rest of the stack. Chat mode is single-focal:
+      // any other windows would only confuse the round-trip back to
+      // windowed mode, so we drop them rather than minimise them.
       if (next === "chat" && s.windows.length > 0) {
         const top = [...s.windows]
           .filter((w) => !w.minimized)
           .sort((a, b) => b.zIndex - a.zIndex)[0];
-        if (top) return { uiMode: next, chatRoom: top.kind, room: top.kind };
+        if (top) {
+          return {
+            uiMode: next,
+            chatRoom: top.kind,
+            room: top.kind,
+            windows: [top],
+          };
+        }
       }
       // When leaving chat, open a window for the focused chat room
       // if none is open yet, so the windowed canvas isn't empty.
@@ -430,7 +457,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   setBackendHealth: (backendHealth) => set({ backendHealth }),
 
   /* --- chat mode --- */
-  chatRoom: "run_code",
+  chatRoom: "chat",
   setChatRoom: (room) => set({ chatRoom: room, room }),
   chatMessages: [],
   appendChatMessage: (m) =>
@@ -550,13 +577,46 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
 
   openWindow: (kind, opts) => {
     const s = get();
+    // Chat-mode invariant: exactly one window exists at a time. Any
+    // window of a different kind (or extra duplicates of this kind)
+    // gets closed before we proceed. Windowed mode keeps its full
+    // multi-window stack — that's the whole point of stage manager.
+    if (s.uiMode === "chat") {
+      const stale = s.windows.filter((w) => w.kind !== kind);
+      if (stale.length > 0) {
+        const now =
+          typeof performance !== "undefined" ? performance.now() : Date.now();
+        const drops: ActionRecord[] = stale.map((w) => ({
+          t: now,
+          tool: "close_window",
+          args: { kind: w.kind, id: w.id, reason: "chat-single-focus" },
+          ok: true,
+        }));
+        set({
+          windows: s.windows.filter((w) => w.kind === kind),
+          recentActions: [...s.recentActions, ...drops].slice(-6),
+        });
+      }
+    }
     // Dedupe by kind — if a window of this kind is already open, focus it.
-    const existing = s.windows.find((w) => {
+    const after = get();
+    const existing = after.windows.find((w) => {
       if (w.kind !== kind || w.minimized) return false;
       return true;
     });
     if (existing) {
-      s.bringToFront(existing.id);
+      // Merge incoming payload onto the existing window so agent
+      // updates land even when the dedup branch fires.
+      if (opts?.payload) {
+        set((prev) => ({
+          windows: prev.windows.map((w) =>
+            w.id === existing.id
+              ? { ...w, payload: { ...w.payload, ...opts.payload } }
+              : w,
+          ),
+        }));
+      }
+      get().bringToFront(existing.id);
       return existing.id;
     }
 
@@ -848,7 +908,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       return { windows: arranged, recentActions };
     }),
 
-  room: "run_code",
+  room: "chat",
   roomSlug: null,
   setRoom: (room) => set({ room }),
   setRoomSlug: (roomSlug) => set({ roomSlug }),

@@ -1,29 +1,42 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAgentStore, type ChatMessage } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
 /**
- * Chat history window — V1 minimal.
+ * Chat history window.
  *
- * Renders the rolling transcript of `chatMessages` from the store
- * (the same source the chat-mode `<ChatPanel/>` uses). Both surfaces
- * stay in sync: voice/`/`-typed turns push messages into the same
- * array regardless of UI mode, and this window just observes.
+ * Renders the rolling transcript of `chatMessages` from the store —
+ * the same source the chat-mode `<ChatPanel/>` uses, so voice and
+ * `/`-typed turns land in this window regardless of which UI mode
+ * the user is in. The window itself is a passive observer of that
+ * shared array; the agent can call `open_window({ kind: "chat" })`
+ * to surface it on stage.
  *
- * Scope (per the user's spec):
- *   - User inputs and agent outputs only. No room tags, no actions,
+ * Visual model:
+ *   • Each message is a bubble with role + timestamp header. New
+ *     bubbles fade and slide in via framer-motion (stiff spring) so
+ *     the transcript reads as a paper trail being laid down rather
+ *     than a list mutation.
+ *   • The active agent bubble shows a rectangular caret right after
+ *     its trailing text. The caret blinks at a steady ~1Hz cadence
+ *     and visually "moves" as new chunks extend the text — that's
+ *     how the user can see the agent writing in real time.
+ *   • Auto-scrolls to the bottom whenever new content lands.
+ *
+ * Scope:
+ *   • User inputs and agent outputs only. No room tags, no actions,
  *     no input composer. Voice + `/` remain the canonical input plane.
- *
- * The window auto-scrolls to the bottom whenever a new message lands.
  */
 export function ChatWindow(_props: { payload?: Record<string, unknown> } = {}) {
   const messages = useAgentStore((s) => s.chatMessages);
   const dock = useAgentStore((s) => s.dock);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Autoscroll on new turn.
+  // Auto-scroll on every new chunk (length of the trailing message
+  // changes when the agent streams text).
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -32,23 +45,29 @@ export function ChatWindow(_props: { payload?: Record<string, unknown> } = {}) {
 
   if (messages.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+        className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center"
+      >
         <p className="font-mono text-[10px] uppercase tracking-[0.10em] text-ink-35">
           chat
         </p>
-        <p className="text-[13px] leading-snug text-ink-60 max-w-[26ch]">
+        <p className="max-w-[26ch] text-[13px] leading-snug text-ink-60">
           your voice and typed prompts will land here as a transcript.
         </p>
-        <p className="font-mono text-[10px] tracking-wider text-ink-35 mt-1">
+        <p className="mt-1 font-mono text-[10px] tracking-wider text-ink-35">
           press <span className="text-ink-90">/</span> to type ·
           hold <span className="text-ink-90">.</span> to talk
         </p>
-      </div>
+      </motion.div>
     );
   }
 
+  const last = messages.at(-1);
   const lastIsAgentStreaming =
-    messages.at(-1)?.role === "agent" && messages.at(-1)?.status === "streaming";
+    last?.role === "agent" && last.status === "streaming";
   const showThinking = dock === "thinking" && !lastIsAgentStreaming;
 
   return (
@@ -58,16 +77,37 @@ export function ChatWindow(_props: { payload?: Record<string, unknown> } = {}) {
       data-testid="chat-window-scroll"
     >
       <ol className="flex flex-col gap-3">
-        {messages.map((m) => (
-          <li key={m.id}>
-            <Bubble message={m} />
-          </li>
-        ))}
-        {showThinking && (
-          <li>
-            <Thinking />
-          </li>
-        )}
+        <AnimatePresence initial={false}>
+          {messages.map((m) => (
+            <motion.li
+              key={m.id}
+              layout
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{
+                type: "spring",
+                stiffness: 360,
+                damping: 32,
+                mass: 0.6,
+              }}
+            >
+              <Bubble message={m} />
+            </motion.li>
+          ))}
+          {showThinking && (
+            <motion.li
+              key="thinking"
+              layout
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+            >
+              <Thinking />
+            </motion.li>
+          )}
+        </AnimatePresence>
       </ol>
     </div>
   );
@@ -95,20 +135,35 @@ function Bubble({ message }: { message: ChatMessage }) {
           {formatTs(message.ts)}
         </span>
       </header>
-      <p
-        className={cn(
-          "whitespace-pre-wrap text-[13px] leading-relaxed text-ink-90",
-        )}
-      >
+      <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-90">
         {message.text}
-        {streaming && (
-          <span
-            aria-hidden
-            className="ml-0.5 inline-block h-[11px] w-[5px] translate-y-[1px] bg-accent-indigo breathing"
-          />
-        )}
+        {streaming && <Caret />}
       </p>
     </article>
+  );
+}
+
+/**
+ * Rectangular blinking caret rendered inline with the streaming
+ * text. Sits right after the trailing character so it visually
+ * advances as new chunks land — that's the "moves while the agent
+ * writes" feel. We use framer-motion's keyframes for a clean on/off
+ * blink (sharper than the css `breathe` scale-pulse).
+ */
+function Caret() {
+  return (
+    <motion.span
+      aria-hidden
+      data-testid="chat-window-caret"
+      className="ml-0.5 inline-block h-[11px] w-[6px] translate-y-[1px] bg-accent-indigo"
+      animate={{ opacity: [1, 1, 0, 0, 1] }}
+      transition={{
+        duration: 1.0,
+        ease: "linear",
+        times: [0, 0.49, 0.5, 0.99, 1],
+        repeat: Infinity,
+      }}
+    />
   );
 }
 

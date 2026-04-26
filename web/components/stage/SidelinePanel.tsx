@@ -5,20 +5,26 @@ import { motion } from "framer-motion";
 import {
   Sunrise,
   Network,
-  Cpu,
-  Save,
-  ListOrdered,
-  PlayCircle,
-  Search,
   Sparkles,
   Settings as SettingsIcon,
   HelpCircle,
+  MessageSquare,
+  User,
+  Plug,
+  Layers,
+  Tag,
+  Brain,
+  Zap,
+  GitBranch,
+  BookOpen,
+  BarChart3,
 } from "lucide-react";
 import { useAgentStore, type WindowState, type WindowKind } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { WINDOW_LABEL, WINDOW_SIDELINE_HINT } from "./window-labels";
 import { ShapeButton } from "./ShapeButton";
 import { MAX_LEFT_SIDELINE } from "@/lib/stage-manager";
+import { ChatWindow } from "@/components/windows/ChatWindow";
 
 /**
  * A window currently sitting on the sideline.
@@ -190,47 +196,84 @@ export function SidelinePanel({
         </div>
       </div>
 
-      {/* Body: click anywhere here to promote the window to centre. */}
-      <button
-        type="button"
+      {/* Body. Click anywhere promotes the window to centre stage.
+         For most window kinds the body is a calm summary card — a live
+         room preview at sideline scale ends up unreadable. The chat
+         window is special-cased: we render the actual transcript so
+         the user keeps continuity with the conversation no matter
+         which slot the window currently occupies. The transcript is
+         pointer-events-none so the wrapper's onClick still wins. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onBodyActivate}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onBodyActivate();
+          }
+        }}
         aria-label={`bring ${WINDOW_LABEL[win.kind]} to centre stage`}
-        className="min-h-0 flex-1 cursor-pointer text-left"
+        className="relative min-h-0 flex-1 cursor-pointer"
       >
-        <div className="flex h-full flex-col p-3">
-          <p className="text-[13px] leading-snug text-ink-90">
-            {summary(win)}
-          </p>
-          {win.openedBy === "agent" && (
-            <span className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-35">
-              opened by agent
+        {win.kind === "chat" ? (
+          <>
+            {/* Live transcript. Slightly faded so the sideline reads
+               as background relative to centre stage; pointer-events
+               disabled so the wrapper's promote-on-click takes
+               precedence over any inner scrolling. */}
+            <div className="pointer-events-none h-full opacity-90">
+              <ChatWindow />
+            </div>
+            <span
+              className={cn(
+                "pointer-events-none absolute bottom-2 right-3 font-mono text-[9px] uppercase tracking-wider transition-colors",
+                hovering ? "text-accent-indigo" : "text-ink-35",
+              )}
+            >
+              {hovering ? "click to focus →" : "in stage"}
             </span>
-          )}
-          <span
-            className={cn(
-              "mt-auto font-mono text-[9px] uppercase tracking-wider transition-colors",
-              hovering ? "text-accent-indigo" : "text-ink-35",
+          </>
+        ) : (
+          <div className="flex h-full flex-col p-3 text-left">
+            <p className="text-[13px] leading-snug text-ink-90">
+              {summary(win)}
+            </p>
+            {win.openedBy === "agent" && (
+              <span className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-35">
+                opened by agent
+              </span>
             )}
-          >
-            {hovering ? "click to focus →" : "in stage"}
-          </span>
-        </div>
-      </button>
+            <span
+              className={cn(
+                "mt-auto font-mono text-[9px] uppercase tracking-wider transition-colors",
+                hovering ? "text-accent-indigo" : "text-ink-35",
+              )}
+            >
+              {hovering ? "click to focus →" : "in stage"}
+            </span>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
 
 const ICONS: Partial<Record<WindowKind, typeof Sunrise>> = {
-  run_code: Cpu,
-  save_workflow: Save,
-  view_workflow: ListOrdered,
-  run_workflow: PlayCircle,
-  list_workflows: ListOrdered,
-  find_examples: Sparkles,
-  search_memory: Search,
-  ask_user: HelpCircle,
   graph: Network,
+  chat: MessageSquare,
+  ask_user: HelpCircle,
   settings: SettingsIcon,
+  profile: User,
+  integrations: Plug,
+  integration_detail: Plug,
+  entities: Layers,
+  entity_detail: Tag,
+  memories: Brain,
+  skills: Zap,
+  workflows: GitBranch,
+  wiki: BookOpen,
+  chats_summary: BarChart3,
 };
 
 function summary(win: WindowState): string {

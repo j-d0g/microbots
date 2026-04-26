@@ -40,6 +40,17 @@ export function VoiceBridge() {
       // Mirror `/` typing: prime the reply pane with the user's query
       // so the dock + command bar can render it as it streams.
       startReply(text);
+      // Record the spoken turn into the chat transcript so the chat
+      // window picks it up. agent-client's reply.start dedupes
+      // against the same trailing-text user message, so this is
+      // safe even when the SSE path also recreates the entry.
+      useAgentStore.getState().appendChatMessage({
+        id: `user-${Date.now()}`,
+        role: "user",
+        text,
+        ts: Date.now(),
+        room: useAgentStore.getState().chatRoom,
+      });
       try {
         await sendQuery(text);
       } catch (err) {

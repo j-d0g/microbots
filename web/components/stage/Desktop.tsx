@@ -27,11 +27,11 @@ export function Desktop() {
       }
       if (e.ctrlKey || e.metaKey) {
         const rooms: WindowKind[] = [
-          "run_code",
           "graph",
-          "list_workflows",
-          "search_memory",
-          "find_examples",
+          "memories",
+          "workflows",
+          "skills",
+          "wiki",
           "settings",
         ];
         const idx = parseInt(e.key, 10) - 1;

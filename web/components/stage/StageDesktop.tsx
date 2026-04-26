@@ -12,29 +12,37 @@ import { CentreFrame } from "./CentreFrame";
 import { SidelinePanel } from "./SidelinePanel";
 import { GraphRoom } from "@/components/rooms/GraphRoom";
 import { SettingsRoom } from "@/components/rooms/SettingsRoom";
-import { RunCodeWindow } from "@/components/windows/RunCodeWindow";
-import { SaveWorkflowWindow } from "@/components/windows/SaveWorkflowWindow";
-import { ViewWorkflowWindow } from "@/components/windows/ViewWorkflowWindow";
-import { RunWorkflowWindow } from "@/components/windows/RunWorkflowWindow";
-import { ListWorkflowsWindow } from "@/components/windows/ListWorkflowsWindow";
-import { FindExamplesWindow } from "@/components/windows/FindExamplesWindow";
-import { SearchMemoryWindow } from "@/components/windows/SearchMemoryWindow";
 import { AskUserCard } from "@/components/windows/AskUserCard";
+import { ChatWindow } from "@/components/windows/ChatWindow";
+import { ProfileWindow } from "@/components/windows/ProfileWindow";
+import { IntegrationsWindow } from "@/components/windows/IntegrationsWindow";
+import { IntegrationDetailWindow } from "@/components/windows/IntegrationDetailWindow";
+import { EntitiesWindow } from "@/components/windows/EntitiesWindow";
+import { EntityDetailWindow } from "@/components/windows/EntityDetailWindow";
+import { MemoriesWindow } from "@/components/windows/MemoriesWindow";
+import { SkillsWindow } from "@/components/windows/SkillsWindow";
+import { WorkflowsWindow } from "@/components/windows/WorkflowsWindow";
+import { WikiWindow } from "@/components/windows/WikiWindow";
+import { ChatsSummaryWindow } from "@/components/windows/ChatsSummaryWindow";
 
 const ROOM_COMPONENTS: Record<
   WindowKind,
   React.ComponentType<{ payload?: Record<string, unknown> }>
 > = {
-  run_code: RunCodeWindow,
-  save_workflow: SaveWorkflowWindow,
-  view_workflow: ViewWorkflowWindow,
-  run_workflow: RunWorkflowWindow,
-  list_workflows: ListWorkflowsWindow,
-  find_examples: FindExamplesWindow,
-  search_memory: SearchMemoryWindow,
-  ask_user: AskUserCard,
   graph: GraphRoom,
+  chat: ChatWindow,
+  ask_user: AskUserCard,
   settings: SettingsRoom,
+  profile: ProfileWindow,
+  integrations: IntegrationsWindow,
+  integration_detail: IntegrationDetailWindow,
+  entities: EntitiesWindow,
+  entity_detail: EntityDetailWindow,
+  memories: MemoriesWindow,
+  skills: SkillsWindow,
+  workflows: WorkflowsWindow,
+  wiki: WikiWindow,
+  chats_summary: ChatsSummaryWindow,
 };
 
 const SPRING = {
@@ -175,6 +183,16 @@ export function StageDesktop() {
           return (
             <motion.div
               key={id}
+              /* layoutId pairs this centre wrapper with the sideline
+                 wrapper for the same window id. When the layout
+                 engine moves a window between centre and a sideline,
+                 framer-motion treats it as a shared element transition
+                 — the geometry interpolates from the old slot to the
+                 new slot instead of cross-fading between two distinct
+                 elements. That preserves visual continuity for the
+                 chat window, whose body renders the same transcript
+                 whether it's centre or sideline. */
+              layoutId={id}
               data-testid={`stage-slot-${win.kind}`}
               /* `layout` does the FLIP magic: when left/top/width/
                  height change between renders, framer-motion measures
@@ -263,6 +281,9 @@ function SidelineSlot({
    * the actual previous position. */
   return (
     <motion.div
+      /* Shared with the centre wrapper for the same window id — see
+         the centre map's layoutId comment for the rationale. */
+      layoutId={win.id}
       layout
       initial={{ opacity: 0, x: side === "left" ? -16 : 16 }}
       animate={{ opacity: rect.opacity, x: 0 }}

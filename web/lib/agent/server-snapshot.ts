@@ -589,13 +589,13 @@ export function applyToolToSnapshot(
     /* --- V1 work tools: open their own windows via ui.tool.open events.
      *     Don't mutate the canvas snapshot, just record + surface a
      *     message so the agent's loop sees evidence the tool ran. */
-    case "run_code":
-    case "save_workflow":
-    case "view_workflow":
-    case "run_workflow":
-    case "list_workflows":
-    case "find_examples":
-    case "search_memory":
+    case "add_memory":
+    case "upsert_entity":
+    case "upsert_skill":
+    case "upsert_workflow":
+    case "add_chat":
+    case "write_wiki_page":
+    case "update_user":
     case "ask_user":
     /* --- content tools (legacy, may still be called by graph verbs) */
     case "push_card":

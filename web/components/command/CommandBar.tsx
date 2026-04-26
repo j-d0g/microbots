@@ -144,6 +144,17 @@ export function CommandBar() {
       if (!q || busy) return;
       setBusy(true);
       setForceSpotlight(false);
+      // Record the user's input in chatMessages so the chat window
+      // (and any other transcript surface) sees it immediately.
+      // agent-client's reply.start dedupes against the same text on
+      // the trailing message, so this doesn't double-push.
+      useAgentStore.getState().appendChatMessage({
+        id: `user-${Date.now()}`,
+        role: "user",
+        text: q,
+        ts: Date.now(),
+        room: useAgentStore.getState().chatRoom,
+      });
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {

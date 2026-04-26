@@ -17,17 +17,26 @@ function PlaceholderModal({ payload }: { payload?: Record<string, unknown> }) {
   );
 }
 
+/* Modal stack is the legacy fullscreen/PiP overlay path — only the
+ * graph + settings rooms ever opened this way historically. The other
+ * window kinds live in the stage-manager canvas. We keep the map
+ * exhaustive so TypeScript will flag any new kind that needs a modal
+ * presentation, but route everything else to a placeholder. */
 const ROOM_COMPONENTS: Record<WindowKind, React.ComponentType<{ payload?: Record<string, unknown> }>> = {
-  run_code: PlaceholderModal,
-  save_workflow: PlaceholderModal,
-  view_workflow: PlaceholderModal,
-  run_workflow: PlaceholderModal,
-  list_workflows: PlaceholderModal,
-  find_examples: PlaceholderModal,
-  search_memory: PlaceholderModal,
-  ask_user: PlaceholderModal,
   graph: GraphRoom,
   settings: SettingsRoom,
+  chat: PlaceholderModal,
+  ask_user: PlaceholderModal,
+  profile: PlaceholderModal,
+  integrations: PlaceholderModal,
+  integration_detail: PlaceholderModal,
+  entities: PlaceholderModal,
+  entity_detail: PlaceholderModal,
+  memories: PlaceholderModal,
+  skills: PlaceholderModal,
+  workflows: PlaceholderModal,
+  wiki: PlaceholderModal,
+  chats_summary: PlaceholderModal,
 };
 
 const CORNER_POS: Record<string, { x: number; y: number }> = {
@@ -79,8 +88,7 @@ export function ModalStack() {
       }
       if (e.ctrlKey || e.metaKey) {
         const rooms: WindowKind[] = [
-          "run_code", "graph", "list_workflows", "search_memory",
-          "find_examples", "settings",
+          "graph", "memories", "workflows", "skills", "wiki", "settings",
         ];
         const idx = parseInt(e.key, 10) - 1;
         if (idx >= 0 && idx < rooms.length) {

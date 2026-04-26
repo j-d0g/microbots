@@ -1,15 +1,16 @@
 /**
- * V1 Window Registry — the 10 window kinds.
+ * Schema-driven window registry (v2).
  *
- * Each entry maps a `WindowKind` to its display metadata. The 8 harness
- * tools + graph + settings. Old kinds (brief, workflow, stack, waffle,
- * playbooks, integration) are removed entirely.
+ * Each entry maps a `WindowKind` to its display metadata. Every kind
+ * is either a cross-cutting UX primitive (`graph`, `chat`, `ask_user`,
+ * `settings`) or backed by an endpoint in the KG ↔ Frontend contract.
  *
  * `summary` is the **only** thing the agent sees about what's inside
- * a window — keep it <= 80 chars, present-tense, factual.
+ * a window — keep it ≤ 80 chars, present-tense, factual.
  *
  * `windowType`: "tool" windows are ephemeral traces of tool calls;
- * "context" windows persist across agent turns.
+ * "context" windows persist across agent turns. Schema-backed kinds
+ * are mostly "context" since they reflect long-lived KG state.
  */
 
 import type { AgentStoreState, WindowKind, WindowState } from "@/lib/store";
@@ -22,7 +23,7 @@ export interface WindowModule {
   windowType: "tool" | "context";
   /** Whether the user can pin this window. */
   pinnable: boolean;
-  /** <= 80 chars, factual, present-tense. */
+  /** ≤ 80 chars, factual, present-tense. */
   summary: (state: AgentStoreState, win?: WindowState) => string;
   defaultMount?: MountPoint;
 }
@@ -31,123 +32,13 @@ const truncate = (s: string, max = 80) =>
   s.length <= max ? s : s.slice(0, max - 1).trimEnd() + "\u2026";
 
 export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
-  run_code: {
-    title: "run_code",
-    windowType: "tool",
-    pinnable: true,
-    defaultMount: "left-half",
-    summary: (_s, win) => {
-      const code = (win?.payload?.code as string) ?? "";
-      const status = (win?.payload?.status as string) ?? "pending";
-      return truncate(`run_code \u00b7 ${status} \u00b7 ${code.length} chars`);
-    },
-  },
-
-  save_workflow: {
-    title: "save_workflow",
-    windowType: "tool",
-    pinnable: true,
-    defaultMount: "center-third",
-    summary: (_s, win) => {
-      const name = (win?.payload?.name as string) ?? "untitled";
-      const status = (win?.payload?.status as string) ?? "pending";
-      return truncate(`save_workflow \u00b7 ${name} \u00b7 ${status}`);
-    },
-  },
-
-  view_workflow: {
-    title: "view_workflow",
-    windowType: "tool",
-    pinnable: true,
-    defaultMount: "left-half",
-    summary: (_s, win) => {
-      const name = (win?.payload?.name as string) ?? "?";
-      return truncate(`view_workflow \u00b7 ${name}`);
-    },
-  },
-
-  run_workflow: {
-    title: "run_workflow",
-    windowType: "tool",
-    pinnable: true,
-    defaultMount: "left-half",
-    summary: (_s, win) => {
-      const name = (win?.payload?.name as string) ?? "?";
-      const status = (win?.payload?.status as string) ?? "pending";
-      return truncate(`run_workflow \u00b7 ${name} \u00b7 ${status}`);
-    },
-  },
-
-  list_workflows: {
-    title: "list_workflows",
-    windowType: "tool",
-    pinnable: true,
-    defaultMount: "right-half",
-    summary: (_s, win) => {
-      const count = (win?.payload?.count as number) ?? 0;
-      return truncate(`list_workflows \u00b7 ${count} workflows`);
-    },
-  },
-
-  find_examples: {
-    title: "find_examples",
-    windowType: "tool",
-    pinnable: true,
-    defaultMount: "full",
-    summary: (_s, win) => {
-      const count = (win?.payload?.count as number) ?? 0;
-      const query = (win?.payload?.query as string) ?? "";
-      return truncate(`find_examples \u00b7 ${count} matches \u00b7 q="${query}"`);
-    },
-  },
-
-  search_memory: {
-    title: "search_memory",
-    windowType: "tool",
-    pinnable: true,
-    defaultMount: "right-half",
-    summary: (_s, win) => {
-      const count = (win?.payload?.count as number) ?? 0;
-      const query = (win?.payload?.query as string) ?? "";
-      return truncate(`search_memory \u00b7 ${count} results \u00b7 q="${query}"`);
-    },
-  },
-
-  ask_user: {
-    title: "ask_user",
-    windowType: "tool",
-    pinnable: false,
-    defaultMount: "center-third",
-    summary: (_s, win) => {
-      const question = (win?.payload?.question as string) ?? "";
-      return truncate(`ask_user \u00b7 "${question}"`);
-    },
-  },
-
+  /* ---------- cross-cutting ---------- */
   graph: {
     title: "graph",
     windowType: "context",
     pinnable: true,
     defaultMount: "full",
-    summary: (state) => {
-      return truncate(`knowledge graph \u00b7 context window`);
-    },
-  },
-
-  settings: {
-    title: "settings",
-    windowType: "context",
-    pinnable: true,
-    defaultMount: "right-wide",
-    summary: (state) => {
-      const userId = state.userId ?? null;
-      const orgId = state.orgId ?? null;
-      const conn = state.connections.filter((c) => c.status === "ACTIVE").length;
-      if (!userId) return truncate(`user_id NOT SET · enter one to use the app`);
-      return truncate(
-        `user_id=${userId}${orgId ? ` · org=${orgId}` : ""} · ${conn} integrations active`,
-      );
-    },
+    summary: () => truncate(`knowledge graph · context window`),
   },
 
   chat: {
@@ -161,6 +52,151 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
       const last = state.chatMessages[n - 1];
       const role = last.role === "user" ? "you" : "agent";
       return truncate(`chat · ${n} msgs · last: ${role} · ${last.text.slice(0, 40)}`);
+    },
+  },
+
+  ask_user: {
+    title: "ask_user",
+    windowType: "tool",
+    pinnable: false,
+    defaultMount: "center-third",
+    summary: (_s, win) => {
+      const question = (win?.payload?.question as string) ?? "";
+      return truncate(`ask_user · "${question}"`);
+    },
+  },
+
+  settings: {
+    title: "settings",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "right-wide",
+    summary: (state) => {
+      const userId = state.userId ?? null;
+      const conn = state.connections.filter((c) => c.status === "ACTIVE").length;
+      if (!userId) return truncate(`user_id NOT SET · enter one to use the app`);
+      return truncate(`user_id=${userId} · ${conn} integrations active`);
+    },
+  },
+
+  /* ---------- schema-backed ---------- */
+  profile: {
+    title: "profile",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "right-wide",
+    summary: (_s, win) => {
+      const name = (win?.payload?.name as string) ?? "";
+      const role = (win?.payload?.role as string) ?? "";
+      const cw = (win?.payload?.context_window as number) ?? 0;
+      const head = name ? `${name}${role ? ` · ${role}` : ""}` : "user profile";
+      return truncate(`profile · ${head}${cw ? ` · ctx=${cw}` : ""}`);
+    },
+  },
+
+  integrations: {
+    title: "integrations",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "left-half",
+    summary: (_s, win) => {
+      const count = (win?.payload?.count as number) ?? 0;
+      return truncate(`integrations · ${count} connected`);
+    },
+  },
+
+  integration_detail: {
+    title: "integration_detail",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "right-half",
+    summary: (_s, win) => {
+      const slug = (win?.payload?.slug as string) ?? "?";
+      return truncate(`integration · ${slug}`);
+    },
+  },
+
+  entities: {
+    title: "entities",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "right-half",
+    summary: (_s, win) => {
+      const type = (win?.payload?.entity_type as string) ?? "all";
+      const count = (win?.payload?.count as number) ?? 0;
+      return truncate(`entities · type=${type} · ${count}`);
+    },
+  },
+
+  entity_detail: {
+    title: "entity_detail",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "center-third",
+    summary: (_s, win) => {
+      const name = (win?.payload?.name as string) ?? "?";
+      const type = (win?.payload?.entity_type as string) ?? "";
+      return truncate(`entity · ${name}${type ? ` (${type})` : ""}`);
+    },
+  },
+
+  memories: {
+    title: "memories",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "right-half",
+    summary: (_s, win) => {
+      const by = (win?.payload?.by as string) ?? "confidence";
+      const count = (win?.payload?.count as number) ?? 0;
+      return truncate(`memories · ${count} · by ${by}`);
+    },
+  },
+
+  skills: {
+    title: "skills",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "left-half",
+    summary: (_s, win) => {
+      const count = (win?.payload?.count as number) ?? 0;
+      const min = (win?.payload?.min_strength as number) ?? 1;
+      return truncate(`skills · ${count} · min strength ${min}`);
+    },
+  },
+
+  workflows: {
+    title: "workflows",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "full",
+    summary: (_s, win) => {
+      const count = (win?.payload?.count as number) ?? 0;
+      const sel = (win?.payload?.slug as string) ?? null;
+      return truncate(
+        sel ? `workflow · ${sel}` : `workflows · ${count} saved`,
+      );
+    },
+  },
+
+  wiki: {
+    title: "wiki",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "full",
+    summary: (_s, win) => {
+      const path = (win?.payload?.path as string) ?? "";
+      return truncate(path ? `wiki · ${path}` : `wiki · index`);
+    },
+  },
+
+  chats_summary: {
+    title: "chats_summary",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "right-half",
+    summary: (_s, win) => {
+      const total = (win?.payload?.total as number) ?? 0;
+      return truncate(`chats · ${total} signals`);
     },
   },
 };

@@ -57,18 +57,26 @@ function applyAndEmit(
  *  Enums (Zod) mirroring the TS unions
  * ------------------------------------------------------------------ */
 
+/* Schema-driven window kinds (v2). Matches the `WindowKind` union in
+ * `lib/store.ts`; every entry corresponds to either a UX primitive or
+ * a `/api/kg/*` endpoint. */
 export const WINDOW_KIND = z.enum([
-  "run_code",
-  "save_workflow",
-  "view_workflow",
-  "run_workflow",
-  "list_workflows",
-  "find_examples",
-  "search_memory",
-  "ask_user",
+  // cross-cutting
   "graph",
-  "settings",
   "chat",
+  "ask_user",
+  "settings",
+  // schema-backed
+  "profile",
+  "integrations",
+  "integration_detail",
+  "entities",
+  "entity_detail",
+  "memories",
+  "skills",
+  "workflows",
+  "wiki",
+  "chats_summary",
 ]);
 
 export const MOUNT_POINT = z.enum([
@@ -111,7 +119,7 @@ export function metaTools(ctx: AgentToolCtx) {
   return {
     open_window: tool({
       description:
-        "Open a window of a given kind. If already open, brings it forward. Primarily for graph, settings, and chat (the rolling transcript window); V1 work tools (run_code, etc.) open their own windows automatically.",
+        "Open a window of a given kind. If already open, brings it forward. Each kind is backed by a real endpoint: profile (/user), integrations (/integrations), integration_detail (/integrations/{slug}), entities (/entity-types + /entities), entity_detail (/entities/{id}), memories (/memories), skills (/skills), workflows (/workflows), wiki (/wiki), chats_summary (/chats/summary). Plus the cross-cutting graph, chat, ask_user, settings.",
       inputSchema: z.object({
         kind: WINDOW_KIND,
         mount: MOUNT_POINT.optional().default("full"),
@@ -200,24 +208,31 @@ export function metaTools(ctx: AgentToolCtx) {
 }
 
 /* ------------------------------------------------------------------ *
- *  V1 Work tools — the 8 harness tools
+ *  V1 Work tools — the schema-aligned tool surface
  *
  *  Each tool opens/updates its corresponding window via `ui.tool.open`
- *  events. Mock-first: tools return deterministic results. Swap
- *  TOOL_BASE_URL to live MCP harness when ready.
+ *  events. Tools are KG-write focused (memory / entity / skill /
+ *  workflow / chat upserts) plus the modal `ask_user` primitive. Read
+ *  surfaces are handled by `open_window` — each window fetches its
+ *  own data via `kg-client.ts`.
+ *
+ *  Tools that mutate the KG (add_memory etc.) currently emit
+ *  optimistic UI events; once the FastAPI app is reachable we'll
+ *  swap the `execute` body for a real `kg-client.ts` call.
  * ------------------------------------------------------------------ */
 
 export function v1WorkTools(ctx: AgentToolCtx) {
-  /** Emit ui.tool.open, record in snapshot, return result message. */
+  /** Emit ui.tool.open with the corresponding schema-backed window kind. */
   function emitToolWindow(
     toolName: string,
     args: Record<string, unknown>,
+    kind: WindowKind,
     payload: Record<string, unknown>,
   ): string {
     const events: AgentEvent[] = [
       {
         type: "ui.tool.open",
-        kind: toolName as WindowKind,
+        kind,
         payload: { ...payload, status: "done" },
       },
     ];
@@ -225,161 +240,164 @@ export function v1WorkTools(ctx: AgentToolCtx) {
   }
 
   return {
-    run_code: tool({
+    add_memory: tool({
       description:
-        "Execute code. Opens the run_code window showing code + stdout/stderr/result.",
+        "Record a new memory in the KG. Opens the memories window. Idempotent on content hash. Optionally bind to an entity, integration, or chat.",
       inputSchema: z.object({
-        code: z.string().min(1),
-        args: z.record(z.string(), z.unknown()).optional(),
+        content: z.string().min(1),
+        memory_type: z.string().optional(),
+        confidence: z.number().min(0).max(1).optional(),
+        source: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        about_entity_id: z.string().optional(),
+        about_integration_slug: z.string().optional(),
       }),
-      execute: async ({ code, args: codeArgs }) => {
-        const payload = {
-          code,
-          args: codeArgs ?? {},
-          result: null,
-          stdout: "# mock output\nhello world",
-          stderr: "",
-          error: null,
-        };
-        return emitToolWindow("run_code", { code, args: codeArgs }, payload);
+      execute: async (input) => {
+        return emitToolWindow(
+          "add_memory",
+          input as Record<string, unknown>,
+          "memories",
+          { by: "recency" },
+        );
       },
     }),
 
-    save_workflow: tool({
+    upsert_entity: tool({
       description:
-        "Save code as a named workflow. Confirm-gated — stages a confirm before executing. Opens save_workflow window.",
-      inputSchema: z.object({
-        name: z.string().min(1),
-        code: z.string().min(1),
-        overwrite: z.boolean().optional(),
-      }),
-      execute: async ({ name, code, overwrite }) => {
-        ctx.emit({
-          type: "ui.confirm",
-          intent: {
-            id: `confirm-${Date.now()}`,
-            toolName: "save_workflow",
-            description: `Save workflow "${name}" (${code.length} bytes)?`,
-            stagedAt: Date.now(),
-            args: { name, code, overwrite },
-          },
-        });
-        const payload = {
-          name,
-          code,
-          overwrite: overwrite ?? false,
-          url: `https://microbots.dev/wf/${name}`,
-          saved_to: name,
-          bytes: code.length,
-          status: "confirm_pending",
-        };
-        return emitToolWindow("save_workflow", { name, code, overwrite }, payload);
-      },
-    }),
-
-    view_workflow: tool({
-      description:
-        "View a saved workflow's source code. Opens view_workflow window.",
+        "Create or merge an entity (person/team/project/doc/...) in the KG. Idempotent on `${entity_type}_${slug(name)}`. Opens the entity_detail window.",
       inputSchema: z.object({
         name: z.string().min(1),
+        entity_type: z.string().min(1),
+        description: z.string().optional(),
+        aliases: z.array(z.string()).optional(),
+        tags: z.array(z.string()).optional(),
+        appears_in_integration: z.string().optional(),
+        appears_in_handle: z.string().optional(),
+        appears_in_role: z.string().optional(),
       }),
-      execute: async ({ name }) => {
-        const payload = {
-          name,
-          slug: name,
-          code: `# workflow: ${name}\nprint("hello from ${name}")`,
-          bytes: 42,
-          modified_at: new Date().toISOString(),
-        };
-        return emitToolWindow("view_workflow", { name }, payload);
+      execute: async (input) => {
+        return emitToolWindow(
+          "upsert_entity",
+          input as Record<string, unknown>,
+          "entity_detail",
+          { name: input.name, entity_type: input.entity_type },
+        );
       },
     }),
 
-    run_workflow: tool({
+    upsert_skill: tool({
       description:
-        "Run a saved workflow by name. Confirm-gated. Opens run_workflow window.",
+        "Create or strengthen a skill (reusable capability). `strength_increment` is added to the existing strength on each call. Opens the skills window.",
       inputSchema: z.object({
+        slug: z.string().min(1),
         name: z.string().min(1),
-        args: z.record(z.string(), z.unknown()).optional(),
+        description: z.string().min(1),
+        steps: z.array(z.string()).optional(),
+        frequency: z.string().optional(),
+        strength_increment: z.number().min(1).max(10).optional(),
+        tags: z.array(z.string()).optional(),
+        uses_integrations: z.array(z.string()).optional(),
       }),
-      execute: async ({ name, args: runArgs }) => {
-        ctx.emit({
-          type: "ui.confirm",
-          intent: {
-            id: `confirm-${Date.now()}`,
-            toolName: "run_workflow",
-            description: `Run workflow "${name}"?`,
-            stagedAt: Date.now(),
-            args: { name, args: runArgs },
-          },
-        });
-        const payload = {
-          name,
-          args: runArgs ?? {},
-          result: { ok: true },
-          stdout: `Running ${name}...\nDone.`,
-          stderr: "",
-          error: null,
-          status: "confirm_pending",
-        };
-        return emitToolWindow("run_workflow", { name, args: runArgs }, payload);
+      execute: async (input) => {
+        return emitToolWindow(
+          "upsert_skill",
+          input as Record<string, unknown>,
+          "skills",
+          {},
+        );
       },
     }),
 
-    list_workflows: tool({
+    upsert_workflow: tool({
       description:
-        "List all saved workflows. Opens list_workflows window.",
-      inputSchema: z.object({}),
-      execute: async () => {
-        const payload = {
-          count: 3,
-          workflows: [
-            { slug: "bug-triage", summary: "Triage incoming bugs", bytes: 256, modified_at: new Date().toISOString() },
-            { slug: "daily-standup", summary: "Generate standup from Slack", bytes: 512, modified_at: new Date().toISOString() },
-            { slug: "pr-review", summary: "Auto-review pull requests", bytes: 384, modified_at: new Date().toISOString() },
-          ],
-        };
-        return emitToolWindow("list_workflows", {}, payload);
-      },
-    }),
-
-    find_examples: tool({
-      description:
-        "Search example workflows by query. Opens find_examples window.",
+        "Save a named workflow. Provided `skill_chain` REPLACES the existing chain. Opens the workflows window with the saved entry focused.",
       inputSchema: z.object({
-        query: z.string().min(1),
+        slug: z.string().min(1),
+        name: z.string().min(1),
+        description: z.string().min(1),
+        trigger: z.string().optional(),
+        outcome: z.string().optional(),
+        frequency: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        skill_chain: z
+          .array(z.object({ slug: z.string(), step_order: z.number() }))
+          .optional(),
       }),
-      execute: async ({ query }) => {
-        const payload = {
-          query,
-          count: 2,
-          matches: [
-            { id: "ex-slack-summary", title: "Slack Channel Summary", description: "Summarize a Slack channel daily", tags: ["slack", "summary"], code: "# example" },
-            { id: "ex-github-pr", title: "GitHub PR Review", description: "Auto-review GitHub PRs", tags: ["github", "review"], code: "# example" },
-          ],
-        };
-        return emitToolWindow("find_examples", { query }, payload);
+      execute: async (input) => {
+        return emitToolWindow(
+          "upsert_workflow",
+          input as Record<string, unknown>,
+          "workflows",
+          { slug: input.slug, name: input.name },
+        );
       },
     }),
 
-    search_memory: tool({
+    add_chat: tool({
       description:
-        "Search the knowledge graph and recent chats. Opens search_memory window.",
+        "Persist a chat turn. Source-keyed dedup via `source_id`. Optional integration origin and entity mentions.",
       inputSchema: z.object({
-        query: z.string().min(1),
-        scope: z.enum(["kg", "recent_chats", "all"]).optional().default("all"),
+        content: z.string().min(1),
+        source_type: z.string().min(1),
+        source_id: z.string().optional(),
+        title: z.string().optional(),
+        summary: z.string().optional(),
+        signal_level: z.enum(["low", "mid", "high"]).optional(),
+        from_integration: z.string().optional(),
+        mentions: z
+          .array(
+            z.object({
+              id: z.string(),
+              mention_type: z.string().optional(),
+            }),
+          )
+          .optional(),
       }),
-      execute: async ({ query, scope }) => {
-        const payload = {
-          query,
-          scope,
-          count: 2,
-          results: [
-            { source: "kg-entity-1", scope: "kg", snippet: `Found reference to "${query}" in knowledge graph`, score: 0.92 },
-            { source: "chat-recent", scope: "recent_chats", snippet: `Discussed "${query}" in recent conversation`, score: 0.78 },
-          ],
-        };
-        return emitToolWindow("search_memory", { query, scope }, payload);
+      execute: async (input) => {
+        return emitToolWindow(
+          "add_chat",
+          input as Record<string, unknown>,
+          "chats_summary",
+          {},
+        );
+      },
+    }),
+
+    write_wiki_page: tool({
+      description:
+        "Author or update a wiki page at the given path. No-op when content unchanged; otherwise increments revision.",
+      inputSchema: z.object({
+        path: z.string().min(1),
+        content: z.string(),
+        rationale: z.string().optional(),
+      }),
+      execute: async ({ path, content, rationale }) => {
+        return emitToolWindow(
+          "write_wiki_page",
+          { path, content, rationale },
+          "wiki",
+          { path },
+        );
+      },
+    }),
+
+    update_user: tool({
+      description:
+        "Update the singleton user profile (name, role, goals, preferences, context_window).",
+      inputSchema: z.object({
+        name: z.string().optional(),
+        role: z.string().optional(),
+        goals: z.array(z.string()).optional(),
+        preferences: z.record(z.string(), z.unknown()).optional(),
+        context_window: z.number().min(512).max(200000).optional(),
+      }),
+      execute: async (input) => {
+        return emitToolWindow(
+          "update_user",
+          input as Record<string, unknown>,
+          "profile",
+          {},
+        );
       },
     }),
 

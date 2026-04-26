@@ -27,6 +27,7 @@ import {
   type RoomKind,
 } from "@/lib/store";
 import { useWebSpeech } from "@/lib/voice";
+import { getDummyPayload } from "@/lib/chat-dummy-payloads";
 import { cn } from "@/lib/cn";
 
 const SUGGESTIONS = [
@@ -39,11 +40,11 @@ const SUGGESTIONS = [
 ];
 
 const ROOMS: Array<{ kind: RoomKind; label: string }> = [
-  { kind: "run_code", label: "run code" },
   { kind: "graph", label: "graph" },
-  { kind: "list_workflows", label: "workflows" },
-  { kind: "search_memory", label: "memory" },
-  { kind: "find_examples", label: "examples" },
+  { kind: "memories", label: "memory" },
+  { kind: "workflows", label: "workflows" },
+  { kind: "skills", label: "skills" },
+  { kind: "wiki", label: "wiki" },
   { kind: "settings", label: "settings" },
 ];
 
@@ -53,6 +54,28 @@ export function ChatPanel() {
   const clearChatHistory = useAgentStore((s) => s.clearChatHistory);
   const chatRoom = useAgentStore((s) => s.chatRoom);
   const setChatRoom = useAgentStore((s) => s.setChatRoom);
+  const openWindow = useAgentStore((s) => s.openWindow);
+
+  /* When a tab is picked we update the focused chat room AND ensure a
+   * window of that kind exists in the windows store — that way the
+   * single right-pane render path is identical whether the user or
+   * the agent surfaced the room. We seed missing windows with a
+   * lightweight dummy payload so the pane is never blank; real agent
+   * traffic via `ui.tool.open` overwrites the payload immediately. */
+  const pickRoom = useCallback(
+    (kind: RoomKind) => {
+      setChatRoom(kind);
+      const existing = useAgentStore
+        .getState()
+        .windows.find((w) => w.kind === kind && !w.minimized);
+      if (existing) {
+        useAgentStore.getState().bringToFront(existing.id);
+        return;
+      }
+      openWindow(kind, { payload: getDummyPayload(kind) });
+    },
+    [setChatRoom, openWindow],
+  );
   const dock = useAgentStore((s) => s.dock);
   const agentStatus = useAgentStore((s) => s.agentStatus);
   const toggleUiMode = useAgentStore((s) => s.toggleUiMode);
@@ -147,7 +170,7 @@ export function ChatPanel() {
     >
       <ChatHeader
         chatRoom={chatRoom}
-        setChatRoom={setChatRoom}
+        setChatRoom={pickRoom}
         onToggleMode={toggleUiMode}
         onClear={clearChatHistory}
         canClear={messages.length > 0}
@@ -252,6 +275,16 @@ function ChatHeader({
   );
 }
 
+/**
+ * Tab strip for switching the focused window in chat mode.
+ *
+ * Visual model: a quiet horizontal nav. Inactive tabs read as faded
+ * monospace labels; the active tab carries an indigo underline and
+ * gains weight via colour, not chrome. No borders, no fills — the
+ * window pane on the right does the heavy lifting; this strip is
+ * just a wayfinder. Compare with the bordered chip variant we used
+ * before, which fought with the chat-input chrome below.
+ */
 function RoomTabs({
   current,
   onPick,
@@ -261,8 +294,9 @@ function RoomTabs({
 }) {
   return (
     <div
-      className="flex flex-wrap gap-1"
+      className="-mx-1 flex flex-wrap items-center gap-x-3 gap-y-1"
       data-testid="chat-room-tabs"
+      role="tablist"
     >
       {ROOMS.map(({ kind, label }) => {
         const active = kind === current;
@@ -270,19 +304,29 @@ function RoomTabs({
           <button
             key={kind}
             type="button"
+            role="tab"
+            aria-selected={active}
             onClick={() => onPick(kind)}
             data-active={active}
             data-testid={`chat-tab-${kind}`}
             className={cn(
-              "rounded-sm border px-2 py-0.5",
-              "font-mono text-[11px] uppercase tracking-wider",
-              "transition-colors duration-150",
+              "relative px-1 pb-1 pt-0.5",
+              "font-mono text-[10px] uppercase tracking-[0.10em]",
+              "transition-colors duration-150 outline-none",
+              "focus-visible:text-ink-90",
               active
-                ? "border-ink-90 bg-ink-90 text-paper-0"
-                : "border-rule text-ink-60 hover:bg-paper-1",
+                ? "text-ink-90"
+                : "text-ink-35 hover:text-ink-60",
             )}
           >
             {label}
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-x-0 -bottom-px h-px transition-colors duration-150",
+                active ? "bg-accent-indigo" : "bg-transparent",
+              )}
+            />
           </button>
         );
       })}
