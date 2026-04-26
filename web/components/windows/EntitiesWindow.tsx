@@ -8,7 +8,7 @@
  * quick-add upserts.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import {
@@ -18,8 +18,11 @@ import {
   type Entity,
   type EntityTypeCount,
 } from "@/lib/kg-client";
+import { registerTools } from "@/lib/room-tools";
 import { KgShell, KgHeader } from "./kg-shell";
 import { cn } from "@/lib/cn";
+
+type EntitiesSort = "alpha" | "mentions";
 
 export function EntitiesWindow({
   payload,
@@ -61,6 +64,169 @@ export function EntitiesWindow({
   }
 
   const [adding, setAdding] = useState(false);
+  /* Agent-driven filter / sort state. */
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [tagFilter, setTagFilter] = useState<string>("");
+  const [minMentions, setMinMentions] = useState<number>(0);
+  const [sortMode, setSortMode] = useState<EntitiesSort>("alpha");
+
+  const visibleRows = useMemo(() => {
+    const all = rows.data ?? [];
+    const q = searchQuery.trim().toLowerCase();
+    const tag = tagFilter.trim().toLowerCase();
+    const filtered = all.filter((e) => {
+      if (q) {
+        const aliasHit = e.aliases.some((a) => a.toLowerCase().includes(q));
+        if (!e.name.toLowerCase().includes(q) && !aliasHit) return false;
+      }
+      if (tag) {
+        if (!e.tags.some((t) => t.toLowerCase() === tag)) return false;
+      }
+      if (minMentions > 0 && e.chat_mention_count < minMentions) return false;
+      return true;
+    });
+    return [...filtered].sort((a, b) =>
+      sortMode === "mentions"
+        ? b.chat_mention_count - a.chat_mention_count
+        : a.name.localeCompare(b.name),
+    );
+  }, [rows.data, searchQuery, tagFilter, minMentions, sortMode]);
+
+  /* Register UI handlers. Tool names match what
+   * `lib/agent/window-tools/entities.ts` emits via
+   * `dispatchToEntities` (un-prefixed). */
+  useEffect(() => {
+    return registerTools("entities", [
+      {
+        name: "switch_type_tab",
+        description: "Switch the active entity-type tab.",
+        args: { entity_type: "string" },
+        run: (args) => {
+          if (typeof args.entity_type === "string" && args.entity_type) {
+            setActiveType(args.entity_type);
+          }
+        },
+      },
+      {
+        name: "list_by_type",
+        description: "Switch tab + refetch the list for that type.",
+        args: { entity_type: "string" },
+        run: (args) => {
+          if (typeof args.entity_type === "string" && args.entity_type) {
+            setActiveType(args.entity_type);
+          }
+          rows.refetch();
+        },
+      },
+      {
+        name: "search",
+        description: "Free-text search by name or alias. Empty clears.",
+        args: { query: "string" },
+        run: (args) => {
+          setSearchQuery(typeof args.query === "string" ? args.query : "");
+        },
+      },
+      {
+        name: "find_by_name",
+        description: "Same as search — fuzzy by name.",
+        args: { query: "string" },
+        run: (args) => {
+          setSearchQuery(typeof args.query === "string" ? args.query : "");
+        },
+      },
+      {
+        name: "find_people",
+        description: "Switch to the person tab and clear filters.",
+        run: () => {
+          setActiveType("person");
+          setSearchQuery("");
+          setTagFilter("");
+          setMinMentions(0);
+        },
+      },
+      {
+        name: "filter_by_tag",
+        description: "Restrict list to entities carrying this tag. Empty clears.",
+        args: { tag: "string" },
+        run: (args) => {
+          setTagFilter(typeof args.tag === "string" ? args.tag : "");
+        },
+      },
+      {
+        name: "filter_by_mention_count",
+        description:
+          "Restrict to entities with at least N chat mentions. 0 clears.",
+        args: { min: "number" },
+        run: (args) => {
+          const n = Number(args.min);
+          setMinMentions(Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
+        },
+      },
+      {
+        name: "sort_alphabetically",
+        description: "Sort entities by name.",
+        run: () => setSortMode("alpha"),
+      },
+      {
+        name: "sort_by_mentions",
+        description: "Sort entities by chat mention count, descending.",
+        run: () => setSortMode("mentions"),
+      },
+      {
+        name: "recently_mentioned",
+        description: "Switch to mention-count sort and refetch.",
+        run: () => {
+          setSortMode("mentions");
+          rows.refetch();
+        },
+      },
+      {
+        name: "refresh_list",
+        description: "Refetch the entity list and types.",
+        run: () => {
+          types.refetch();
+          rows.refetch();
+        },
+      },
+      {
+        name: "read_types",
+        description: "Narration hook — agent reads the entity-type tabs aloud.",
+        run: () => {
+          /* Tabs are already rendered; pure read. */
+        },
+      },
+      {
+        name: "quick_show",
+        description:
+          "Best-effort drill-in: search by name and open the first match's detail.",
+        args: { name: "string" },
+        run: (args) => {
+          if (typeof args.name !== "string" || !args.name.trim()) return;
+          setSearchQuery(args.name);
+          /* Defer to next tick so visibleRows re-renders before we
+           * pick the top match. */
+          queueMicrotask(() => {
+            const top = visibleRows[0];
+            if (top) {
+              openWindow("entity_detail", {
+                payload: {
+                  id: top.id,
+                  name: top.name,
+                  entity_type: top.entity_type,
+                  seed: top,
+                },
+              });
+            }
+          });
+        },
+      },
+      {
+        name: "quick_add",
+        description: "Open the quick-add row.",
+        run: () => setAdding(true),
+      },
+    ]);
+  }, [rows, types, visibleRows, openWindow]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -68,7 +234,7 @@ export function EntitiesWindow({
         label="entities"
         right={
           <span className="font-mono text-[10px] text-ink-35">
-            {(rows.data ?? []).length} in {activeType || "—"}
+            {visibleRows.length} in {activeType || "—"}
           </span>
         }
       />
@@ -99,7 +265,7 @@ export function EntitiesWindow({
         <KgShell
           loading={rows.loading}
           error={rows.error || types.error}
-          empty={(rows.data ?? []).length === 0}
+          empty={visibleRows.length === 0}
           emptyHint="no entities of this type yet."
           onRetry={() => {
             types.refetch();
@@ -107,7 +273,7 @@ export function EntitiesWindow({
           }}
         >
           <ul className="space-y-1.5">
-            {(rows.data ?? []).map((e) => (
+            {visibleRows.map((e) => (
               <li key={e.id}>
                 <button
                   type="button"

@@ -12,7 +12,7 @@
  * windows since the schema collapses them into one resource.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import {
@@ -20,8 +20,11 @@ import {
   upsertWorkflow,
   type Workflow,
 } from "@/lib/kg-client";
+import { registerTools } from "@/lib/room-tools";
 import { KgShell, KgHeader } from "./kg-shell";
 import { cn } from "@/lib/cn";
+
+type SortField = "name" | "slug";
 
 export function WorkflowsWindow({
   payload,
@@ -33,6 +36,15 @@ export function WorkflowsWindow({
     (payload?.slug as string) ?? null,
   );
   const [editing, setEditing] = useState(false);
+  /* Filter / sort / focus state driven by the agent's in-window
+   * tools. The list pane reflects these; the detail pane scrolls
+   * to and highlights `focusedStep` when the agent calls
+   * `workflows_jump_to_step`. */
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [tagFilter, setTagFilter] = useState<string>("");
+  const [sortBy, setSortBy] = useState<SortField>("slug");
+  const [sortAsc, setSortAsc] = useState<boolean>(true);
+  const [focusedStep, setFocusedStep] = useState<number | null>(null);
 
   const seed = (payload?.workflows as Workflow[] | undefined) ?? null;
   const fetcher = useCallback(
@@ -40,11 +52,214 @@ export function WorkflowsWindow({
     [userId],
   );
   const { data, loading, error, refetch } = useKgResource(fetcher, seed);
-  const list = useMemo(
-    () => [...(data ?? [])].sort((a, b) => a.slug.localeCompare(b.slug)),
-    [data],
-  );
+
+  /* Apply search → tag filter → sort, in order. Empty filters are
+   * pass-through so the agent can clear them by calling with "". */
+  const list = useMemo(() => {
+    const all = data ?? [];
+    const q = searchQuery.trim().toLowerCase();
+    const tag = tagFilter.trim().toLowerCase();
+    const filtered = all.filter((w) => {
+      if (q) {
+        const hay = `${w.name} ${w.description ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (tag) {
+        const tags = (w.tags ?? []).map((t) => t.toLowerCase());
+        if (!tags.includes(tag)) return false;
+      }
+      return true;
+    });
+    const sorted = [...filtered].sort((a, b) => {
+      const av = (a[sortBy] ?? "").toString();
+      const bv = (b[sortBy] ?? "").toString();
+      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    return sorted;
+  }, [data, searchQuery, tagFilter, sortBy, sortAsc]);
+
   const selected = list.find((w) => w.slug === selectedSlug) ?? null;
+
+  /* ── agent tool handlers ──
+   *
+   * Every event the orchestrator emits via `lib/agent/window-tools/
+   * workflows.ts` lands here through `callRoomTool`. Without this
+   * registration the events warn-and-noop and the canvas appears
+   * frozen — that was the whole reason the in-window demo wasn't
+   * moving. Tools are intentionally idempotent and forgiving: an
+   * unknown slug or out-of-range step does nothing rather than
+   * throwing, matching the contract documented in `lib/room-tools.ts`. */
+  useEffect(() => {
+    return registerTools("workflows", [
+      {
+        name: "select",
+        description: "Select a workflow by slug to display its detail pane.",
+        args: { slug: "string" },
+        run: (args) => {
+          const slug = typeof args.slug === "string" ? args.slug : null;
+          if (!slug) return;
+          setSelectedSlug(slug);
+          setEditing(false);
+          setFocusedStep(null);
+        },
+      },
+      {
+        name: "list_all",
+        description: "Refresh the workflow list and clear filters.",
+        run: () => {
+          setSearchQuery("");
+          setTagFilter("");
+          refetch();
+        },
+      },
+      {
+        name: "recent",
+        description: "Show recently modified workflows (clears filters).",
+        run: () => {
+          setSearchQuery("");
+          setTagFilter("");
+          refetch();
+        },
+      },
+      {
+        name: "search",
+        description:
+          "Filter workflows by free-text query against name + description. Empty string clears.",
+        args: { query: "string" },
+        run: (args) => {
+          setSearchQuery(typeof args.query === "string" ? args.query : "");
+        },
+      },
+      {
+        name: "filter_by_tag",
+        description: "Filter workflows to those tagged with this value. Empty clears.",
+        args: { tag: "string" },
+        run: (args) => {
+          setTagFilter(typeof args.tag === "string" ? args.tag : "");
+        },
+      },
+      {
+        /* Cross-room emit from `skills.ts` — `skills_open_workflows_using`
+         * fires `tool: "filter_by_skill"` into the workflows room with
+         * `args: { skill_slug }`. We overload the search filter with the
+         * skill slug; closes the loop "show me workflows that use X". */
+        name: "filter_by_skill",
+        description:
+          "Filter workflows by a skill slug appearing in their skill chain.",
+        args: { skill_slug: "string" },
+        run: (args) => {
+          const slug =
+            typeof args.skill_slug === "string" ? args.skill_slug : "";
+          setSearchQuery(slug);
+        },
+      },
+      {
+        name: "sort_alphabetically",
+        description:
+          "Sort the list alphabetically by name or slug, ascending or descending.",
+        args: { by: "'name' | 'slug'", ascending: "boolean" },
+        run: (args) => {
+          const by = args.by === "name" ? "name" : "slug";
+          const asc = args.ascending !== false;
+          setSortBy(by);
+          setSortAsc(asc);
+        },
+      },
+      {
+        name: "jump_to_step",
+        description:
+          "Highlight a specific step in the selected workflow's skill chain (1-based).",
+        args: { step_number: "number" },
+        run: (args) => {
+          const n = Number(args.step_number);
+          if (!Number.isFinite(n) || n < 1) return;
+          setFocusedStep(Math.floor(n));
+        },
+      },
+      {
+        name: "read_current",
+        description: "No-op visual cue — agent narrates the current selection.",
+        run: () => {
+          /* Pure read; the detail pane already shows the current
+           * selection. Nothing to mutate. */
+        },
+      },
+      {
+        name: "read_skill_chain",
+        description:
+          "Reset step focus so the full skill chain is visible (no single step highlighted).",
+        run: () => {
+          setFocusedStep(null);
+        },
+      },
+      {
+        name: "new",
+        description: "Open the editor with empty fields for a new workflow.",
+        run: () => {
+          setSelectedSlug(null);
+          setEditing(true);
+          setFocusedStep(null);
+        },
+      },
+      {
+        name: "edit",
+        description:
+          "Open the editor for the currently selected workflow (or for the slug arg).",
+        args: { slug: "string?" },
+        run: (args) => {
+          if (typeof args.slug === "string" && args.slug) {
+            setSelectedSlug(args.slug);
+          }
+          setEditing(true);
+        },
+      },
+      {
+        name: "cancel_edit",
+        description: "Exit the editor without saving.",
+        run: () => {
+          setEditing(false);
+        },
+      },
+      {
+        name: "save",
+        description:
+          "Refresh the list after a save (the orchestrator already wrote the change).",
+        run: () => {
+          setEditing(false);
+          refetch();
+        },
+      },
+      {
+        name: "duplicate",
+        description: "Refresh the list and select the duplicated workflow.",
+        args: { new_slug: "string" },
+        run: (args) => {
+          if (typeof args.new_slug === "string") {
+            setSelectedSlug(args.new_slug);
+          }
+          refetch();
+        },
+      },
+      {
+        name: "delete",
+        description: "Refresh the list after a delete.",
+        run: () => {
+          setSelectedSlug(null);
+          setFocusedStep(null);
+          refetch();
+        },
+      },
+      {
+        name: "run",
+        description:
+          "Visual marker for a workflow run trigger. Currently a narration hook only.",
+        run: () => {
+          /* No execution surface yet — the agent's narration is the
+           * artefact. Wired so the room-tools registry doesn't warn. */
+        },
+      },
+    ]);
+  }, [refetch]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -124,6 +339,7 @@ export function WorkflowsWindow({
               <WorkflowView
                 workflow={selected}
                 onEdit={() => setEditing(true)}
+                focusedStep={focusedStep}
               />
             ) : (
               <p className="font-mono text-[11px] text-ink-35">
@@ -140,10 +356,25 @@ export function WorkflowsWindow({
 function WorkflowView({
   workflow,
   onEdit,
+  focusedStep,
 }: {
   workflow: Workflow;
   onEdit: () => void;
+  /* When set, the matching step in the skill chain is highlighted
+   * and scrolled into view. Driven by `workflows_jump_to_step`. */
+  focusedStep: number | null;
 }) {
+  /* Scroll the focused step into view whenever it changes so the
+   * agent's `jump_to_step` actually lands the user's eye on it. */
+  const stepRefs = useMemo(() => new Map<number, HTMLLIElement>(), []);
+  useEffect(() => {
+    if (focusedStep == null) return;
+    const el = stepRefs.get(focusedStep);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [focusedStep, stepRefs]);
+
   return (
     <div className="space-y-3">
       <div className="flex items-baseline justify-between">
@@ -194,19 +425,41 @@ function WorkflowView({
           <ol className="space-y-1">
             {[...workflow.skill_chain]
               .sort((a, b) => a.step_order - b.step_order)
-              .map((step) => (
-                <li
-                  key={`${step.skill_slug}-${step.step_order}`}
-                  className="flex items-baseline gap-2 rounded border border-rule/50 bg-paper-2/30 px-2 py-1"
-                >
-                  <span className="w-5 font-mono text-[10px] text-ink-35">
-                    {step.step_order}.
-                  </span>
-                  <span className="font-mono text-[11px] text-ink-90">
-                    {step.skill_slug}
-                  </span>
-                </li>
-              ))}
+              .map((step) => {
+                const isFocused = step.step_order === focusedStep;
+                return (
+                  <li
+                    key={`${step.skill_slug}-${step.step_order}`}
+                    ref={(el) => {
+                      if (el) stepRefs.set(step.step_order, el);
+                      else stepRefs.delete(step.step_order);
+                    }}
+                    className={cn(
+                      "flex items-baseline gap-2 rounded border px-2 py-1 transition-colors",
+                      isFocused
+                        ? "border-accent-indigo bg-accent-indigo-soft"
+                        : "border-rule/50 bg-paper-2/30",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "w-5 font-mono text-[10px]",
+                        isFocused ? "text-accent-indigo" : "text-ink-35",
+                      )}
+                    >
+                      {step.step_order}.
+                    </span>
+                    <span
+                      className={cn(
+                        "font-mono text-[11px]",
+                        isFocused ? "text-accent-indigo" : "text-ink-90",
+                      )}
+                    >
+                      {step.skill_slug}
+                    </span>
+                  </li>
+                );
+              })}
           </ol>
         )}
       </div>

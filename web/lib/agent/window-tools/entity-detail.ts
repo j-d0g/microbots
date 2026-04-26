@@ -210,6 +210,76 @@ export function entityDetailWindowTools(ctx: AgentToolCtx) {
         return applyAndEmit(ctx, "entity_detail_go_back", {}, events);
       },
     }),
+
+    /* ------------------------------------------------------------------ *
+     *  entitydetail_* prefix tools (consistent naming convention)
+     * ------------------------------------------------------------------ */
+
+    /** Read chat mentions of this entity (entitydetail_ prefix). */
+    entitydetail_read_mentions: tool({
+      description:
+        "Read chat messages that mention the current entity. Returns the mention context and chat_mention_count.",
+      inputSchema: z.object({
+        entity_id: z.string().optional().describe("Optional entity ID. Uses current entity if not provided."),
+        limit: z.number().min(1).max(100).optional().default(20).describe("Maximum number of mentions to return."),
+      }),
+      execute: async ({ entity_id, limit }) => {
+        return dispatch(ctx, "entity_detail_read_mentions", { entity_id, limit }, entity_id);
+      },
+    }),
+
+    /** Read related entities (entitydetail_ prefix). */
+    entitydetail_read_related: tool({
+      description:
+        "Read entities that are related to the current entity (co-mentioned, linked, or connected via relationships).",
+      inputSchema: z.object({
+        entity_id: z.string().optional().describe("Optional entity ID. Uses current entity if not provided."),
+        limit: z.number().min(1).max(50).optional().default(10).describe("Maximum number of related entities to return."),
+      }),
+      execute: async ({ entity_id, limit }) => {
+        return dispatch(ctx, "entity_detail_read_related", { entity_id, limit }, entity_id);
+      },
+    }),
+
+    /** Add an alias to the entity (entitydetail_ prefix). */
+    entitydetail_add_alias: tool({
+      description:
+        "Add an alias (alternative name) to the current entity. Useful for capturing variations, nicknames, or alternative spellings.",
+      inputSchema: z.object({
+        alias: z.string().min(1).describe("Alias value to add."),
+        entity_id: z.string().optional().describe("Optional entity ID to update. Uses current entity if not provided."),
+      }),
+      execute: async ({ alias, entity_id }) => {
+        return dispatch(ctx, "entity_detail_add_alias", { alias, entity_id }, entity_id);
+      },
+    }),
+
+    /** Add a tag to the entity (entitydetail_ prefix). */
+    entitydetail_add_tag: tool({
+      description:
+        "Add a tag to the current entity for categorization and filtering.",
+      inputSchema: z.object({
+        tag: z.string().min(1).describe("Tag value to add."),
+        entity_id: z.string().optional().describe("Optional entity ID to update. Uses current entity if not provided."),
+      }),
+      execute: async ({ tag, entity_id }) => {
+        return dispatch(ctx, "entity_detail_add_tag", { tag, entity_id }, entity_id);
+      },
+    }),
+
+    /** Return to entities list (entitydetail_ prefix). */
+    entitydetail_go_back: tool({
+      description:
+        "Close the entity detail window and return to the entities list view. Use when finished working with an entity.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const events: AgentEvent[] = [
+          { type: "ui.close_window", room: "entity_detail" as WindowKind },
+          { type: "ui.room", room: "entities" as WindowKind },
+        ];
+        return applyAndEmit(ctx, "entitydetail_go_back", {}, events);
+      },
+    }),
   };
 }
 

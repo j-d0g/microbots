@@ -1,9 +1,37 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAgentStore } from "@/lib/store";
+import { useAgentStore, type WindowKind } from "@/lib/store";
+import { registerTools } from "@/lib/room-tools";
 import * as backend from "@/lib/api/backend";
 import { hydrateChatHistory } from "@/lib/chat-persistence";
+
+/* Every window can be the target of a window-management `ui.tool`
+ * event (`pin_window`, `unpin_window`, `toggle_pin`, `send_to_back`)
+ * because the orchestrator emits those into `target.kind`. Rather
+ * than make every window component duplicate the same handler set,
+ * we register a shared meta tool bag for every WindowKind here.
+ *
+ * Per-window registries can still register their own
+ * domain-specific tools — `registerTools` adds entries; it does not
+ * replace the bag. */
+const META_WINDOW_KINDS: readonly WindowKind[] = [
+  "graph",
+  "chat",
+  "ask_user",
+  "settings",
+  "profile",
+  "integrations",
+  "integration_detail",
+  "entities",
+  "entity_detail",
+  "memories",
+  "skills",
+  "workflows",
+  "wiki",
+  "chats_summary",
+  "composio_connect",
+];
 
 const USER_ID_STORAGE_KEY = "microbots:userId";
 const HEALTH_POLL_MS = 30_000;
@@ -36,6 +64,73 @@ export function StoreBridge() {
     if (process.env.NODE_ENV === "production") return;
     (window as unknown as { __store: typeof useAgentStore }).__store =
       useAgentStore;
+  }, []);
+
+  /* Meta window-management tools registered for every WindowKind so
+   * any centre-staged window can receive `pin_window` / `unpin_window`
+   * / `toggle_pin` / `send_to_back` from the orchestrator (those
+   * events are dispatched to `target.kind` by `window-management.ts`,
+   * which can be any of the ~14 kinds). */
+  useEffect(() => {
+    const offs = META_WINDOW_KINDS.map((kind) =>
+      registerTools(kind, [
+        {
+          name: "pin_window",
+          description: "Pin the targeted window so the stage manager won't demote it.",
+          args: { id: "string" },
+          run: (args) => {
+            const id = typeof args.id === "string" ? args.id : "";
+            if (!id) return;
+            useAgentStore.getState().pinWindow(id);
+          },
+        },
+        {
+          name: "unpin_window",
+          description: "Unpin the targeted window.",
+          args: { id: "string" },
+          run: (args) => {
+            const id = typeof args.id === "string" ? args.id : "";
+            if (!id) return;
+            useAgentStore.getState().unpinWindow(id);
+          },
+        },
+        {
+          name: "toggle_pin",
+          description: "Flip the pin state of the targeted window.",
+          args: { id: "string" },
+          run: (args) => {
+            const id = typeof args.id === "string" ? args.id : "";
+            if (!id) return;
+            const w = useAgentStore.getState().windows.find((win) => win.id === id);
+            if (!w) return;
+            if (w.pinned) {
+              useAgentStore.getState().unpinWindow(id);
+            } else {
+              useAgentStore.getState().pinWindow(id);
+            }
+          },
+        },
+        {
+          name: "send_to_back",
+          description:
+            "Demote the targeted window to the lowest z-index in the stack.",
+          args: { id: "string" },
+          run: (args) => {
+            const id = typeof args.id === "string" ? args.id : "";
+            if (!id) return;
+            const wins = useAgentStore.getState().windows;
+            if (!wins.some((w) => w.id === id)) return;
+            const minZ = Math.min(0, ...wins.map((w) => w.zIndex)) - 1;
+            useAgentStore.setState({
+              windows: wins.map((w) =>
+                w.id === id ? { ...w, zIndex: minZ } : w,
+              ),
+            });
+          },
+        },
+      ]),
+    );
+    return () => offs.forEach((off) => off());
   }, []);
 
   /* userId hydration + cross-tab sync */

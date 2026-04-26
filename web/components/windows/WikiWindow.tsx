@@ -8,7 +8,7 @@
  * the rationale field — server no-ops on unchanged content.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import {
@@ -18,6 +18,7 @@ import {
   type WikiNode,
   type WikiPage,
 } from "@/lib/kg-client";
+import { registerTools } from "@/lib/room-tools";
 import { KgShell, KgHeader } from "./kg-shell";
 import { cn } from "@/lib/cn";
 
@@ -49,6 +50,122 @@ export function WikiWindow({
   );
   const tree = useKgResource(treeFetcher, seedTree);
   const page = useKgResource(pageFetcher, seedPage);
+
+  /* Register UI handlers for the orchestrator's `wiki_*` tools.
+   * Navigation tools (`navigate_to`, `go_to_index`, `go_to_parent`)
+   * mutate `path`; mutating tools (`save_page`, `delete_page`,
+   * `revert_to_revision`) refetch on this side after the
+   * orchestrator's API call. */
+  useEffect(() => {
+    return registerTools("wiki", [
+      {
+        name: "navigate_to",
+        description: "Open a wiki page by path.",
+        args: { path: "string" },
+        run: (args) => {
+          if (typeof args.path === "string" && args.path) {
+            setPath(args.path);
+            setEditing(false);
+          }
+        },
+      },
+      {
+        name: "go_to_index",
+        description: "Return to the wiki index (clear selection).",
+        run: () => {
+          setPath(null);
+          setEditing(false);
+        },
+      },
+      {
+        name: "go_to_parent",
+        description: "Move up one segment in the current path.",
+        run: () => {
+          if (!path) return;
+          const parts = path.split("/").filter(Boolean);
+          if (parts.length <= 1) {
+            setPath(null);
+          } else {
+            setPath(parts.slice(0, -1).join("/"));
+          }
+          setEditing(false);
+        },
+      },
+      {
+        name: "search",
+        description: "Narration hook — agent narrates matches aloud.",
+        run: () => {
+          /* No in-window search yet; agent narration is the artefact. */
+        },
+      },
+      {
+        name: "list_children",
+        description: "Narration hook — children are visible in the tree pane.",
+        run: () => {
+          /* Tree already rendered; pure read. */
+        },
+      },
+      {
+        name: "read_page",
+        description: "Narration hook — page already rendered in detail pane.",
+        run: () => {
+          /* Pure read. */
+        },
+      },
+      {
+        name: "edit_page",
+        description: "Toggle the editor for the current page.",
+        run: () => {
+          if (path) setEditing(true);
+        },
+      },
+      {
+        name: "cancel_edit",
+        description: "Exit the editor without saving.",
+        run: () => setEditing(false),
+      },
+      {
+        name: "save_page",
+        description: "Refetch tree + page after a save.",
+        run: () => {
+          setEditing(false);
+          tree.refetch();
+          page.refetch();
+        },
+      },
+      {
+        name: "new_page",
+        description: "Open the editor for a new page (path stays null).",
+        run: () => {
+          setPath(null);
+          setEditing(true);
+        },
+      },
+      {
+        name: "delete_page",
+        description: "Refetch after a delete.",
+        run: () => {
+          setPath(null);
+          setEditing(false);
+          tree.refetch();
+        },
+      },
+      {
+        name: "read_revision_history",
+        description: "Narration hook — agent narrates revisions aloud.",
+        run: () => {
+          /* No revision UI yet; pure narration. */
+        },
+      },
+      {
+        name: "revert_to_revision",
+        description: "Refetch after a revert.",
+        run: () => {
+          page.refetch();
+        },
+      },
+    ]);
+  }, [path, tree, page]);
 
   // Group tree by layer for a calm sidebar.
   const grouped = useMemo(() => {

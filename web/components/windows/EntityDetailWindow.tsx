@@ -7,7 +7,7 @@
  * `POST /api/kg/entities` (idempotent on `${entity_type}_${slug(name)}`).
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import {
@@ -15,6 +15,7 @@ import {
   upsertEntity,
   type EntityDetail,
 } from "@/lib/kg-client";
+import { registerTools } from "@/lib/room-tools";
 import { KgShell, KgHeader } from "./kg-shell";
 
 export function EntityDetailWindow({
@@ -23,6 +24,9 @@ export function EntityDetailWindow({
   payload?: Record<string, unknown>;
 }) {
   const userId = useAgentStore((s) => s.userId);
+  const openWindow = useAgentStore((s) => s.openWindow);
+  const closeWindow = useAgentStore((s) => s.closeWindow);
+  const windows = useAgentStore((s) => s.windows);
   const id = (payload?.id as string) ?? "";
   const seed = (payload?.seed as EntityDetail | undefined) ?? null;
 
@@ -36,6 +40,118 @@ export function EntityDetailWindow({
   const { data, loading, error, refetch } = useKgResource(fetcher, seed);
 
   const [editing, setEditing] = useState(false);
+
+  /* Register UI handlers for the orchestrator's `entity_detail_*`
+   * and `entitydetail_*` tool names. The agent-side file emits
+   * both prefixes for the same actions (legacy + canonical), so
+   * we register every name it might use to keep
+   * `callRoomTool` from warning. Mutating tools (alias/tag,
+   * description) defer to the orchestrator's backend write and
+   * just refetch on this side. */
+  useEffect(() => {
+    if (!id) return;
+    const refreshOnly = () => {
+      refetch();
+    };
+    const goBack = () => {
+      const self = windows.find((w) => w.kind === "entity_detail");
+      if (self) closeWindow(self.id);
+      openWindow("entities");
+    };
+    return registerTools("entity_detail", [
+      {
+        name: "entity_detail_read",
+        description: "Narration hook — agent reads the current detail aloud.",
+        run: () => {
+          /* All fields rendered already; pure read. */
+        },
+      },
+      {
+        name: "entity_detail_set_description",
+        description: "Refetch after the orchestrator updates the description.",
+        run: refreshOnly,
+      },
+      {
+        name: "entity_detail_add_alias",
+        description: "Refetch after alias add.",
+        run: refreshOnly,
+      },
+      {
+        name: "entity_detail_remove_alias",
+        description: "Refetch after alias removal.",
+        run: refreshOnly,
+      },
+      {
+        name: "entity_detail_add_tag",
+        description: "Refetch after tag add.",
+        run: refreshOnly,
+      },
+      {
+        name: "entity_detail_remove_tag",
+        description: "Refetch after tag removal.",
+        run: refreshOnly,
+      },
+      {
+        name: "entity_detail_read_mentions",
+        description: "Narration hook — mentions list is already rendered.",
+        run: () => {
+          /* Mentions list already in DOM; pure read. */
+        },
+      },
+      {
+        name: "entity_detail_read_related",
+        description: "Narration hook — related entities (none rendered yet).",
+        run: () => {
+          /* No related-entities pane on this window yet; agent
+           * narration is the artefact. */
+        },
+      },
+      {
+        name: "entity_detail_read_appearances",
+        description: "Narration hook — appearances list is rendered as edges.",
+        run: () => {
+          /* `appears_in_edges` already rendered; pure read. */
+        },
+      },
+      {
+        name: "entity_detail_merge_with",
+        description: "Refetch after a merge (orchestrator handles the API).",
+        run: refreshOnly,
+      },
+      {
+        name: "entity_detail_go_back",
+        description: "Close this detail and reopen the entities list.",
+        run: goBack,
+      },
+      /* `entitydetail_*` aliases — same actions, alternate prefix
+       * the agent layer also emits. */
+      {
+        name: "entitydetail_read_mentions",
+        description: "Alias of entity_detail_read_mentions.",
+        run: () => {},
+      },
+      {
+        name: "entitydetail_read_related",
+        description: "Alias of entity_detail_read_related.",
+        run: () => {},
+      },
+      {
+        name: "entitydetail_add_alias",
+        description: "Alias of entity_detail_add_alias.",
+        run: refreshOnly,
+      },
+      {
+        name: "entitydetail_add_tag",
+        description: "Alias of entity_detail_add_tag.",
+        run: refreshOnly,
+      },
+      {
+        name: "entitydetail_go_back",
+        description: "Alias of entity_detail_go_back.",
+        run: goBack,
+      },
+    ]);
+  }, [id, refetch, openWindow, closeWindow, windows]);
 
   if (!id) {
     return (

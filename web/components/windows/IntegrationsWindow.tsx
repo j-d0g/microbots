@@ -7,12 +7,15 @@
  * `integration_detail` with that slug.
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import { getIntegrations, type Integration } from "@/lib/kg-client";
+import { registerTools } from "@/lib/room-tools";
 import { KgShell, KgHeader } from "./kg-shell";
 import { cn } from "@/lib/cn";
+
+type IntegrationsSort = "name" | "usage";
 
 export function IntegrationsWindow({
   payload,
@@ -21,6 +24,12 @@ export function IntegrationsWindow({
 }) {
   const userId = useAgentStore((s) => s.userId);
   const openWindow = useAgentStore((s) => s.openWindow);
+  /* Agent-driven filter / sort state. Empty strings clear the
+   * filter; sort defaults to alphabetical-by-name to match the
+   * pre-agent layout. */
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [sortBy, setSortBy] = useState<IntegrationsSort>("name");
 
   const seed = (payload?.integrations as Integration[] | undefined) ?? null;
   const fetcher = useCallback(
@@ -29,10 +38,98 @@ export function IntegrationsWindow({
   );
   const { data, loading, error, refetch } = useKgResource(fetcher, seed);
 
-  const list = useMemo(
-    () => [...(data ?? [])].sort((a, b) => a.slug.localeCompare(b.slug)),
-    [data],
-  );
+  const list = useMemo(() => {
+    const all = data ?? [];
+    const q = searchQuery.trim().toLowerCase();
+    const cat = categoryFilter.trim().toLowerCase();
+    const filtered = all.filter((it) => {
+      if (q) {
+        const hay = `${it.name} ${it.slug} ${it.user_purpose ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (cat) {
+        if ((it.category ?? "").toLowerCase() !== cat) return false;
+      }
+      return true;
+    });
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "usage") {
+        /* Usage proxy: longer co_used list ⇒ more co-used.
+         * Tie-break alphabetically. */
+        const au = (a.co_used_with_slugs ?? []).length;
+        const bu = (b.co_used_with_slugs ?? []).length;
+        if (au !== bu) return bu - au;
+      }
+      return a.slug.localeCompare(b.slug);
+    });
+  }, [data, searchQuery, categoryFilter, sortBy]);
+
+  /* Register UI handlers so the orchestrator's `integrations_*`
+   * tools actually move the canvas. Without this every search /
+   * filter / sort call from the agent silently no-ops in
+   * `callRoomTool`. */
+  useEffect(() => {
+    return registerTools("integrations", [
+      {
+        name: "list_all",
+        description: "Refresh integrations and clear all filters.",
+        run: () => {
+          setSearchQuery("");
+          setCategoryFilter("");
+          setSortBy("name");
+          refetch();
+        },
+      },
+      {
+        name: "refresh_list",
+        description: "Refetch the integration list from the backend.",
+        run: () => {
+          refetch();
+        },
+      },
+      {
+        name: "search",
+        description: "Filter integrations by free-text query (name + purpose). Empty clears.",
+        args: { query: "string" },
+        run: (args) => {
+          setSearchQuery(typeof args.query === "string" ? args.query : "");
+        },
+      },
+      {
+        name: "filter_by_category",
+        description: "Restrict the list to one category. Empty string clears.",
+        args: { category: "string" },
+        run: (args) => {
+          setCategoryFilter(typeof args.category === "string" ? args.category : "");
+        },
+      },
+      {
+        name: "sort_by_name",
+        description: "Sort the list alphabetically by slug.",
+        run: () => setSortBy("name"),
+      },
+      {
+        name: "sort_by_usage",
+        description: "Sort by usage proxy (co-used count, descending).",
+        run: () => setSortBy("usage"),
+      },
+      {
+        name: "count_active",
+        description:
+          "Narration hook — agent reads list length back to user. No mutation.",
+        run: () => {
+          /* Pure read; the count is already visible in the header. */
+        },
+      },
+      {
+        name: "read_co_used",
+        description: "Narration hook — agent describes co-used relationships.",
+        run: () => {
+          /* Pure read; co-used chips are rendered on each card. */
+        },
+      },
+    ]);
+  }, [refetch]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

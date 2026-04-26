@@ -244,6 +244,88 @@ export function entitiesWindowTools(ctx: AgentToolCtx) {
         return dispatchToEntities(ctx, "refresh_list", {});
       },
     }),
+
+    /** Find entities by name with fuzzy matching */
+    entities_find_by_name: tool({
+      description:
+        "Fuzzy search for entities by name or alias. Returns candidate entities matching the provided name, useful for finding entities when the exact name is uncertain. Returns list of matches with confidence scores.",
+      inputSchema: z.object({
+        name: z
+          .string()
+          .min(1)
+          .describe("Name or partial name to search for (fuzzy match)"),
+        limit: z
+          .number()
+          .min(1)
+          .max(20)
+          .optional()
+          .default(5)
+          .describe("Maximum number of candidate matches to return"),
+      }),
+      execute: async ({ name, limit }) => {
+        return dispatchToEntities(ctx, "find_by_name", { name, limit });
+      },
+    }),
+
+    /** Find people entities specifically */
+    entities_find_people: tool({
+      description:
+        "Search specifically for person-type entities. Filters the entity list to show only people matching the query. Useful for finding team members, contacts, or individuals by name.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .min(1)
+          .describe("Search query to match against person names and aliases"),
+      }),
+      execute: async ({ query }) => {
+        return dispatchToEntities(ctx, "find_people", { query });
+      },
+    }),
+
+    /** Quick show - find and open entity detail in one call */
+    entities_quick_show: tool({
+      description:
+        "Find an entity by name and immediately open its detail view. Combines search and detail view opening for quick entity inspection. If multiple matches found, opens the best match.",
+      inputSchema: z.object({
+        name: z.string().min(1).describe("Entity name or alias to find and display"),
+      }),
+      execute: async ({ name }) => {
+        return dispatchToEntities(ctx, "quick_show", { name });
+      },
+    }),
+
+    /** Filter entities by minimum mention count */
+    entities_filter_by_mention_count: tool({
+      description:
+        "Filter entities to show only those with at least a minimum number of mentions. Useful for finding frequently referenced or important entities.",
+      inputSchema: z.object({
+        min: z
+          .number()
+          .min(0)
+          .describe("Minimum mention count threshold (inclusive)"),
+      }),
+      execute: async ({ min }) => {
+        return dispatchToEntities(ctx, "filter_by_mention_count", { min });
+      },
+    }),
+
+    /** Show recently mentioned entities */
+    entities_recently_mentioned: tool({
+      description:
+        "Retrieve entities that have been mentioned recently in chats, ordered by recency. Useful for discovering active or trending topics and people.",
+      inputSchema: z.object({
+        limit: z
+          .number()
+          .min(1)
+          .max(50)
+          .optional()
+          .default(10)
+          .describe("Maximum number of recently mentioned entities to return"),
+      }),
+      execute: async ({ limit }) => {
+        return dispatchToEntities(ctx, "recently_mentioned", { limit });
+      },
+    }),
   };
 }
 

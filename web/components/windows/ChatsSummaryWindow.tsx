@@ -7,13 +7,14 @@
  * Backed by `GET /api/kg/chats/summary`. No write surface.
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import {
   getChatsSummary,
   type ChatSummaryRow,
 } from "@/lib/kg-client";
+import { registerTools } from "@/lib/room-tools";
 import { KgShell, KgHeader } from "./kg-shell";
 import { cn } from "@/lib/cn";
 
@@ -34,6 +35,39 @@ export function ChatsSummaryWindow({
   );
   const { data, loading, error, refetch } = useKgResource(fetcher, seed);
   const rows = data ?? [];
+  const openWindow = useAgentStore((s) => s.openWindow);
+  const setChatRoom = useAgentStore((s) => s.setChatRoom);
+
+  /* Register UI handlers for the orchestrator's `chats_summary_*`
+   * tools. `focus_chat` opens the chat window with the requested
+   * id; `set_query` is forwarded to the chat window via the same
+   * payload mechanism. */
+  useEffect(() => {
+    return registerTools("chats_summary", [
+      {
+        name: "focus_chat",
+        description:
+          "Open the chat window focused on the given chat_id (defers query to chat room).",
+        args: { chat_id: "string" },
+        run: (args) => {
+          const id = typeof args.chat_id === "string" ? args.chat_id : "";
+          openWindow("chat", id ? { payload: { chat_id: id } } : undefined);
+          setChatRoom("chat");
+        },
+      },
+      {
+        name: "set_query",
+        description:
+          "Forward the search query to the chat window via payload; opens chat if needed.",
+        args: { query: "string" },
+        run: (args) => {
+          const query = typeof args.query === "string" ? args.query : "";
+          openWindow("chat", query ? { payload: { query } } : undefined);
+          setChatRoom("chat");
+        },
+      },
+    ]);
+  }, [openWindow, setChatRoom]);
 
   const { integrations, max, lookup, total } = useMemo(() => {
     const set = new Set<string>();

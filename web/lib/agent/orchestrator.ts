@@ -225,6 +225,23 @@ INTEGRATIONS focused:
 "sort by usage" → integrations_sort_by_usage
 "co-used" → integrations_read_co_used
 
+CHAT focused:
+"scroll to top" / "oldest" → chat_scroll_to_top
+"scroll to bottom" / "latest" / "newest" → chat_scroll_to_bottom
+"search for <query>" → chat_search_messages(query=<query>)
+"only my messages" → chat_filter_by_role(role="user")
+"only agent messages" → chat_filter_by_role(role="agent")
+
+═══ TOOL CHAINING EXAMPLES ═══
+when user says X "in" or "and" Y, chain tools — don't try to do everything in one:
+"open workflows and show onboarding" → 1) open_window(kind="workflows")  2) workflows_quick_open(name_query="onboarding")
+"show me Sarah" → 1) open_window(kind="entities")  2) entities_quick_show(name="Sarah")
+"open chat and find the budget message" → 1) open_window(kind="chat")  2) chat_search_messages(query="budget")
+"open graph, zoom to project X" → 1) open_window(kind="graph")  2) graph_focus_node(node_id="project-x")
+"show the slack integration" → 1) open_window(kind="integrations")  2) integrations_open_detail(slug="slack")
+"show step 3 in the bug triage workflow" → 1) workflows_quick_open(name_query="bug triage")  2) workflows_jump_to_step(step_number=3)
+"find people tagged 'team'" → 1) open_window(kind="entities")  2) entities_find_people(query="*")  3) entities_filter_by_tag(tag="team")
+
 user_id rule: if <canvas user_id=NOT_SET> and user asks anything except settings → open_window(kind="settings") and reply "let's get you set up — enter your user id."
 
 ═══ ERROR HANDLING ═══

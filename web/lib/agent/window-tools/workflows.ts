@@ -549,6 +549,135 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
         return `Duplicated workflow '${source_slug}' as '${new_slug}'${new_name ? ` (${new_name})` : ""}. The new workflow is now selected.`;
       },
     }),
+
+    /**
+     * Search workflows by name (fuzzy match) and return matching slugs.
+     */
+    workflows_search_by_name: tool({
+      description:
+        "Search workflows by name using fuzzy matching. Returns the slugs of workflows whose names match the query, useful for finding workflows when you don't know the exact slug.",
+      inputSchema: z.object({
+        query: z.string().min(1).describe("Search query to match against workflow names (fuzzy)"),
+      }),
+      execute: async ({ query }) => {
+        let workflows: Workflow[] = [];
+        try {
+          workflows = await getKgWorkflows();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          ctx.emit({ type: "agent.tool.start", name: "workflows_search_by_name", args: { query } });
+          ctx.emit({ type: "agent.tool.done", name: "workflows_search_by_name", ok: false });
+          return `Failed to search workflows: ${msg}`;
+        }
+
+        const lowerQuery = query.toLowerCase();
+        const matches = workflows
+          .filter((w) => w.name.toLowerCase().includes(lowerQuery))
+          .map((w) => ({ slug: w.slug, name: w.name }));
+
+        ctx.emit({ type: "agent.tool.start", name: "workflows_search_by_name", args: { query } });
+        ctx.emit({ type: "agent.tool.done", name: "workflows_search_by_name", ok: true });
+
+        if (matches.length === 0) {
+          return `No workflows found matching '${query}'.`;
+        }
+        const slugs = matches.map((m) => m.slug).join(", ");
+        return `Found ${matches.length} workflow(s) matching '${query}': ${slugs}. Use workflows_select with a slug to view details.`;
+      },
+    }),
+
+    /**
+     * Quick open: search by name and select the best match in one call.
+     */
+    workflows_quick_open: tool({
+      description:
+        "Quickly open a workflow by name query. Performs a fuzzy search and automatically selects the best match. Combines search and select into one action for fast navigation.",
+      inputSchema: z.object({
+        name_query: z.string().min(1).describe("Name or partial name of the workflow to open"),
+      }),
+      execute: async ({ name_query }) => {
+        let workflows: Workflow[] = [];
+        try {
+          workflows = await getKgWorkflows();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          ctx.emit({ type: "agent.tool.start", name: "workflows_quick_open", args: { name_query } });
+          ctx.emit({ type: "agent.tool.done", name: "workflows_quick_open", ok: false });
+          return `Failed to open workflow: ${msg}`;
+        }
+
+        const lowerQuery = name_query.toLowerCase();
+        const matches = workflows.filter((w) =>
+          w.name.toLowerCase().includes(lowerQuery)
+        );
+
+        if (matches.length === 0) {
+          ctx.emit({ type: "agent.tool.start", name: "workflows_quick_open", args: { name_query } });
+          ctx.emit({ type: "agent.tool.done", name: "workflows_quick_open", ok: false });
+          return `No workflow found matching '${name_query}'. Try a different name or use workflows_list_all to see all workflows.`;
+        }
+
+        // Prefer exact match, then starts with, then contains
+        const exactMatch = matches.find((w) => w.name.toLowerCase() === lowerQuery);
+        const startsWithMatch = matches.find((w) =>
+          w.name.toLowerCase().startsWith(lowerQuery)
+        );
+        const bestMatch = exactMatch ?? startsWithMatch ?? matches[0];
+
+        return dispatch("select", { slug: bestMatch.slug, data: bestMatch });
+      },
+    }),
+
+    /**
+     * Read the currently selected workflow details.
+     */
+    workflows_read_current: tool({
+      description:
+        "Read the currently selected workflow's full details including name, description, trigger, outcome, frequency, tags, and skill chain. Returns the details of the workflow currently displayed in the right pane.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        return dispatch("read_current", {});
+      },
+    }),
+
+    /**
+     * Jump to a specific step in the selected workflow's skill chain.
+     */
+    workflows_jump_to_step: tool({
+      description:
+        "Jump to and focus a specific step in the currently selected workflow's skill chain. Useful for navigating to a particular step to view or edit it. The step number is 1-based.",
+      inputSchema: z.object({
+        step_number: z.number().int().min(1).describe("The 1-based step number to jump to in the skill chain"),
+      }),
+      execute: async ({ step_number }) => {
+        return dispatch("jump_to_step", { step_number });
+      },
+    }),
+
+    /**
+     * Show recently modified workflows.
+     */
+    workflows_recent: tool({
+      description:
+        "Show recently modified workflows, sorted by most recent first. Useful for quickly accessing workflows you've been working on.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(20).optional().default(10).describe("Maximum number of recent workflows to show (1-20, default 10)"),
+      }),
+      execute: async ({ limit = 10 }) => {
+        let workflows: Workflow[] = [];
+        try {
+          workflows = await getKgWorkflows();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          ctx.emit({ type: "agent.tool.start", name: "workflows_recent", args: { limit } });
+          ctx.emit({ type: "agent.tool.done", name: "workflows_recent", ok: false });
+          return `Failed to fetch recent workflows: ${msg}`;
+        }
+
+        const sorted = [...workflows].slice(0, limit);
+        return dispatch("recent", { workflows: sorted, limit });
+      },
+    }),
   };
 }
 

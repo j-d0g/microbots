@@ -410,3 +410,56 @@
 - id: edge-05
   category: edge_case
   query: "open the brief close the brief open the brief close the brief"
+
+# ─── navigation (10) ─────────────────────────────────────────
+# Tests for in-window navigation: scroll, select, find by name, step jump
+
+- id: nav-01
+  category: navigation
+  query: "show me the onboarding workflow"
+  notes: "should use workflows_quick_open to find and open by name"
+
+- id: nav-02
+  category: navigation
+  query: "find Sarah in the entities"
+  notes: "should use entities_quick_show for fuzzy find + open detail"
+
+- id: nav-03
+  category: navigation
+  query: "jump to step 3 in the bug triage workflow"
+  notes: "should use workflows_jump_to_step after selecting workflow"
+
+- id: nav-04
+  category: navigation
+  query: "show me recent workflows"
+  notes: "should use workflows_recent to list recently modified"
+
+- id: nav-05
+  category: navigation
+  query: "find people on the team"
+  notes: "should use entities_find_people to filter to person type"
+
+- id: nav-06
+  category: navigation
+  query: "search workflows for deploy"
+  notes: "should use workflows_search_by_name for fuzzy name search"
+
+- id: nav-07
+  category: navigation
+  query: "show me entities with tag 'urgent'"
+  notes: "should filter entities by tag"
+
+- id: nav-08
+  category: navigation
+  query: "open the slack integration"
+  notes: "should use integrations_open_detail with slug='slack'"
+
+- id: nav-09
+  category: navigation
+  query: "who mentioned this entity"
+  notes: "should use entitydetail_read_mentions from entity detail view"
+
+- id: nav-10
+  category: navigation
+  query: "show step 5 of the current workflow"
+  notes: "should use workflows_jump_to_step on already-selected workflow"

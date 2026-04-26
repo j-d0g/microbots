@@ -8,13 +8,14 @@
  * `entity_detail`.
  */
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import {
   getIntegration,
   type IntegrationDetail,
 } from "@/lib/kg-client";
+import { registerTools } from "@/lib/room-tools";
 import { KgShell, KgHeader } from "./kg-shell";
 import { cn } from "@/lib/cn";
 
@@ -36,6 +37,81 @@ export function IntegrationDetailWindow({
     [slug, userId],
   );
   const { data, loading, error, refetch } = useKgResource(fetcher, seed);
+
+  /* Register UI handlers for the orchestrator's
+   * `integration_detail_*` tools. Most are pure narration hooks —
+   * the data they describe (entities, top memories, skills,
+   * categories, co-used) is already laid out below. The
+   * `refresh_data` tool re-fetches; `set_purpose` mutates the
+   * backend (no UI surface here yet) so the agent's narration
+   * carries the user-facing artefact. */
+  useEffect(() => {
+    if (!slug) return;
+    return registerTools("integration_detail", [
+      {
+        name: "read",
+        description: "Narration hook — agent reads the current detail aloud.",
+        run: () => {
+          /* All fields rendered already; no mutation. */
+        },
+      },
+      {
+        name: "set_purpose",
+        description:
+          "Optimistic narration hook — orchestrator persists the purpose; we refetch.",
+        args: { purpose: "string" },
+        run: () => {
+          refetch();
+        },
+      },
+      {
+        name: "read_co_used",
+        description: "Narration hook — agent describes co-used integrations.",
+        run: () => {
+          /* No co-used UI yet on this window; agent narration is the
+           * artefact. Kept registered to avoid registry warnings. */
+        },
+      },
+      {
+        name: "read_recent_activities",
+        description: "Narration hook — agent describes recent integration activity.",
+        args: { limit: "number?" },
+        run: () => {
+          /* No activity feed UI yet on this window; agent narration is the
+           * artefact. Kept registered to avoid registry warnings. */
+        },
+      },
+      {
+        name: "configure",
+        description:
+          "Open settings for this integration. Currently routes to the settings window.",
+        run: () => {
+          openWindow("settings");
+        },
+      },
+      {
+        name: "disconnect",
+        description: "Refetch after a disconnect (orchestrator handles the API call).",
+        run: () => {
+          refetch();
+        },
+      },
+      {
+        name: "refresh_data",
+        description: "Refetch the integration detail.",
+        run: () => {
+          refetch();
+        },
+      },
+      {
+        name: "read_category",
+        description: "Narration hook — agent reads category back to user.",
+        run: () => {
+          /* Category is in the header; pure read. */
+        },
+      },
+    ]);
+  }, [slug, refetch, openWindow]);
 
   if (!slug) {
     return (

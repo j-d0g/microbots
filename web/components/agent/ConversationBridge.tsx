@@ -107,6 +107,34 @@ export function ConversationBridge() {
   const pendingTranscriptRef = useRef<string>("");
   const pendingResponseRef = useRef<string>("");
 
+  /* ── tool-call delivery guarantee ─────────────────────────────────
+   *
+   * Every `client_tool_call` from ElevenLabs MUST reach the Gemini
+   * orchestrator, regardless of how many calls overlap or what else
+   * the page is doing. We can't rely on parallel `sendQuery` because:
+   *
+   *   1. Each `sendQuery` posts a fresh snapshot. Two parallel calls
+   *      both observe the pre-call snapshot, so the second runs
+   *      against stale state — its UI mutations race the first
+   *      orchestrate's mutations and one usually loses.
+   *   2. No retry on transient network blips → silently dropped turn.
+   *   3. No timeout → a hung route blocks all subsequent calls.
+   *
+   * Solution: a FIFO queue drained by a single async worker. Each
+   * call gets a fresh snapshot at dispatch time (so it sees the
+   * previous call's effects), a 30 s abort timeout, and one retry
+   * on non-fallback failure. ElevenLabs is acked immediately on
+   * receipt so the voice channel keeps flowing while the queue runs
+   * in the background. */
+  type QueuedToolCall = {
+    runId: string;
+    toolName: string;
+    params: Record<string, unknown>;
+    enqueuedAt: number;
+  };
+  const toolQueueRef = useRef<QueuedToolCall[]>([]);
+  const queueWorkerActiveRef = useRef(false);
+
   // Agent ID is fine to expose — it's just a public identifier. The
   // xi-api-key is NOT — it stays server-side, used to mint a short-lived
   // signed WebSocket URL via /api/elevenlabs/signed-url. Never read or
@@ -371,129 +399,196 @@ export function ConversationBridge() {
    *    'find notes about hackathon'."
    *
    * Parameter: query (string, required). */
-  const runClientTool = useCallback(
-    async (
-      toolName: string,
-      params: Record<string, unknown> = {},
-    ): Promise<{ result: string; isError: boolean }> => {
-      if (toolName !== "run_ui_agent") {
-        return { result: `unknown tool: ${toolName}`, isError: true };
-      }
-      /* Be tolerant of how the parameter is named on the ElevenLabs
-       * side — agents often accidentally rename it after the tool
-       * itself. We accept `query`, `run_ui_agent`, `command`, `input`,
-       * or fall back to the first string-valued parameter. */
+  /* Extract the imperative query string from arbitrary tool params.
+   * Agents sometimes rename the parameter after the tool itself, so we
+   * accept several candidate keys and finally fall back to the first
+   * string-valued field. */
+  const extractQuery = useCallback(
+    (params: Record<string, unknown>): string => {
       const candidateKeys = ["query", "run_ui_agent", "command", "input"];
-      let query = "";
       for (const k of candidateKeys) {
         const v = params[k];
-        if (typeof v === "string" && v.trim()) {
-          query = v.trim();
-          break;
-        }
+        if (typeof v === "string" && v.trim()) return v.trim();
       }
-      if (!query) {
-        for (const v of Object.values(params)) {
-          if (typeof v === "string" && v.trim()) {
-            query = v.trim();
-            break;
-          }
-        }
+      for (const v of Object.values(params)) {
+        if (typeof v === "string" && v.trim()) return v.trim();
       }
+      return "";
+    },
+    [],
+  );
+
+  /* Dispatch ONE orchestrator round-trip. Used by the queue worker.
+   * Returns true on success (including local fallback), false on a
+   * non-recoverable failure that the worker may want to retry. */
+  const dispatchOneToolCall = useCallback(
+    async (call: QueuedToolCall, attempt: number): Promise<boolean> => {
+      const { runId, toolName, params } = call;
+      if (toolName !== "run_ui_agent") {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[conversation-bridge] ${runId} unknown tool:`,
+          toolName,
+        );
+        return true; // nothing we can do; treat as terminal
+      }
+      const query = extractQuery(params);
       if (!query) {
         // eslint-disable-next-line no-console
         console.warn(
-          "[conversation-bridge] run_ui_agent missing string param; got:",
+          `[conversation-bridge] ${runId} missing string param; got:`,
           params,
         );
-        return {
-          result: "missing required string parameter (query)",
-          isError: true,
-        };
+        return true;
       }
 
-      /* Observability: tag each orchestrator round-trip with a
-       * correlation id so we can match the start/done pair in the
-       * console + ConversationDebugger panel. */
-      const runId = `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
       const startedAt = performance.now();
       // eslint-disable-next-line no-console
-      console.log(`[conversation-bridge] run_ui_agent ▶ ${runId}`, query);
+      console.log(
+        `[conversation-bridge] ${runId} ▶ attempt ${attempt + 1}:`,
+        query,
+      );
 
-      /* Eagerly flip the dock to "thinking" and append the user
-       * transcript to chat. The orchestrate route emits these too,
-       * but eagerly setting them gives instant feedback while the
-       * HTTP request is still in flight, and guarantees the chat
-       * shows the prompt even if the route fails before streaming. */
-      const store = useAgentStore.getState();
-      store.setDock("thinking");
-      const last = store.chatMessages.at(-1);
-      const alreadyRecorded =
-        last?.role === "user" && last.text.trim() === query;
-      if (!alreadyRecorded) {
-        store.appendChatMessage({
-          id: `user-${Date.now()}`,
-          role: "user",
-          text: query,
-          ts: Date.now(),
-          room: store.chatRoom,
+      /* Eager UI: dock + chat row + sidecar entry on the first
+       * attempt only — re-recording on retry would duplicate the
+       * user message. */
+      if (attempt === 0) {
+        const store = useAgentStore.getState();
+        store.setDock("thinking");
+        const last = store.chatMessages.at(-1);
+        const alreadyRecorded =
+          last?.role === "user" && last.text.trim() === query;
+        if (!alreadyRecorded) {
+          store.appendChatMessage({
+            id: `user-${Date.now()}`,
+            role: "user",
+            text: query,
+            ts: Date.now(),
+            room: store.chatRoom,
+          });
+        }
+        store.pushAction({
+          t: Date.now(),
+          tool: "run_ui_agent",
+          args: { query, runId },
+          ok: true,
         });
       }
-      // Pre-mark a tool call so the sidecar/debugger sees something
-      // happen even if the orchestrator returns no events.
-      store.pushAction({
-        t: Date.now(),
-        tool: "run_ui_agent",
-        args: { query, runId },
-        ok: true,
-      });
+
+      /* 30 s hard ceiling: if the route hangs, abort and let the
+       * worker retry. Without this a stuck request would block the
+       * entire queue indefinitely. */
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 30_000);
 
       try {
-        await sendQuery(query);
+        await sendQuery(query, controller.signal);
+        clearTimeout(timeoutId);
         const ms = Math.round(performance.now() - startedAt);
         // eslint-disable-next-line no-console
         console.log(
-          `[conversation-bridge] run_ui_agent ✔ ${runId} (${ms}ms)`,
+          `[conversation-bridge] ${runId} ✔ (${ms}ms, attempt ${attempt + 1})`,
         );
-        return { result: "ok", isError: false };
+        return true;
       } catch (err) {
+        clearTimeout(timeoutId);
         if (err instanceof AgentFallback) {
-          // No API key / network error — still apply local scripted
-          // events so something happens in the UI rather than nothing.
-          for await (const evt of routeIntent(query)) {
-            applyAgentEvent(evt);
+          /* No API key / 503 / unreachable — run the scripted local
+           * fallback so the UI still does *something*. Treat as
+           * success: retrying would just hit the same fallback. */
+          try {
+            for await (const evt of routeIntent(query)) {
+              applyAgentEvent(evt);
+            }
+          } catch (fallbackErr) {
+            // eslint-disable-next-line no-console
+            console.error(
+              `[conversation-bridge] ${runId} fallback failed:`,
+              fallbackErr,
+            );
           }
           // eslint-disable-next-line no-console
           console.warn(
-            `[conversation-bridge] run_ui_agent ↻ ${runId} fallback:`,
+            `[conversation-bridge] ${runId} ↻ local fallback:`,
             err.reason,
           );
-          return { result: "ok (local fallback)", isError: false };
+          return true;
         }
         const msg = err instanceof Error ? err.message : String(err);
         // eslint-disable-next-line no-console
         console.error(
-          `[conversation-bridge] run_ui_agent ✗ ${runId}:`,
+          `[conversation-bridge] ${runId} ✗ attempt ${attempt + 1}:`,
           msg,
         );
-        // Surface the failure in the UI — otherwise a fire-and-forget
-        // tool call is invisible when it fails. Toast via the
-        // existing ui.card event channel so it's consistent with how
-        // the orchestrator route reports its own errors.
-        applyAgentEvent({
-          type: "ui.card",
-          card: {
-            id: `agent-err-${Date.now()}`,
-            kind: "toast",
-            data: { text: `agent error · ${msg.slice(0, 80)}` },
-            ttl: 6000,
-          },
-        });
-        useAgentStore.getState().setDock("idle");
-        return { result: msg, isError: true };
+        return false;
       }
     },
-    [],
+    [extractQuery],
+  );
+
+  /* Drain the queue serially. Idempotent — multiple invocations
+   * collapse into a single worker via `queueWorkerActiveRef`. */
+  const drainToolQueue = useCallback(async () => {
+    if (queueWorkerActiveRef.current) return;
+    queueWorkerActiveRef.current = true;
+    try {
+      while (toolQueueRef.current.length > 0) {
+        const call = toolQueueRef.current[0]!;
+        let ok = await dispatchOneToolCall(call, 0);
+        if (!ok) {
+          /* One retry after a short backoff. Most transient errors
+           * (network blip, edge cold-start) clear in well under a
+           * second, so we don't waste the demo's time waiting. */
+          await new Promise((r) => setTimeout(r, 750));
+          ok = await dispatchOneToolCall(call, 1);
+        }
+        if (!ok) {
+          /* Both attempts failed. Surface the failure as a toast so
+           * a dropped turn isn't invisible, then move on — never
+           * block the queue on a poison call. */
+          applyAgentEvent({
+            type: "ui.card",
+            card: {
+              id: `agent-err-${Date.now()}`,
+              kind: "toast",
+              data: {
+                text: `agent error · ${call.runId} dropped after retry`,
+              },
+              ttl: 6000,
+            },
+          });
+          useAgentStore.getState().setDock("idle");
+        }
+        toolQueueRef.current.shift();
+      }
+    } finally {
+      queueWorkerActiveRef.current = false;
+    }
+  }, [dispatchOneToolCall]);
+
+  /* Public entry point: enqueue a tool call and kick the worker.
+   * Always returns immediately so the WebSocket handler can ack
+   * ElevenLabs without waiting on Gemini. */
+  const enqueueClientTool = useCallback(
+    (toolName: string, params: Record<string, unknown> = {}) => {
+      const runId = `run-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2, 6)}`;
+      toolQueueRef.current.push({
+        runId,
+        toolName,
+        params,
+        enqueuedAt: Date.now(),
+      });
+      // eslint-disable-next-line no-console
+      console.log(
+        `[conversation-bridge] enqueued ${runId} (queue depth ${toolQueueRef.current.length})`,
+      );
+      void drainToolQueue();
+    },
+    [drainToolQueue],
   );
 
   // Handle WebSocket message
@@ -647,8 +742,10 @@ export function ConversationBridge() {
               }),
             );
           }
-          // Fire-and-forget. Errors are logged inside runClientTool.
-          void runClientTool(call.tool_name, call.parameters ?? {});
+          /* Enqueue and return — the queue worker drains serially
+           * with timeout + retry. ElevenLabs already received its
+           * `ok` ack above, so the voice channel is unblocked. */
+          enqueueClientTool(call.tool_name, call.parameters ?? {});
           break;
         }
 
@@ -680,7 +777,7 @@ export function ConversationBridge() {
       // eslint-disable-next-line no-console
       console.error("[conversation-bridge] Failed to parse message:", err);
     }
-  }, [playAudioChunk, processAgentResponse, runClientTool, setDock, setIsAgentSpeaking, addConversationTurn, appendChatMessage]);
+  }, [playAudioChunk, processAgentResponse, enqueueClientTool, setDock, setIsAgentSpeaking, addConversationTurn, appendChatMessage]);
 
   /* Capture mic audio as PCM16 16 kHz mono (ConvAI's required input
    * format) and stream it as `{ user_audio_chunk: <base64> }` frames.

@@ -655,3 +655,77 @@
   expected_window_kinds_after: []
   judge_tags: [edge, calm]
   notes: "rapid toggle — should end in a stable state"
+
+# ─── navigation ───────────────────────────────────────────
+
+- id: nav-01
+  must_include_tools: [workflows_quick_open]
+  must_not_include_tools: []
+  expected_window_kinds_after: [workflows]
+  judge_tags: [correctness, performative]
+  notes: "fuzzy workflow open by name"
+
+- id: nav-02
+  must_include_tools: [entities_quick_show]
+  must_not_include_tools: []
+  expected_window_kinds_after: [entities, entity_detail]
+  judge_tags: [correctness, performative]
+  notes: "fuzzy entity find + detail open"
+
+- id: nav-03
+  must_include_tools: [workflows_jump_to_step]
+  must_not_include_tools: []
+  expected_window_kinds_after: [workflows]
+  judge_tags: [correctness, performative]
+  min_tool_calls: 2
+  notes: "should chain: open/select workflow + jump_to_step"
+
+- id: nav-04
+  must_include_tools: [workflows_recent]
+  must_not_include_tools: []
+  expected_window_kinds_after: [workflows]
+  judge_tags: [correctness]
+  notes: "recent workflows list"
+
+- id: nav-05
+  must_include_tools: [entities_find_people]
+  must_not_include_tools: []
+  expected_window_kinds_after: [entities]
+  judge_tags: [correctness]
+  notes: "filter to person entities"
+
+- id: nav-06
+  must_include_tools: [workflows_search_by_name]
+  must_not_include_tools: []
+  expected_window_kinds_after: [workflows]
+  judge_tags: [correctness]
+  notes: "fuzzy search workflow names"
+
+- id: nav-07
+  must_include_tools: [entities_filter_by_tag]
+  must_not_include_tools: []
+  expected_window_kinds_after: [entities]
+  judge_tags: [correctness]
+  notes: "filter entities by tag"
+
+- id: nav-08
+  must_include_tools: [integrations_open_detail]
+  must_not_include_tools: []
+  expected_window_kinds_after: [integrations, integration_detail]
+  judge_tags: [correctness, performative]
+  min_tool_calls: 2
+  notes: "chain: open integrations + open specific integration"
+
+- id: nav-09
+  must_include_tools: [entitydetail_read_mentions]
+  must_not_include_tools: []
+  expected_window_kinds_after: [entity_detail]
+  judge_tags: [correctness]
+  notes: "read entity mentions from detail view"
+
+- id: nav-10
+  must_include_tools: [workflows_jump_to_step]
+  must_not_include_tools: []
+  expected_window_kinds_after: [workflows]
+  judge_tags: [correctness]
+  notes: "jump to specific step in current workflow"

@@ -16,6 +16,7 @@ import {
   updateUser,
   type UserProfile,
 } from "@/lib/kg-client";
+import { registerTools } from "@/lib/room-tools";
 import { KgShell, KgHeader } from "./kg-shell";
 
 export function ProfileWindow({
@@ -48,6 +49,22 @@ export function ProfileWindow({
     setGoalsText((data.goals ?? []).join("\n"));
     setContextWindow(data.context_window ?? 8192);
   }, [data]);
+
+  /* Register UI handlers so `profile_read_all` doesn't warn-and-noop
+   * when the agent narrates the user's profile aloud. */
+  useEffect(() => {
+    return registerTools("profile", [
+      {
+        name: "read_all",
+        description: "Narration hook — agent reads the profile fields aloud.",
+        run: () => {
+          /* All fields rendered already; pure read. Refresh in case
+           * another surface mutated the user. */
+          refetch();
+        },
+      },
+    ]);
+  }, [refetch]);
 
   const submit = async () => {
     setBusy(true);

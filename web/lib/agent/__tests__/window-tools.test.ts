@@ -41,11 +41,11 @@ const EXPECTED_TOOL_COUNTS: Record<string, number> = {
   profile: 9,
   integrations: 12,
   integration_detail: 10,
-  entities: 10,
-  entity_detail: 11,
+  entities: 15,        // 10 base + 5 new (find_by_name, find_people, quick_show, filter_by_mention_count, recently_mentioned)
+  entity_detail: 16,   // 11 base + 5 new (entitydetail_* prefix tools for naming consistency)
   memories: 12,
   skills: 12,
-  workflows: 13,
+  workflows: 18,       // 13 base + 5 new (search_by_name, quick_open, read_current, jump_to_step, recent)
   wiki: 13,
   chats_summary: 12,
   window_management: 19,
@@ -123,6 +123,11 @@ function createMockCtx(): AgentToolCtx {
 function validateToolName(name: string, prefix: string): boolean {
   // Special case for ask_user -> askuser prefix
   const normalizedPrefix = prefix === "ask_user" ? "askuser" : prefix;
+
+  // Special case: entity_detail also accepts entitydetail_ (both are valid)
+  if (prefix === "entity_detail" && name.startsWith("entitydetail_")) {
+    return true;
+  }
 
   // Tool name should start with the prefix
   if (!name.startsWith(`${normalizedPrefix}_`)) {

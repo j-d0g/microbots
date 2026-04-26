@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAgentStore, type ChatMessage } from "@/lib/store";
+import { registerTools } from "@/lib/room-tools";
 import { cn } from "@/lib/cn";
 
 /**
@@ -42,6 +43,73 @@ export function ChatWindow(_props: { payload?: Record<string, unknown> } = {}) {
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages.length, messages.at(-1)?.text.length]);
+
+  /* Register UI handlers for the orchestrator's `chat_*` tools. The
+   * chat history is store-driven so most tools are pure narration
+   * hooks; scroll/jump tools manipulate the scroll container directly. */
+  useEffect(() => {
+    const scrollTo = (top: number) => {
+      const el = scrollRef.current;
+      if (el) el.scrollTo({ top, behavior: "smooth" });
+    };
+    return registerTools("chat", [
+      {
+        name: "scroll_to_top",
+        description: "Scroll the chat history to the oldest message.",
+        run: () => scrollTo(0),
+      },
+      {
+        name: "scroll_to_bottom",
+        description: "Scroll the chat history to the newest message.",
+        run: () => scrollTo(scrollRef.current?.scrollHeight ?? 0),
+      },
+      {
+        name: "jump_to_timestamp",
+        description:
+          "Find the first message at or after the timestamp and scroll to it.",
+        args: { ts: "number" },
+        run: (args) => {
+          const ts = Number(args.ts);
+          if (!Number.isFinite(ts)) return;
+          const target = messages.find((m) => m.ts >= ts);
+          if (!target) return;
+          const el = document.querySelector<HTMLElement>(
+            `[data-testid="chat-window-msg-${target.role}"][data-ts="${target.ts}"]`,
+          );
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        },
+      },
+      {
+        name: "search_messages",
+        description: "Narration hook — agent reads matching messages aloud.",
+        run: () => {
+          /* No in-window search filter yet; kept registered so the
+           * agent's tool call doesn't warn-and-noop. */
+        },
+      },
+      {
+        name: "filter_by_role",
+        description: "Narration hook — no in-window role filter yet.",
+        run: () => {
+          /* Same as above — registered to keep registry clean. */
+        },
+      },
+      {
+        name: "summarize_thread",
+        description: "Narration hook — agent narrates the summary aloud.",
+        run: () => {
+          /* The orchestrator computes the summary; UI just listens. */
+        },
+      },
+      {
+        name: "export_transcript",
+        description: "Narration hook — orchestrator handles file export.",
+        run: () => {
+          /* No UI surface for export yet. */
+        },
+      },
+    ]);
+  }, [messages]);
 
   if (messages.length === 0) {
     return (
