@@ -1,32 +1,17 @@
 # Render Blueprint for microbots.
 #
-# Services (all on the same Render team so private networking works):
-#   1. surreal               — private SurrealDB (Docker image + persistent disk)
-#   2. microbots-app         — public FastAPI: /mcp, /mcp/devin, /api/kg/*, /api/composio/*
-#   3. microbot-harness-mcp  — public FastMCP harness server (SSE for the demo agent UI)
-#   4. microbot-harness-frontend — minimal Next.js harness demo UI (web/ deploys to Vercel separately)
+# Services:
+#   1. microbots-app         — public FastAPI: /mcp, /mcp/devin, /api/kg/*, /api/composio/*
+#   2. microbot-harness-mcp  — public FastMCP harness server (SSE for the demo agent UI)
+#   3. microbot-harness-frontend — minimal Next.js harness demo UI (web/ deploys to Vercel separately)
+#
+# SurrealDB lives on a separate Render service David provisioned:
+#   wss://surrealdb-latest-i2nj.onrender.com/rpc  (root/root, ns=microbots, db=memory)
 #
 # Workflows services aren't yet supported in render.yaml (beta);
 # the Workflows service `microbots` is provisioned manually via the Dashboard.
 
 services:
-  # ---------- SurrealDB (private, on-disk, internal-only) ----------
-  - type: pserv
-    name: surreal
-    runtime: image
-    image:
-      url: docker.io/surrealdb/surrealdb:v2.1.4   # pinned: avoids :latest upgrade surprises
-    plan: starter        # disks require a paid plan
-    region: oregon
-    autoDeploy: false    # never auto-restart the DB on a code push
-    # ENTRYPOINT in the image is ["/surreal"] with no CMD; dockerCommand provides args only.
-    # Reachable from other services in this team at: ws://surreal:8000/rpc
-    dockerCommand: start --log info --user root --pass root --bind 0.0.0.0:8000 rocksdb:/data/surreal.db
-    disk:
-      name: surreal-data
-      mountPath: /data
-      sizeGB: 1
-
   # ---------- Unified FastAPI app (KG MCP + REST + Composio OAuth) ----------
   - type: web
     name: microbots-app
@@ -39,7 +24,7 @@ services:
     autoDeploy: true
     envVars:
       - key: SURREAL_URL
-        value: ws://surreal:8000/rpc
+        value: wss://surrealdb-latest-i2nj.onrender.com/rpc
       - key: SURREAL_USER
         value: root
       - key: SURREAL_PASS
