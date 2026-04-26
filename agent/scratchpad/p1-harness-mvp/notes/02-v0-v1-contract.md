@@ -9,7 +9,7 @@
 |---|---|---|---|
 | **M0: lean local v0** — chat loop runs locally with inline tools + subprocess `run_code` | ✅ DONE 2026-04-26 ~05:30 UTC | 5 Playwright tests + adversarial 5/5 + evaluator CONTRACT FULFILLED | `f52fc78` |
 | **M1: v0 plumbing** — MCP server hosts the 4 tools; `run_code` executes via Render Workflows; frontend `/api/chat` consumes tools from MCP | ✅ DONE 2026-04-26 ~06:00 UTC | 5 Playwright tests pass in 49.5s + adversarial 5/5 + evaluator CONTRACT FULFILLED | `3fe16cc` |
-| **M2: v1 tuning** — UX polish, error handling, frontend deploys to Render, end-to-end public URL works | ⏳ pending | _Playwright tests pass against deployed URL_ | — |
+| **M2: v1 tuning** — UX polish, error handling, frontend deploys to Render, end-to-end public URL works | 🟡 PARTIAL — deploy ✅, polish ⏳ | Smoke test PASS via `https://microbot-harness-frontend.onrender.com` (12.3s round-trip through MCP+Workflows). Polish + Playwright-vs-prod still pending. | (deployed via API, not in Blueprint) |
 | **M3: v2 swarm** — recursive fan-out demo for Render prize (`pitch/render.md` + `pitch/microbots-fractal.md`) | ⏳ pending — out of scope until M1+M2 | _Live dashboard shows ≥50 parallel containers in 90s demo_ | — |
 
 **Promise:** finish each milestone before declaring done. Verify with Playwright + adversarial sub-agent + evaluator sub-agent. Don't hand off mid-milestone.

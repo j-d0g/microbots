@@ -2,6 +2,37 @@
 
 Chronological diary so a fresh agent can pick up cold. Latest at top.
 
+## 2026-04-26 ~06:21 UTC — M2 deploy half done
+
+**Deployed:**
+- **Frontend** → `https://microbot-harness-frontend.onrender.com` (Render Web Service, srv-d7mqr98k1i2s7399m9g0, Node 18, free plan)
+- **MCP server** → `https://microbot-harness-mcp.onrender.com` (Render Web Service, srv-d7mms067r5hc7389r31g, Python, free plan, redeployed to pick up regenerated MCP_API_TOKEN)
+- **Workflows** → `microbots` (already deployed during M1, no changes)
+
+**End-to-end production smoke**: `curl POST /api/chat "compute square of 7"` → 12.3s round trip → "49" returned. Full chain: deployed frontend → deployed MCP (SSE+bearer) → cloud Workflows → result back.
+
+**`render.yaml` declares both services with proper env-var wiring** (MCP_URL hard-coded, MCP_API_TOKEN via fromService.envVarKey, ANTHROPIC_API_KEY sync:false). Frontend service was created via Render REST API directly (not Blueprint sync) because Blueprint sync errored after cleanup. Auto-deploy on push still works (`autoDeploy: yes` on the service).
+
+**Cleanup done in this session:**
+- Deleted dup MCP service `microbot-harness-mcp-atlt` (srv-d7mqc6vlk1mc73dpd4i0).
+- Deleted dup Blueprint Instance "microbot-harness-frontend" (exs-d7mqblreo5us73eujoa0). Both via DELETE /v1/services and DELETE /v1/blueprints — render CLI doesn't expose delete.
+- Set RENDER_API_KEY env var on deployed MCP via API (so MCP can reach Workflows API).
+- MCP_API_TOKEN regenerated on env-var PUT (Render quirk: `generateValue:true` keys regenerate on update). Frontend's token was set to match, then MCP redeployed to pick up the new value.
+
+**Issues + fixes:**
+- Render Blueprint Instance flow: the name you type in the UI labels the *Instance*, NOT the service. Service names come from yaml `services[].name`. Naming a new Instance "microbot-harness-frontend" while yaml only had MCP led to a duplicate MCP with `-atlt` suffix.
+- Render API service-creation: 500 internal error when payload includes `runtime` field; works with `env` field instead. Plan `starter` worked previously but `free` works too.
+- MCP env-var update via PUT regenerates `generateValue:true` keys. Sequence to keep tokens in sync: PUT MCP env vars → grab new MCP_API_TOKEN → PUT frontend env vars with that token → trigger MCP redeploy so the running process actually picks up the new token.
+- Blueprint sync errors after cleanup. Worked around by creating frontend service via REST API. The Blueprint can be reconciled later (re-trigger sync from Dashboard or yaml change).
+
+**M2 Done = NOT YET.** Deploy is done. Still pending:
+- Polish: tool-call streaming UX, error states, loading skeletons.
+- Playwright run against production URL (currently still tests local).
+- Optional: bump plans from free → Starter to avoid spin-down (~15min idle = ~30s cold start). $7/mo each.
+- Optional: reconcile Blueprint ownership of the frontend.
+
+---
+
 ## 2026-04-26 ~05:55 UTC — M1 plumbing done
 
 **Built:**
