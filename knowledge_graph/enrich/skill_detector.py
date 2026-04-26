@@ -11,7 +11,7 @@ from surrealdb import AsyncSurreal
 
 from config import Config
 from enrich.context import group_chats_by_integration
-from enrich.llm import resolve_enrich_model
+from enrich.llm import enrich_model_settings, resolve_enrich_model
 from enrich.prompts import skill_per_integration as pass1_prompt
 from enrich.prompts import skill_synthesis as pass2_prompt
 from enrich.writers.skill_writer import write_skill
@@ -62,6 +62,7 @@ def _build_pass1_agent(config: Config, integration: str) -> Agent[None, SkillPas
     return Agent(
         model=model_str,
         output_type=SkillPass1Result,
+        model_settings=enrich_model_settings(),
         system_prompt=pass1_prompt.build_system(integration),
         retries=config.pipeline.max_retries,
     )
@@ -72,6 +73,7 @@ def _build_pass2_agent(config: Config) -> Agent[None, SkillSynthesisResult]:
     return Agent(
         model=model_str,
         output_type=SkillSynthesisResult,
+        model_settings=enrich_model_settings(),
         system_prompt=pass2_prompt.SYSTEM,
         retries=config.pipeline.max_retries,
     )

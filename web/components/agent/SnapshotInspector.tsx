@@ -36,7 +36,14 @@ export function SnapshotInspector() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // The chat panel header already crowds the top-left/right corners
+  // of the viewport, so we hide the chip in chat mode and rely on the
+  // ⌘⇧S keyboard shortcut. The full panel still opens and renders
+  // identically when toggled.
+  const uiMode = useAgentStore((s) => s.uiMode);
+
   if (!open) {
+    if (uiMode === "chat") return null;
     return (
       <button
         type="button"

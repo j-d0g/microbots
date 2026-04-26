@@ -43,6 +43,18 @@ const OUTER = 2.5;
 const GUTTER = 2.5;
 const PIP_STRIP_H = 18; // height % reserved for thumbnail rows below a hero
 
+/** Deterministic jitter for organic feel. Derived from slot index so
+ *  the same arrangement always produces the same offsets (no flicker). */
+function jitterY(slotIndex: number): number {
+  // Alternating small y offsets: even slots +1.5%, odd slots -1.5%
+  return slotIndex % 2 === 0 ? 1.5 : -1.5;
+}
+function jitterDiag(slotIndex: number): { dx: number; dy: number } {
+  // Slight diagonal stagger for grid: alternating +/- on both axes
+  const sign = slotIndex % 2 === 0 ? 1 : -1;
+  return { dx: sign * 0.8, dy: sign * 1.2 };
+}
+
 export type LayoutPreset =
   | "focus"
   | "split"
@@ -74,15 +86,16 @@ function pipRow(count: number, y: number, h: number): RectPct[] {
 
 const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
   focus: (n) => {
-    // SUBJECT-DOMINANT, no overlap. With one window: full canvas. With
-    // many: subject takes the upper region (95×~78), demoted windows
-    // sit in a thin strip below — clearly separated by GUTTER.
+    // SUBJECT-CENTRED with breathing room (never full-screen unless n=1).
+    // Subject ~78% wide, centred. Demoted windows sit in a horizontal
+    // pip strip below — clearly separated by GUTTER, no overlap.
     if (n <= 1) return [rectFull()];
+    const subjectW = 78;
     const subjectH = 100 - 2 * OUTER - GUTTER - PIP_STRIP_H;
     const subject: RectPct = {
-      x: OUTER,
+      x: (100 - subjectW) / 2,
       y: OUTER,
-      w: 100 - 2 * OUTER,
+      w: subjectW,
       h: subjectH,
     };
     const stripY = OUTER + subjectH + GUTTER;
@@ -94,8 +107,9 @@ const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
     if (n <= 1) return [rectFull()];
     const w = (100 - 2 * OUTER - GUTTER) / 2;
     const h = 100 - 2 * OUTER;
-    const left: RectPct = { x: OUTER, y: OUTER, w, h };
-    const right: RectPct = { x: OUTER + w + GUTTER, y: OUTER, w, h };
+    // Intentional y-offset jitter: left slightly higher, right slightly lower
+    const left: RectPct = { x: OUTER, y: OUTER + jitterY(0), w, h: h - Math.abs(jitterY(0)) };
+    const right: RectPct = { x: OUTER + w + GUTTER, y: OUTER + jitterY(1), w, h: h - Math.abs(jitterY(1)) };
     if (n === 2) return [left, right];
     // n>2: subject left, others stacked on the right.
     const stackH = (h - (n - 2) * GUTTER) / (n - 1);
@@ -104,9 +118,9 @@ const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
     for (let i = 0; i < n - 1; i++) {
       sides.push({
         x: sideX,
-        y: OUTER + i * (stackH + GUTTER),
+        y: OUTER + i * (stackH + GUTTER) + jitterY(i + 1),
         w,
-        h: stackH,
+        h: stackH - Math.abs(jitterY(i + 1)),
       });
     }
     return [left, ...sides];
@@ -124,11 +138,12 @@ const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
     for (let i = 0; i < n; i++) {
       const r = Math.floor(i / cols);
       const c = i % cols;
+      const j = jitterDiag(i);
       out.push({
-        x: OUTER + c * (w + GUTTER),
-        y: OUTER + r * (h + GUTTER),
-        w,
-        h,
+        x: OUTER + c * (w + GUTTER) + j.dx,
+        y: OUTER + r * (h + GUTTER) + j.dy,
+        w: w - Math.abs(j.dx),
+        h: h - Math.abs(j.dy),
       });
     }
     return out;
@@ -156,12 +171,11 @@ const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
   },
 
   spotlight: (n) => {
-    // CENTRED HERO + BOTTOM THUMBNAILS, no overlap. Subject is centred
-    // (narrower than focus to feel more "stage-like"), demoted windows
-    // line up in a strip below.
+    // CENTRED HERO + BOTTOM THUMBNAILS, no overlap. Default for 1-2
+    // window cases. Subject centered with generous breathing room.
     if (n <= 1) return [rectFull()];
-    const subjectH = 70;
-    const subjectW = 64;
+    const subjectH = 72;
+    const subjectW = 70;
     const subject: RectPct = {
       x: (100 - subjectW) / 2,
       y: OUTER,
@@ -177,12 +191,13 @@ const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
   theater: (n) => {
     if (n <= 1) return [rectFull()];
     const topH = 64;
+    const subjectW = 82; // slightly narrower than full for breathing room
     const stripY = OUTER + topH + GUTTER;
     const stripH = 100 - 2 * OUTER - topH - GUTTER;
     const subject: RectPct = {
-      x: OUTER,
+      x: (100 - subjectW) / 2,
       y: OUTER,
-      w: 100 - 2 * OUTER,
+      w: subjectW,
       h: topH,
     };
     const cols = n - 1;
@@ -190,7 +205,7 @@ const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
     const strips: RectPct[] = [];
     for (let i = 0; i < cols; i++) {
       strips.push({
-        x: OUTER + i * (stripW + GUTTER),
+        x: OUTER + i * (stripW + GUTTER) + jitterY(i) * 0.5,
         y: stripY,
         w: stripW,
         h: stripH,
@@ -233,10 +248,11 @@ const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
     if (n > 3) return PRESETS.grid(n); // triptych is 3-only; degrade to grid
     const w = (100 - 2 * OUTER - 2 * GUTTER) / 3;
     const h = 100 - 2 * OUTER;
+    // Alternate row offsets per column for organic feel
     return [
-      { x: OUTER, y: OUTER, w, h },
+      { x: OUTER, y: OUTER + 1.5, w, h: h - 1.5 },
       { x: OUTER + w + GUTTER, y: OUTER, w, h },
-      { x: OUTER + 2 * (w + GUTTER), y: OUTER, w, h },
+      { x: OUTER + 2 * (w + GUTTER), y: OUTER + 2.0, w, h: h - 2.0 },
     ];
   },
 };
@@ -337,10 +353,9 @@ export interface ToolApplyResult {
   snapshot: CanvasSnapshot;
   /** Brief, human-readable for the agent's tool-result message. */
   message: string;
-  /** Whether the tool succeeded — mirrors the `ok` recorded in
-   *  `recentActions`. Consumers (e.g. `applyAndEmit`) forward this
-   *  into `agent.tool.done` so the recovery metric is truthful. */
-  ok: boolean;
+  /** Whether the tool ran successfully. Optional for legacy callers
+   *  that don't explicitly set it; consumers should default to `true`. */
+  ok?: boolean;
 }
 
 /** Top-level dispatcher. Each branch returns a fresh snapshot reflecting
@@ -362,8 +377,34 @@ export function applyToolToSnapshot(
     case "open_window": {
       const kind = args.kind as RoomKind;
       const mount = (args.mount as MountPoint | undefined) ?? "full";
-      // Already open and not minimized? bring to front.
-      const existing = snap.windows.find((w) => w.kind === kind);
+      const slug = (args.slug as string | undefined) || undefined;
+
+      // Windowed-mode hard gate. Defense-in-depth so a runaway agent
+      // can't open hidden kinds. Chat mode allows everything.
+      if (
+        snap.ui?.mode === "windowed" &&
+        kind !== "graph" &&
+        kind !== "settings" &&
+        kind !== "integration"
+      ) {
+        return {
+          snapshot: {
+            ...snap,
+            recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
+          },
+          message: `windowed mode allows only graph, settings, or integration windows; '${kind}' refused.`,
+        };
+      }
+
+      // Integration windows are slug-keyed: dedupe by (kind, slug).
+      // Other kinds dedupe by kind alone — same behaviour as before.
+      const existing = snap.windows.find((w) => {
+        if (w.kind !== kind) return false;
+        if (kind === "integration") {
+          return ((w as WindowSnapshot & { slug?: string }).slug ?? null) === (slug ?? null);
+        }
+        return true;
+      });
       if (existing) {
         const z = nextZ(snap);
         const next: CanvasSnapshot = {
@@ -375,13 +416,12 @@ export function applyToolToSnapshot(
         };
         return {
           snapshot: withFocus(next),
-          message: `Brought existing ${kind} to front at ${mount}.`,
-          ok: true,
+          message: `Brought existing ${kind}${slug ? ` (${slug})` : ""} to front at ${mount}.`,
         };
       }
       const id = nextServerId();
       const z = nextZ(snap);
-      const win: WindowSnapshot = {
+      const win: WindowSnapshot & { slug?: string } = {
         id,
         kind,
         mount,
@@ -389,7 +429,11 @@ export function applyToolToSnapshot(
         zIndex: z,
         focused: true,
         openedAt: now,
-        summary: "",
+        summary:
+          kind === "integration" && slug
+            ? `integration ${slug}`
+            : kind,
+        ...(slug ? { slug } : {}),
       };
       const next: CanvasSnapshot = {
         ...snap,
@@ -398,8 +442,7 @@ export function applyToolToSnapshot(
       };
       return {
         snapshot: withFocus(next),
-        message: `Opened ${kind} at ${mount}.`,
-        ok: true,
+        message: `Opened ${kind}${slug ? ` (${slug})` : ""} at ${mount}.`,
       };
     }
 
@@ -415,7 +458,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "No window matched the close request.",
-          ok: false,
         };
       }
       const next: CanvasSnapshot = {
@@ -426,7 +468,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Closed ${target.kind}.`,
-        ok: true,
       };
     }
 
@@ -443,7 +484,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "move_window needs an existing window and a mount.",
-          ok: false,
         };
       }
       const next: CanvasSnapshot = {
@@ -456,7 +496,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Moved ${target.kind} to ${mount}.`,
-        ok: true,
       };
     }
 
@@ -472,7 +511,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "No window matched the focus request.",
-          ok: false,
         };
       }
       const z = nextZ(snap);
@@ -486,7 +524,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Focused ${target.kind}.`,
-        ok: true,
       };
     }
 
@@ -500,7 +537,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: `arrange_windows: unknown preset or empty canvas.`,
-          ok: false,
         };
       }
       const rects = builder(snap.windows.length);
@@ -524,7 +560,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Arranged ${snap.windows.length} windows as ${layout} (gutter ${GUTTER}%, outer ${OUTER}%).`,
-        ok: true,
       };
     }
 
@@ -535,7 +570,7 @@ export function applyToolToSnapshot(
         focusedId: null,
         recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
       };
-      return { snapshot: next, message: "Canvas cleared.", ok: true };
+      return { snapshot: next, message: "Canvas cleared." };
     }
 
     case "set_window_rect": {
@@ -553,7 +588,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "set_window_rect needs an existing window and a rect.",
-          ok: false,
         };
       }
       const next: CanvasSnapshot = {
@@ -568,7 +602,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Resized ${target.kind} to ${rectPct.w.toFixed(0)}×${rectPct.h.toFixed(0)} at (${rectPct.x.toFixed(0)},${rectPct.y.toFixed(0)}).`,
-        ok: true,
       };
     }
 
@@ -595,44 +628,50 @@ export function applyToolToSnapshot(
           recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
         },
         message: `${tool} dispatched.`,
-        ok: true,
       };
 
-    default: {
-      // Per-window tools (brief_*, workflow_*, stack_*, waffle_*,
-      // playbooks_*, settings_*) are client-side dispatches the
-      // simulator doesn't model — record success so the recovery
-      // metric and snapshotToPrompt stay truthful.
-      const roomPrefixes = ["brief_", "workflow_", "stack_", "waffle_", "playbooks_", "settings_", "graph_"];
-      if (roomPrefixes.some((p) => tool.startsWith(p))) {
-        return {
-          snapshot: {
-            ...snap,
-            recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
-          },
-          message: `${tool} dispatched.`,
-          ok: true,
-        };
-      }
+    default:
       return {
         snapshot: {
           ...snap,
           recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
         },
         message: `Unknown tool ${tool}.`,
-        ok: false,
       };
-    }
   }
 }
 
 /** Format a snapshot as the agent-facing user message. The agent sees
  *  this on the first turn; sub-agents see their delegated intent + the
  *  current snapshot at the top of every step. Keeps the model anchored
- *  on real state instead of hallucinating layout. */
-export function snapshotToPrompt(snap: CanvasSnapshot): string {
+ *  on real state instead of hallucinating layout.
+ *
+ *  `opts.includeGrid` controls whether the 12×8 ASCII grid is included.
+ *  Layout-agent needs it for spatial reasoning; content-agent does not. */
+export function snapshotToPrompt(
+  snap: CanvasSnapshot,
+  opts: { includeGrid?: boolean } = {},
+): string {
+  const includeGrid = opts.includeGrid ?? true;
   const lines: string[] = [];
-  lines.push(`<canvas viewport=${snap.viewport.w}x${snap.viewport.h}>`);
+  const mode = snap.ui?.mode ?? "windowed";
+  const userId = snap.user?.userId ?? null;
+  lines.push(
+    `<canvas viewport=${snap.viewport.w}x${snap.viewport.h} mode=${mode} user_id=${userId ?? "NOT_SET"}>`,
+  );
+
+  // Backend health (degraded mode awareness).
+  if (snap.backend) {
+    lines.push(
+      `backend: surreal=${snap.backend.surrealOk ? "ok" : "DOWN"} composio=${snap.backend.composioOk ? "ok" : "DOWN"}`,
+    );
+  }
+  // Integration connection statuses.
+  if (snap.integrations && snap.integrations.length > 0) {
+    const parts = snap.integrations.map((i) => `${i.slug}=${i.status}`);
+    lines.push(`integrations: ${parts.join(" ")}`);
+  }
+
   lines.push("");
   lines.push("grid (12 cols × 8 rows, uppercase=focused, lowercase=open, ·=empty):");
   lines.push(snap.grid);
@@ -642,8 +681,9 @@ export function snapshotToPrompt(snap: CanvasSnapshot): string {
   } else {
     lines.push("windows:");
     for (const w of snap.windows) {
+      const slug = (w as WindowSnapshot & { slug?: string }).slug;
       lines.push(
-        `  - id=${w.id} kind=${w.kind} mount=${w.mount} z=${w.zIndex} focused=${w.focused}` +
+        `  - id=${w.id} kind=${w.kind}${slug ? ` slug=${slug}` : ""} mount=${w.mount} z=${w.zIndex} focused=${w.focused}` +
           (w.summary ? ` summary="${w.summary}"` : ""),
       );
     }

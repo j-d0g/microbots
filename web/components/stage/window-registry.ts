@@ -14,7 +14,7 @@
  * Plan reference: `microbots_text_canvas_representation` §2b + §10.
  */
 
-import type { AgentStoreState, RoomKind } from "@/lib/store";
+import type { AgentStoreState, RoomKind, WindowState } from "@/lib/store";
 import { seed } from "@/lib/seed/ontology";
 import type { MountPoint } from "@/lib/agent/types";
 
@@ -27,8 +27,12 @@ export interface WindowModule {
    *    "3 proposals queued, awaiting approval; bug-triage at top"
    *  Style examples (bad):
    *    "Welcome to your brief!"            (marketing)
-   *    "Stuff and things going on here"    (vague) */
-  summary: (state: AgentStoreState) => string;
+   *    "Stuff and things going on here"    (vague)
+   *
+   *  Receives the live window when called via `snapshotWindow` so
+   *  per-instance kinds (e.g. integration windows keyed by slug) can
+   *  specialise their summary. Optional for back-compat. */
+  summary: (state: AgentStoreState, win?: WindowState) => string;
   defaultMount?: MountPoint;
   /** Reserved. Teammates plug in real MCP URLs once their servers are
    *  online; the agent will treat each window as a callable tool host. */
@@ -126,12 +130,25 @@ export const WINDOW_REGISTRY: Record<RoomKind, WindowModule> = {
   settings: {
     title: "settings",
     defaultMount: "right-half",
-    summary: () => {
-      const total = seed.integrations.length;
-      const conn = seed.integrations.filter((i) => i.status === "connected").length;
+    summary: (state) => {
+      const userId = state.userId ?? null;
+      const conn = state.connections.filter((c) => c.status === "ACTIVE").length;
+      const total = state.connections.length;
+      if (!userId) return truncate(`user_id NOT SET · enter one to use the app`);
       return truncate(
-        `${conn}/${total} integrations connected · threshold ${seed.confidenceThreshold}`,
+        `user_id=${userId} · ${conn}/${total || "?"} integrations active`,
       );
+    },
+  },
+
+  integration: {
+    title: "integration",
+    defaultMount: "right-half",
+    summary: (state, win) => {
+      const slug = (win?.payload?.slug as string | undefined) ?? "?";
+      const status =
+        state.connections.find((c) => c.slug === slug)?.status ?? "not-connected";
+      return truncate(`integration ${slug} · ${status}`);
     },
   },
 };

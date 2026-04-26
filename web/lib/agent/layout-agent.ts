@@ -11,23 +11,68 @@
  * spin the canvas.
  */
 
-import { streamText, stepCountIs } from "ai";
+import { streamText } from "ai";
 import { chatModel } from "./providers/openrouter";
 import { layoutTools, type AgentToolCtx } from "./tools";
 import { snapshotToPrompt } from "./server-snapshot";
 
-const LAYOUT_SYSTEM = `you are the LAYOUT sub-agent. you arrange floating
-windows on a canvas. you NEVER write prose. you only call tools.
+const BASE_CAP = 3;
+const MAX_BONUS = 2;
+const HARD_CEILING = 6;
 
-YOU DO NOT DO MATH. you pick a preset NAME. the preset has gutters,
-margins and subject sizing baked in (japanese-negative-space spacing,
-~2.5% outer margin, ~2% inter-window gutter). the focused window
-becomes the subject (slot 0).
+/** Adaptive stop condition: base cap + 1 step per tool failure, hard ceiling.
+ *  Emits `agent.tool.retry` events on the ctx when a bonus step is granted. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function adaptiveStopCondition(ctx: AgentToolCtx): any {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ({ steps }: { steps: any[] }) => {
+    let failures = 0;
+    for (const step of steps) {
+      for (const tr of step.toolResults ?? []) {
+        const msg = typeof tr.result === "string" ? tr.result : "";
+        if (msg.includes("fail") || msg.includes("No window matched") || msg.toLowerCase().includes("unknown") || msg.includes("needs an existing window")) {
+          failures++;
+        }
+      }
+    }
+    const bonus = Math.min(failures, MAX_BONUS);
+    const effectiveCap = Math.min(BASE_CAP + bonus, HARD_CEILING);
+    if (bonus > 0 && steps.length === BASE_CAP) {
+      ctx.emit({ type: "agent.tool.retry", bonus, effectiveCap });
+    }
+    return steps.length >= effectiveCap;
+  };
+}
+
+const LAYOUT_SYSTEM = `LAYOUT sub-agent. arrange floating windows. NEVER write prose — tools only.
+
+═══ MODE-AWARE WINDOW KINDS ═══
+read <canvas mode=…> in the snapshot.
+
+WINDOWED mode → only three kinds exist:
+  - settings        — required first; user_id lives here
+  - integration     — one per toolkit slug. open with
+                      open_window(kind="integration", slug="<slug>").
+                      slugs: slack, github, gmail, linear, notion,
+                      perplexityai. multiple integration windows can
+                      coexist; they're disambiguated by slug.
+  - graph           — knowledge graph viz, fed by /api/kg
+
+  IF user_id is NOT_SET in the snapshot, open the SETTINGS window as
+  subject and stop. nothing else makes sense yet.
+
+CHAT mode → all seven legacy kinds: brief, graph, workflow, stack,
+waffle, playbooks, settings. (chat mode rarely needs layout — most
+chat-mode events are handled by setChatRoom on the client.)
 
 ═══ TOOLS ═══
-  open_window(kind, mount?)          open or refocus a window
+  open_window(kind, mount?, slug?)   open or refocus a window. for
+                                     kind="integration" pass slug.
   close_window(id?, kind?)           close ONE window — use this often,
-                                     a clean canvas is a calm canvas
+                                     a clean canvas is a calm canvas.
+                                     when you have multiple integration
+                                     windows, prefer the id from the
+                                     snapshot to disambiguate.
   move_window(id?, kind?, mount)     snap to a NAMED anchor
   focus_window(id?, kind?)           bring forward
   arrange_windows(layout)            ★ DEFAULT TOOL ★ pick a preset
@@ -35,15 +80,15 @@ becomes the subject (slot 0).
                                      preset fits (rare, ~5% of cases)
   clear_canvas()                     close everything (sparing)
 
-═══ PRESETS (arrange_windows) — every preset is non-overlapping ═══
-  focus       subject 95% wide hero + thumbnail strip below   (n>=1)
-  split       2 equal columns                                 (n=2)
-  reading     60/40 — main + sidebar with breathing room      (n=2)
-  triptych    3 equal vertical columns                        (n=3)
-  grid        2×2 quadrants (or sqrt for n>4)                 (n=4+)
-  spotlight   subject 64% centered hero + thumbnail strip     (n>=1)
-  theater     subject 64% top + equal strip below             (1 hero + N)
-  stack-right 1 main + N stacked on the right                 (n>=2)
+PRESETS (arrange_windows):
+  spotlight   subject ~75% centered + pip strip below  (DEFAULT for 1-2)
+  split       2 equal columns                          (n=2)
+  reading     60/40 main + sidebar                     (n=2)
+  triptych    3 equal columns                          (n=3)
+  theater     subject top + equal strip below           (1 hero + N)
+  grid        2×2 or sqrt                              (n=4+)
+  focus       subject ~78% centered + pip strip below   (n>=1)
+  stack-right main + N stacked right                   (n>=2)
 
 ═══ PICKER (do not deliberate — use this) ═══
   → 1 window         focus
@@ -55,30 +100,24 @@ becomes the subject (slot 0).
   → 4                grid
   → 5+               focus / spotlight  OR  close some first
   user says…
-    "side by side"   → split
-    "compare"        → split  or  reading
-    "focus on X"     → spotlight  (X becomes focused first)
-    "show all"       → grid
-    "i need to read" → reading
-    "with sidebar"   → reading  or  stack-right
-    "everything"     → grid  (then close noise if too dense)
+    "connect X"      → open the integration window for X as subject
+                       (open_window kind=integration slug=X), then focus
+    "show all my
+     connections"    → open all 6 integration windows, arrange grid
+    "graph"          → open_window(graph) as subject, focus
+    "set up"         → open settings as subject
 
 ═══ HARD RULES ═══
 - WINDOW BOUNDARIES NEVER TOUCH. presets bake in a 2.5% gutter; you
-  must NEVER nudge windows so their edges abut. if you use
-  set_window_rect, leave at least 2.5% gap between any two windows.
+  must NEVER nudge windows so their edges abut.
 - ALWAYS call arrange_windows after opening or closing a window if 2+
   remain. one preset call, then stop.
 - CLOSE NOISE. if the canvas has 5+ windows and the user is asking
   about ONE thing, close the irrelevant ones FIRST, then arrange.
-- the SUBJECT is whichever window is focused (highest zIndex). if the
-  user just asked about a kind, focus it before arranging.
-- never close a window without good reason (explicit user intent OR
-  noise-trim per the rule above).
-- set_window_rect is for genuine outliers ("put this in the top-right
-  corner at 30 percent"). default to a preset.
+- in WINDOWED mode, NEVER open brief / workflow / stack / waffle /
+  playbooks. the simulator will refuse and you'll waste a step.
 
-at most 3 steps. one tool per action. snappy.`;
+at most 3 steps. snappy.`;
 
 export async function runLayoutAgent(
   ctx: AgentToolCtx,
@@ -91,7 +130,7 @@ export async function runLayoutAgent(
 
 intent: ${intent}`,
     tools: layoutTools(ctx),
-    stopWhen: stepCountIs(3),
+    stopWhen: adaptiveStopCondition(ctx),
     temperature: 0.2,
   });
 

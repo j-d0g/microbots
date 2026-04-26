@@ -1,0 +1,11 @@
+.env
+.env.*
+*.pyc
+__pycache__/
+.venv/
+.git/
+.idea/
+.vscode/
+*.log
+deploy.py
+services/kg_mcp/

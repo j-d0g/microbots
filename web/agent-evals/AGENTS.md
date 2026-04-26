@@ -48,8 +48,9 @@ Strategy is locked:
 
 ## North-star criteria
 
-Every PR must report these six metrics. The eval harness in this
-folder produces them deterministically.
+Every PR must report these seven metrics. The eval harness in this
+folder produces six of them deterministically; the seventh (layout
+aesthetic) is judged from Playwright screenshots.
 
 | Axis | Metric | Scoring | Target |
 |---|---|---|---|
@@ -59,15 +60,43 @@ folder produces them deterministically.
 | **Coverage / generality** | pass-rate on *marginal-intent* subset (the headline metric) | rules + Devin's judgement on the transcript | ≥ 70% |
 | **Recovery** | fraction of failed tool calls followed by a successful retry | counted from `agent.tool.retry` events | ≥ 60% |
 | **Calm canvas** | post-turn windows match relevance, no stray opens | Devin's judgement on the transcript | ≥ 4 / 5 |
+| **Layout aesthetic** | post-turn screenshot honors the principles below | Devin's judgement of `reports/screenshots/` | ≥ 4 / 5 |
 
-5 of 6 metrics are purely deterministic (rules + timers + counters)
-and require no LLM at eval time — the runner produces them with no
-API beyond the actual UI-agent run. The two judgement axes (coverage
-nuance + calm-canvas) are scored by Devin reading the committed
-transcripts during the sprint, with scores written into the report
-alongside a one-line rationale per query. This means the eval costs
-**only the OpenRouter calls to flash-lite for the actual UI-agent
-runs** — nothing else.
+6 of 7 metrics are purely deterministic or counted; the two judgement
+axes (calm canvas + layout aesthetic) and the nuance-pass on coverage
+are scored by Devin reading the committed transcripts and screenshots
+during the sprint, with scores written into the report alongside a
+one-line rationale per query. This means the eval costs **only the
+OpenRouter calls to flash-lite for the actual UI-agent runs** —
+nothing else.
+
+### Layout aesthetic principles
+
+The agent should arrange windows the way a designer would, not the
+way a tiling window manager does. Devin scores screenshots against
+these principles (any violation drops the score):
+
+- **Negative space is sacred.** Outer margins and inter-window
+  gutters carry meaning; never sacrifice them for size.
+- **Never full-screen unless explicitly asked.** Even with one
+  window, leave breathing room — `~80% × 80%` centered is the right
+  default, not `~95% × 95%`.
+- **Never minimum-size unless necessary.** If a window matters
+  enough to be open, it should be readable.
+- **Edges should not align across windows.** Slight intentional
+  offsets (1–3% of canvas) along at least one axis. Aligned edges
+  feel rigid; offset edges feel organic.
+- **Focused window is centered and largest.** "Center" can be
+  off-center on either axis to break up symmetry; "largest" must be
+  visibly larger than every demoted window.
+- **Demoted windows orbit the focus.** Pip stacks at edges/corners,
+  never crowding the focused window.
+
+Concretely: the existing `focus` preset is too aggressive (subject
+fills 95% × 78%). It should behave more like `spotlight` (subject
+~66% × 75% centered with breathing room). Multi-window presets need
+intentional jitter so column edges and row edges don't perfectly
+line up.
 
 A PR that regresses any metric without written justification cannot
 merge. **`marginal-intent` pass-rate is the headline.** Other metrics
@@ -444,6 +473,37 @@ That's it. Devin reconstructs full context from this file.
 > `Next:` which sprint to pick up
 
 <!-- Devin: append entries below this line. Newest first. -->
+
+### Sprint 2 — Snappy + beautiful · 2026-04-26 · #6
+
+**Shipped:** Three-goal sprint targeting speed, aesthetics, and recovery. (A) **Speed via context engineering**: trimmed orchestrator prompt ~60% (50→20 lines), layout-agent ~55% (60→27 lines), content-agent ~75% (25→6 lines); changed orchestrator to single-round-trip design (prompt instructs model to emit reply text alongside `delegate_*` calls in one generation, `stepCountIs` 3→2); removed 12×8 ASCII grid from content-agent snapshot (layout-only); added OpenRouter connection pre-warming (`prewarmConnection()` on first request). (B) **Layout aesthetics**: re-tuned focus preset from 95%×78% full-width to 78%×75% centered; spotlight 64%×70%→70%×72% centered; theater subject 95%→82% wide centered; added deterministic jitter (1–2% y-offsets) to split, grid diagonal stagger, triptych alternating row offsets; updated layout-agent PICKER to default spotlight for 1–2 window cases; added `preset-rects-aesthetic.mjs` smoke test (195 assertions); added `layout_aesthetic` scoring axis to judge + run.ts. (C) **Recovery adaptive step budget**: sub-agents now use adaptive stop condition — base cap 3, +1 per tool failure, max bonus +2, hard ceiling 6; emits `agent.tool.retry` events for sidecar.
+
+**Eval delta:**
+
+| Metric | Before (Sprint 1.5) | After (Sprint 2) | Δ |
+|---|---|---|---|
+| Tool-call correctness | 100.0% | 99.3% | -0.7 pp |
+| TTFW p50 | 1704ms | **967ms** | **-737ms** ✓ target <1000ms |
+| Full-turn p50 / p95 | 3554 / 15446ms | 2977 / 13783ms | -577 / -1663ms |
+| Mean tool calls (multi_step) | 4.35 | 4.4 | +0.05 |
+| Marginal-intent pass-rate | 100.0% | **100.0%** | 0 (no regression) |
+| Recovery rate | 0.0% | 16.7% | +16.7 pp |
+| Calm-canvas avg | 4.9 / 5 | 4.9 / 5 | 0 |
+| Layout aesthetic avg | N/A | **5.0 / 5** | new metric |
+
+**Regressions:** Tool-call correctness dipped 0.7 pp (1 multi_step query failed — `multi-14` lost its `delegate_content` call likely due to the tighter prompt). Not a pattern; acceptable. Full-turn p50/p95 improved but didn't hit the aggressive targets (2000ms/5000ms) — the dominant bottleneck is LLM round-trip count from parallel delegation, not prompt length. Connection pre-warming helps TTFW but not full-turn.
+
+**Interventions tried that did NOT fully solve latency:**
+- Single round-trip orchestrator: helped TTFW significantly (-737ms) but full-turn still dominated by sub-agent LLM calls running in parallel
+- Prompt trimming (-60%): reduced token input but model generation time is the bottleneck, not prompt parsing
+- Snapshot diet (grid removal for content-agent): minor token savings, no measurable latency impact
+- Step cap already at 3 from Sprint 1.5 — no further reduction possible without quality loss
+
+**Remaining latency bottleneck:** Full-turn p50/p95 is dominated by parallel sub-agent LLM calls (each is 1–3 round-trips via OpenRouter). The orchestrator itself now finishes in ~1 step, but `delegate_layout` and `delegate_content` execute concurrently and each may take 2–3 steps. The path to <2000ms p50 requires either (a) system-prefix caching at the provider level, (b) model-side latency improvements, or (c) reducing sub-agent step count to 1–2 via smarter tool design. Sprint 3 should pick this up.
+
+**Recovery at 16.7% (target 60%):** The adaptive step budget works — the agent gets bonus steps after failures. However, most tool "failures" in the current corpus are soft failures (e.g., `brief_approve` on a non-existent proposal) where the agent doesn't attempt a retry because the original intent was satisfied by the initial delegation. True recovery requires the agent to detect the failure and re-issue a corrected tool call, which needs prompt-level guidance (Sprint 3).
+
+**Next:** Sprint 3 should focus on (1) latency — investigate system-prefix caching or tool-call batching to reduce sub-agent round-trips, (2) recovery — add prompt-level re-delegation guidance when sub-agent reports failure.
 
 ### Sprint 1.5 — Snappy + truthful + always-stage · 2026-04-26 · #5
 

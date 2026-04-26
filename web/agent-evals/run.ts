@@ -165,6 +165,7 @@ interface AggregateMetrics {
   marginalPassRate: number;
   recoveryRate: number;
   calmCanvasAvg: number;
+  layoutAestheticAvg: number;
   perCategory: Record<
     string,
     { total: number; passed: number; passRate: number }
@@ -242,6 +243,11 @@ function aggregate(results: QueryResult[]): AggregateMetrics {
   const calmCanvasAvg =
     calmScores.reduce((a, b) => a + b, 0) / Math.max(calmScores.length, 1);
 
+  // Layout aesthetic average
+  const aestheticScores = results.map((r) => r.judge.axes.layout_aesthetic.score);
+  const layoutAestheticAvg =
+    aestheticScores.reduce((a, b) => a + b, 0) / Math.max(aestheticScores.length, 1);
+
   // Per-category
   const perCategory: AggregateMetrics["perCategory"] = {};
   for (const r of results) {
@@ -266,6 +272,7 @@ function aggregate(results: QueryResult[]): AggregateMetrics {
     marginalPassRate,
     recoveryRate,
     calmCanvasAvg,
+    layoutAestheticAvg,
     perCategory,
   };
 }
@@ -347,6 +354,7 @@ function printDeltaTable(metrics: AggregateMetrics): void {
   console.log(`| Marginal-intent pass-rate | ${pct(metrics.marginalPassRate)} |`);
   console.log(`| Recovery rate | ${pct(metrics.recoveryRate)} |`);
   console.log(`| Calm-canvas avg | ${(metrics.calmCanvasAvg).toFixed(1)} / 5 |`);
+  console.log(`| Layout aesthetic avg | ${(metrics.layoutAestheticAvg).toFixed(1)} / 5 |`);
 
   console.log("\n### Per-category\n");
   console.log("| Category | Pass | Total | Rate |");

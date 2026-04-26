@@ -10,7 +10,9 @@ export function OnboardingRoom() {
 
   const handleStart = () => {
     setOnboarded(true);
-    openWindow("brief");
+    // Windowed mode now starts at settings: the user must enter a
+    // user_id before integrations / graph can do anything useful.
+    openWindow("settings");
   };
 
   return (
@@ -63,7 +65,7 @@ export function OnboardingRoom() {
           className="mt-12 font-mono text-[11px] text-ink-35 underline-offset-4 hover:underline hover:text-ink-60 transition-colors"
           data-testid="skip-onboarding"
         >
-          skip to brief &rarr;
+          skip to settings &rarr;
         </motion.button>
       </motion.div>
     </div>

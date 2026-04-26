@@ -47,20 +47,31 @@ export type AgentEvent =
   /** A sub-agent issued a tool. The sidecar pushes a live row. */
   | { type: "agent.tool.start"; name: string; args: Record<string, unknown> }
   /** A sub-agent's tool returned. The sidecar marks the row done. */
-  | { type: "agent.tool.done"; name: string; ok: boolean };
+  | { type: "agent.tool.done"; name: string; ok: boolean }
+  /** Sub-agent granted bonus steps after a tool failure (recovery). */
+  | { type: "agent.tool.retry"; bonus: number; effectiveCap: number };
 
 export function applyAgentEvent(evt: AgentEvent): void {
   const s = useAgentStore.getState();
+  const chat = s.uiMode === "chat";
   switch (evt.type) {
     case "ui.room":
-      s.openWindow(evt.room, { rect: evt.rect, payload: evt.payload });
+      if (chat) {
+        // Single-room mode: just swap the focused room.
+        s.setChatRoom(evt.room);
+      } else {
+        s.openWindow(evt.room, { rect: evt.rect, payload: evt.payload });
+      }
       if (evt.slug) s.setRoomSlug(evt.slug);
       else s.setRoomSlug(null);
       break;
     case "ui.arrange":
-      s.arrangeWindows(evt.layout);
+      // Layout presets are windowed-only.
+      if (!chat) s.arrangeWindows(evt.layout);
       break;
     case "ui.close_window": {
+      // No close in chat mode — there's always a room shown.
+      if (chat) break;
       if (evt.room) {
         const target = s.windows.find((w) => w.kind === evt.room);
         if (target) s.closeWindow(target.id);
@@ -70,6 +81,8 @@ export function applyAgentEvent(evt: AgentEvent): void {
       break;
     }
     case "ui.resize": {
+      // Resize is windowed-only.
+      if (chat) break;
       const target = evt.room
         ? s.windows.find((w) => w.kind === evt.room && !w.minimized)
         : [...s.windows].filter((w) => !w.minimized).sort((a, b) => b.zIndex - a.zIndex)[0];
@@ -77,6 +90,7 @@ export function applyAgentEvent(evt: AgentEvent): void {
       break;
     }
     case "ui.tool": {
+      // In-window tools work in BOTH modes.
       // Fire-and-forget; agents don't await tool side-effects in the event stream.
       void callRoomTool(evt.room, evt.tool, evt.args ?? {});
       break;
@@ -106,11 +120,26 @@ export function applyAgentEvent(evt: AgentEvent): void {
       break;
     case "reply.start":
       s.startReply(evt.query);
+      // In chat mode, push a fresh agent message placeholder. The user
+      // message itself is pushed by the chat input handler at submit
+      // time so we don't double-record it here.
+      if (chat) {
+        s.appendChatMessage({
+          id: `agent-${Date.now()}`,
+          role: "agent",
+          text: "",
+          ts: Date.now(),
+          room: s.chatRoom,
+          status: "streaming",
+        });
+      }
       break;
     case "reply.chunk":
       s.appendReply(evt.text);
+      if (chat) s.appendToLastAgentMessage(evt.text);
       break;
     case "reply.done":
+      if (chat) s.finalizeLastAgentMessage();
       break;
     case "agent.delegate":
       // Mirror into the recent-actions ring so the SnapshotInspector
@@ -133,6 +162,10 @@ export function applyAgentEvent(evt: AgentEvent): void {
     case "agent.tool.done":
       // No store change — the start record above already marks it ok.
       // We could stamp the duration here once we capture start times.
+      break;
+    case "agent.tool.retry":
+      // Sidecar / inspector can read this from the event stream.
+      // No store mutation needed.
       break;
   }
 }
