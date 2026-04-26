@@ -1,0 +1,7 @@
+render_sdk>=0.6.0
+
+# Bundled libs available to user code (run_user_code preimports namespace).
+# Keep this list small — image size affects cold start.
+httpx
+requests
+beautifulsoup4

@@ -59,3 +59,21 @@ kaig/
 
 # --- Worktrees ---
 .worktrees/
+
+# --- Personal scratch (third-party content, not for commit) ---
+agent/scratchpad/p0-braindump-notes/raw/whatsapp.md
+
+# --- Node / Next.js (frontend) ---
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Playwright ---
+test-results/
+playwright-report/
+playwright/.cache/
+
+# --- Runtime artifacts ---
+agent/harness/frontend/saved/

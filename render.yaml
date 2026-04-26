@@ -1,0 +1,48 @@
+# Render Blueprint for the microbot harness.
+# Two services: MCP (Python, FastMCP, SSE) + Frontend (Next.js, Vercel AI SDK).
+#
+# Workflows services aren't yet supported in render.yaml (beta).
+# The Workflows service `microbots` was provisioned manually via the Dashboard.
+
+services:
+  # ---------- MCP server (Python, FastMCP, SSE) ----------
+  - type: web
+    name: microbot-harness-mcp
+    runtime: python
+    plan: free  # Bump to `starter` ($7/mo) for always-on once live.
+    repo: https://github.com/j-d0g/microbots
+    branch: jordan/microbot_harness_v0
+    rootDir: agent/harness/mcp
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: MCP_API_TOKEN
+        generateValue: true
+      - key: PORT
+        value: "10000"
+      - key: RENDER_API_KEY
+        sync: false   # set in dashboard; required so MCP can call Workflows
+
+  # ---------- Frontend (Next.js, Vercel AI SDK, MCP client over SSE) ----------
+  - type: web
+    name: microbot-harness-frontend
+    runtime: node
+    plan: starter
+    repo: https://github.com/j-d0g/microbots
+    branch: jordan/microbot_harness_v0
+    rootDir: agent/harness/frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: MCP_URL
+        value: https://microbot-harness-mcp.onrender.com/sse
+      - key: MCP_API_TOKEN
+        fromService:
+          type: web
+          name: microbot-harness-mcp
+          envVarKey: MCP_API_TOKEN
+      - key: ANTHROPIC_API_KEY
+        sync: false   # set in dashboard
