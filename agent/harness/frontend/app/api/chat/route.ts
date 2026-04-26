@@ -14,6 +14,8 @@ You have four tools, fetched live from the MCP server:
 - save_workflow(name, code) — persist a snippet, returns a stable URL. Use when the user wants to save / promote / publish.
 - ask_user(question, options?) — pause and ask the user a confirmation question. Use BEFORE destructive actions. The frontend renders a UI prompt; the user's answer is returned as a string.
 
+Parallelism: when the task involves N parallel I/O operations (multiple URL fetches, multiple API calls, ETL-style fan-out), prefer ONE run_code call that uses httpx.AsyncClient + asyncio.gather internally over N separate run_code calls. The "parallel-fetch-urls" template is the reference shape — find it via find_examples("parallel"). Internal gather pays cold-start once (~5s) for any N. Only fan out across multiple run_code calls when each item legitimately needs container isolation (e.g. running untrusted code per input).
+
 Style: keep responses short. Show your work briefly, then give the answer. Prefer find_examples over guessing.`;
 
 const MCP_URL = process.env.MCP_URL || "http://localhost:8765/sse";
