@@ -1,0 +1,25 @@
+# Render Blueprint for the Phase-0 MCP server.
+#
+# Workflows services aren't yet supported in render.yaml (beta).
+# Provision the workflows hello-world manually via the Render Dashboard:
+#   New > Workflow > link this repo, branch jordan/microbot_harness_v0,
+#   Root Directory: agent/harness/workflows
+#   Build Command: pip install -r requirements.txt
+#   Start Command: python main.py
+
+services:
+  - type: web
+    name: microbot-harness-mcp
+    runtime: python
+    plan: free  # Phase 0 only. Bump to `starter` ($7/mo) for always-on once live.
+    branch: jordan/microbot_harness_v0
+    rootDir: agent/harness/mcp
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: MCP_API_TOKEN
+        generateValue: true
+      - key: PORT
+        value: "10000"
