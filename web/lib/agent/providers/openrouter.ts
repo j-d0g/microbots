@@ -65,3 +65,17 @@ export function hasOpenRouterKey(): boolean {
 export function activeModelSlug(): string {
   return process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 }
+
+/** Pre-warm the HTTPS connection to OpenRouter so the first real
+ *  request doesn't pay TCP + TLS handshake latency. Call once on
+ *  server start or first incoming request. Safe to call multiple times. */
+let _warmed = false;
+export function prewarmConnection(): void {
+  if (_warmed || !process.env.OPENROUTER_API_KEY) return;
+  _warmed = true;
+  // Fire-and-forget HEAD request to establish the connection pool
+  fetch("https://openrouter.ai/api/v1/models", {
+    method: "HEAD",
+    headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` },
+  }).catch(() => {/* swallow — best effort */});
+}

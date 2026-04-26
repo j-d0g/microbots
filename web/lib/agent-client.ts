@@ -47,7 +47,9 @@ export type AgentEvent =
   /** A sub-agent issued a tool. The sidecar pushes a live row. */
   | { type: "agent.tool.start"; name: string; args: Record<string, unknown> }
   /** A sub-agent's tool returned. The sidecar marks the row done. */
-  | { type: "agent.tool.done"; name: string; ok: boolean };
+  | { type: "agent.tool.done"; name: string; ok: boolean }
+  /** Sub-agent granted bonus steps after a tool failure (recovery). */
+  | { type: "agent.tool.retry"; bonus: number; effectiveCap: number };
 
 export function applyAgentEvent(evt: AgentEvent): void {
   const s = useAgentStore.getState();
@@ -133,6 +135,10 @@ export function applyAgentEvent(evt: AgentEvent): void {
     case "agent.tool.done":
       // No store change — the start record above already marks it ok.
       // We could stamp the duration here once we capture start times.
+      break;
+    case "agent.tool.retry":
+      // Sidecar / inspector can read this from the event stream.
+      // No store mutation needed.
       break;
   }
 }
