@@ -85,6 +85,7 @@ export const MOUNT_POINT = z.enum([
   "full",
   "left-half",
   "right-half",
+  "right-wide",
   "top-half",
   "bottom-half",
   "left-third",
@@ -535,6 +536,7 @@ function mountRectPctLocal(mount: MountPoint) {
   const G = GUTTER;
   const FULL = 100 - 2 * O;
   const HALF = (FULL - G) / 2;
+  const WIDE = FULL * 0.6; // 60% width for right-wide
   const THIRD = (FULL - 2 * G) / 3;
   const Q = (FULL - G) / 2; // quadrant side, same as HALF
 
@@ -542,6 +544,7 @@ function mountRectPctLocal(mount: MountPoint) {
     case "full":         return { x: O,             y: O,             w: FULL,  h: FULL };
     case "left-half":    return { x: O,             y: O,             w: HALF,  h: FULL };
     case "right-half":   return { x: O + HALF + G,  y: O,             w: HALF,  h: FULL };
+    case "right-wide":   return { x: 100 - O - WIDE, y: O,             w: WIDE,  h: FULL };
     case "top-half":     return { x: O,             y: O,             w: FULL,  h: HALF };
     case "bottom-half":  return { x: O,             y: O + HALF + G,  w: FULL,  h: HALF };
     case "left-third":   return { x: O,             y: O,             w: THIRD, h: FULL };

@@ -130,3 +130,18 @@ body {
   will-change: transform;
   transition: box-shadow 200ms var(--ease-muji);
 }
+
+/* Marquee animation for dock text */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* For text that needs to scroll in the thin dock */
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}

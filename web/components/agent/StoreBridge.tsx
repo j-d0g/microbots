@@ -27,6 +27,7 @@ export function StoreBridge() {
   const setUserId = useAgentStore((s) => s.setUserId);
   const setBackendHealth = useAgentStore((s) => s.setBackendHealth);
   const setConnections = useAgentStore((s) => s.setConnections);
+  const setToolkits = useAgentStore((s) => s.setToolkits);
 
   /* dev/test global */
   useEffect(() => {
@@ -83,6 +84,29 @@ export function StoreBridge() {
       window.clearInterval(tid);
     };
   }, [setBackendHealth]);
+
+  /* toolkits discovery — fetch once on mount */
+  useEffect(() => {
+    let cancelled = false;
+    const fetch = async () => {
+      try {
+        const tks = await backend.listToolkits();
+        if (cancelled) return;
+        setToolkits(
+          tks.map((t) => ({
+            slug: t.slug,
+            name: t.name,
+            auth_scheme: t.auth_scheme,
+            expected_input_fields: t.expected_input_fields,
+          })),
+        );
+      } catch {
+        /* swallow — health poll surfaces degraded mode separately */
+      }
+    };
+    void fetch();
+    return () => { cancelled = true; };
+  }, [setToolkits]);
 
   /* connections poll — only when userId is set */
   useEffect(() => {

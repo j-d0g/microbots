@@ -79,7 +79,7 @@ export function VoiceDot() {
     >
       <span
         className={cn(
-          "block h-3 w-3 rounded-full transition-all duration-200",
+          "block h-2.5 w-2.5 rounded-full transition-all duration-200",
           active && "scale-110 bg-accent-indigo breathing",
           speaking && "bg-accent-indigo breathing",
           !active && !speaking && "bg-ink-90",

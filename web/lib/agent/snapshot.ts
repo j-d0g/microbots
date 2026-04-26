@@ -63,6 +63,9 @@ function snapshotWindow(
   return {
     id: win.id,
     kind: win.kind,
+    slug: win.kind === "integration"
+      ? (win.payload?.slug as string | undefined)
+      : undefined,
     mount,
     rect: round1(rectPct),
     zIndex: win.zIndex,

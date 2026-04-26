@@ -45,10 +45,20 @@ class ConnectionsResponse(BaseModel):
     connections: list[ConnectionOut]
 
 
+class InputFieldOut(BaseModel):
+    name: str
+    display_name: str = ""
+    description: str = ""
+    type: str = "string"
+    required: bool = True
+
+
 class ToolkitOut(BaseModel):
     slug: str
     name: str
     auth_config_id: str
+    auth_scheme: str  # "OAUTH2" | "API_KEY" | …
+    expected_input_fields: list[InputFieldOut] = []
 
 
 class ToolkitsResponse(BaseModel):
@@ -69,7 +79,25 @@ async def list_toolkits(
     """
     tks = await svc.list_toolkits()
     return ToolkitsResponse(
-        toolkits=[ToolkitOut(slug=t.slug, name=t.name, auth_config_id=t.auth_config_id) for t in tks]
+        toolkits=[
+            ToolkitOut(
+                slug=t.slug,
+                name=t.name,
+                auth_config_id=t.auth_config_id,
+                auth_scheme=t.auth_scheme,
+                expected_input_fields=[
+                    InputFieldOut(
+                        name=f.get("name", ""),
+                        display_name=f.get("display_name", ""),
+                        description=f.get("description", ""),
+                        type=f.get("type", "string"),
+                        required=f.get("required", True),
+                    )
+                    for f in t.expected_input_fields
+                ],
+            )
+            for t in tks
+        ]
     )
 
 
@@ -89,6 +117,49 @@ async def connect(
             user_id=body.user_id,
             toolkit=body.toolkit,
             callback_url=body.callback_url,
+        )
+    except KeyError as e:
+        available = [t.slug for t in await svc.list_toolkits()]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown toolkit {str(e)!r}. Available: {available}",
+        )
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Composio error: {type(e).__name__}: {e}")
+
+    return ConnectResponse(
+        redirect_url=result.redirect_url,
+        connection_id=result.connection_id,
+        status=result.status,
+    )
+
+
+class ConnectKeyRequest(BaseModel):
+    """Body for POST /api/composio/connect-key."""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    user_id: str = Field(..., min_length=1)
+    toolkit: str = Field(..., min_length=1)
+    field_values: dict[str, str] = Field(
+        ..., description="Map of input field name → user-provided value (e.g. {\"api_key\": \"pplx-...\"})."
+    )
+
+
+@router.post("/connect-key", response_model=ConnectResponse)
+async def connect_key(
+    body: ConnectKeyRequest,
+    svc: ComposioService = Depends(get_composio_service),
+) -> ConnectResponse:
+    """Create a connected account for an API-key–only toolkit.
+
+    The caller provides the field values (e.g. API key) directly;
+    no browser redirect is needed.
+    """
+    try:
+        result = await svc.connect_with_key(
+            user_id=body.user_id,
+            toolkit=body.toolkit,
+            field_values=body.field_values,
         )
     except KeyError as e:
         available = [t.slug for t in await svc.list_toolkits()]

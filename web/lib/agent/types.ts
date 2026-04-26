@@ -16,6 +16,7 @@ export type MountPoint =
   | "full"
   | "left-half"
   | "right-half"
+  | "right-wide"
   | "top-half"
   | "bottom-half"
   | "left-third"
@@ -51,6 +52,8 @@ export interface RectPct {
 export interface WindowSnapshot {
   id: string;
   kind: RoomKind;
+  /** For per-instance kinds (e.g. integration windows keyed by slug). */
+  slug?: string;
   mount: MountPoint;
   rect: RectPct;
   zIndex: number;

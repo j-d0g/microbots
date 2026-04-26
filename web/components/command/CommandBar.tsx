@@ -46,6 +46,7 @@ export function CommandBar() {
   const reply = useAgentStore((s) => s.agentReply);
   const lastQuery = useAgentStore((s) => s.lastQuery);
   const dock = useAgentStore((s) => s.dock);
+  const uiMode = useAgentStore((s) => s.uiMode);
   const clearReply = useAgentStore((s) => s.clearReply);
 
   const [input, setInput] = useState("");
@@ -61,10 +62,12 @@ export function CommandBar() {
   const phase: "spotlight" | "tucked" = useMemo(() => {
     if (busy) return "spotlight";
     if (forceSpotlight) return "spotlight";
+    // In windowed mode, FloatingDock shows the reply — don't duplicate with tucked chip
+    if (uiMode === "windowed") return "spotlight";
     // After reply.done, we tuck if there is anything to summarise.
     if (reply.length > 0 && lastQuery) return "tucked";
     return "spotlight";
-  }, [busy, forceSpotlight, reply, lastQuery]);
+  }, [busy, forceSpotlight, reply, lastQuery, uiMode]);
 
   /* shortcut: `/` opens; Esc closes --------------------------------- */
   useEffect(() => {
@@ -109,6 +112,24 @@ export function CommandBar() {
   useEffect(() => {
     if (busy) setForceSpotlight(false);
   }, [busy]);
+
+  /* In windowed mode, auto-dismiss once the reply finishes so the
+   * FloatingDock takes over and the user sees the canvas. The reply
+   * text persists in the store so the dock still shows it. */
+  const prevBusyRef = useRef(false);
+  useEffect(() => {
+    const wasBusy = prevBusyRef.current;
+    prevBusyRef.current = busy;
+    if (wasBusy && !busy && reply.length > 0 && uiMode === "windowed") {
+      // Small delay so the user sees the final text land in the bar
+      // before it animates away.
+      const t = window.setTimeout(() => {
+        setOpen(false);
+        // Don't clearReply — the dock reads agentReply from the store.
+      }, 600);
+      return () => window.clearTimeout(t);
+    }
+  }, [busy, reply, uiMode, setOpen]);
 
   const handleClose = useCallback(() => {
     abortRef.current?.abort();

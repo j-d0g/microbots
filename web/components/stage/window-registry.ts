@@ -129,7 +129,7 @@ export const WINDOW_REGISTRY: Record<RoomKind, WindowModule> = {
 
   settings: {
     title: "settings",
-    defaultMount: "right-half",
+    defaultMount: "right-wide",
     summary: (state) => {
       const userId = state.userId ?? null;
       const conn = state.connections.filter((c) => c.status === "ACTIVE").length;

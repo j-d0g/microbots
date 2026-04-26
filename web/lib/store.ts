@@ -1,6 +1,8 @@
 "use client";
 
 import { create } from "zustand";
+import { resolveMount, DOCK_PX_H } from "./agent/mount-points";
+import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
 
 export type RoomKind =
   | "brief"
@@ -81,7 +83,7 @@ const MIN_SIZES: Record<RoomKind, { w: number; h: number }> = {
   stack: { w: 400, h: 320 },
   waffle: { w: 360, h: 300 },
   playbooks: { w: 520, h: 360 },
-  settings: { w: 400, h: 360 },
+  settings: { w: 480, h: 400 },
   integration: { w: 360, h: 320 },
 };
 
@@ -222,6 +224,11 @@ export interface AgentStoreState {
    *  burning a tool call. */
   connections: { slug: string; status: ConnectionStatus }[];
   setConnections: (c: { slug: string; status: ConnectionStatus }[]) => void;
+  /** Discovered Composio toolkits with auth_scheme so the UI can pick
+   *  the right connect flow (OAuth popup vs API-key form). Hydrated
+   *  once on mount by StoreBridge. */
+  toolkits: { slug: string; name: string; auth_scheme: string; expected_input_fields: { name: string; display_name: string; description: string; type: string; required: boolean }[] }[];
+  setToolkits: (t: { slug: string; name: string; auth_scheme: string; expected_input_fields: { name: string; display_name: string; description: string; type: string; required: boolean }[] }[]) => void;
   /** Most recent /api/health probe. Used by the SettingsRoom badge and
    *  surfaced into the snapshot so the agent can mention degraded
    *  mode. `null` while the first probe is in flight. */
@@ -355,6 +362,8 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   setUserId: (id) => set({ userId: id }),
   connections: [],
   setConnections: (connections) => set({ connections }),
+  toolkits: [],
+  setToolkits: (toolkits) => set({ toolkits }),
   backendHealth: null,
   setBackendHealth: (backendHealth) => set({ backendHealth }),
 
@@ -501,10 +510,24 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
     const vh = typeof window !== "undefined" ? window.innerHeight : 768;
     const min = MIN_SIZES[kind];
-    const dw = Math.max(opts?.rect?.w ?? Math.min(640, vw - GAP * 2), min.w);
-    const dh = Math.max(opts?.rect?.h ?? Math.min(500, vh - DOCK_VISUAL_RESERVE - GAP * 2), min.h);
-    const dx = opts?.rect?.x ?? Math.max(GAP, (vw - dw) / 2 + (s.windows.length % 5) * 32);
-    const dy = opts?.rect?.y ?? Math.max(GAP, (vh - DOCK_VISUAL_RESERVE - dh) / 2 + (s.windows.length % 5) * 24);
+
+    // If no explicit rect, resolve defaultMount to pixels
+    const defaultMount = WINDOW_REGISTRY[kind]?.defaultMount;
+    let dw: number, dh: number, dx: number, dy: number;
+    if (opts?.rect?.w || opts?.rect?.h || opts?.rect?.x || opts?.rect?.y || !defaultMount) {
+      // Explicit rect or no defaultMount — use the old heuristic
+      dw = Math.max(opts?.rect?.w ?? Math.min(640, vw - GAP * 2), min.w);
+      dh = Math.max(opts?.rect?.h ?? Math.min(500, vh - DOCK_VISUAL_RESERVE - GAP * 2), min.h);
+      dx = opts?.rect?.x ?? Math.max(GAP, (vw - dw) / 2 + (s.windows.length % 5) * 32);
+      dy = opts?.rect?.y ?? Math.max(GAP, (vh - DOCK_VISUAL_RESERVE - dh) / 2 + (s.windows.length % 5) * 24);
+    } else {
+      const pct = resolveMount(defaultMount, { w: vw, h: vh });
+      const usableH = Math.max(200, vh - DOCK_PX_H);
+      dw = Math.max(Math.round((pct.w / 100) * vw), min.w);
+      dh = Math.max(Math.round((pct.h / 100) * usableH), min.h);
+      dx = Math.max(GAP, Math.round((pct.x / 100) * vw));
+      dy = Math.max(GAP, Math.round((pct.y / 100) * usableH));
+    }
 
     const id = `win-${++_modalId}`;
     const z = s.nextZ;

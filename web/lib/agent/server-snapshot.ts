@@ -286,6 +286,7 @@ function rectForMount(mount: MountPoint): RectPct {
     case "full":         return { x: 0,  y: 0,   w: 100,    h: 100 };
     case "left-half":    return { x: 0,  y: 0,   w: 50,     h: 100 };
     case "right-half":   return { x: 50, y: 0,   w: 50,     h: 100 };
+    case "right-wide":   return { x: 40, y: 0,   w: 60,     h: 100 };
     case "top-half":     return { x: 0,  y: 0,   w: 100,    h: 50 };
     case "bottom-half":  return { x: 0,  y: 50,  w: 100,    h: 50 };
     case "left-third":   return { x: 0,  y: 0,   w: 100/3,  h: 100 };
@@ -681,9 +682,8 @@ export function snapshotToPrompt(
   } else {
     lines.push("windows:");
     for (const w of snap.windows) {
-      const slug = (w as WindowSnapshot & { slug?: string }).slug;
       lines.push(
-        `  - id=${w.id} kind=${w.kind}${slug ? ` slug=${slug}` : ""} mount=${w.mount} z=${w.zIndex} focused=${w.focused}` +
+        `  - id=${w.id} kind=${w.kind}${w.slug ? ` slug=${w.slug}` : ""} mount=${w.mount} z=${w.zIndex} focused=${w.focused}` +
           (w.summary ? ` summary="${w.summary}"` : ""),
       );
     }
