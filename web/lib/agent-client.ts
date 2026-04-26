@@ -143,10 +143,14 @@ export type AgentEvent =
   | { type: "agent.tool.retry"; bonus: number; effectiveCap: number };
 
 export function applyAgentEvent(evt: AgentEvent): void {
+  // Log EVERY event received
+  console.log("[agent-client] Event received:", evt.type, evt);
+  
   const s = useAgentStore.getState();
   const chat = s.uiMode === "chat";
   switch (evt.type) {
     case "ui.room":
+      console.log("[agent-client] ui.room - opening:", evt.room, "chat mode:", chat);
       if (chat) {
         // Chat mode: swap the focused room AND ensure a window of
         // that kind exists so EmbeddedRoom renders with the agent's
@@ -160,6 +164,7 @@ export function applyAgentEvent(evt: AgentEvent): void {
       }
       if (evt.slug) s.setRoomSlug(evt.slug);
       else s.setRoomSlug(null);
+      console.log("[agent-client] ui.room - completed, current windows:", s.windows.map(w => w.kind));
       break;
     case "ui.arrange":
       // Layout presets are windowed-only.
@@ -226,11 +231,13 @@ export function applyAgentEvent(evt: AgentEvent): void {
     }
     case "ui.confirm": {
       // Stage a confirm gate.
+      console.log("[agent-client] ui.confirm - staging intent:", evt.intent.id);
       s.stageConfirm(evt.intent);
       break;
     }
     case "ui.confirm.resolved": {
       // Resolve a pending confirm gate.
+      console.log("[agent-client] ui.confirm.resolved - id:", evt.id, "approved:", evt.approved);
       s.resolveConfirm(evt.id, evt.approved);
       break;
     }

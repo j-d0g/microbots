@@ -87,6 +87,41 @@ const RECT_SCHEMA = z.object({
   h: z.number().min(1).max(100),
 });
 
+/** Convert mount point to percent rect (matches server-snapshot.ts logic) */
+function rectForMount(mount: z.infer<typeof MOUNT_POINT>): RectPct {
+  switch (mount) {
+    case "full":         return { x: 0,  y: 0,   w: 100,    h: 100 };
+    case "left-half":    return { x: 0,  y: 0,   w: 50,     h: 100 };
+    case "right-half":   return { x: 50, y: 0,   w: 50,     h: 100 };
+    case "right-wide":   return { x: 40, y: 0,   w: 60,     h: 100 };
+    case "top-half":     return { x: 0,  y: 0,   w: 100,    h: 50 };
+    case "bottom-half":  return { x: 0,  y: 50,  w: 100,    h: 50 };
+    case "left-third":   return { x: 0,  y: 0,   w: 100/3,  h: 100 };
+    case "center-third": return { x: 100/3, y: 0, w: 100/3, h: 100 };
+    case "right-third":  return { x: 200/3, y: 0, w: 100/3, h: 100 };
+    case "tl":           return { x: 0,  y: 0,   w: 50,     h: 50 };
+    case "tr":           return { x: 50, y: 0,   w: 50,     h: 50 };
+    case "bl":           return { x: 0,  y: 50,  w: 50,     h: 50 };
+    case "br":           return { x: 50, y: 50,  w: 50,     h: 50 };
+    case "pip-br":       return { x: 75, y: 70,  w: 25,     h: 30 };
+    case "pip-tr":       return { x: 75, y: 0,   w: 25,     h: 30 };
+  }
+}
+
+/** Convert percent rect to pixel rect for UI events */
+function pctRectToPxWindowMan(
+  rect: RectPct,
+  viewport: { w: number; h: number },
+): { x: number; y: number; w: number; h: number } {
+  const usableH = Math.max(200, viewport.h - 80);
+  return {
+    x: Math.round((rect.x / 100) * viewport.w),
+    y: Math.round((rect.y / 100) * usableH),
+    w: Math.round((rect.w / 100) * viewport.w),
+    h: Math.round((rect.h / 100) * usableH),
+  };
+}
+
 /* ------------------------------------------------------------------ *
  *  Helper Functions
  * ------------------------------------------------------------------ */
@@ -126,20 +161,6 @@ function findWindow(
   return null;
 }
 
-/** Convert percent rect to pixel rect for UI events */
-function pctRectToPx(
-  rect: { x: number; y: number; w: number; h: number },
-  viewport: { w: number; h: number },
-): { x: number; y: number; w: number; h: number } {
-  const usableH = Math.max(200, viewport.h - 80);
-  return {
-    x: Math.round((rect.x / 100) * viewport.w),
-    y: Math.round((rect.y / 100) * usableH),
-    w: Math.round((rect.w / 100) * viewport.w),
-    h: Math.round((rect.h / 100) * usableH),
-  };
-}
-
 /* ------------------------------------------------------------------ *
  *  Window Management Tools
  * ------------------------------------------------------------------ */
@@ -169,12 +190,13 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         if (!target) {
           return applyAndEmit(ctx, "winman_move_to_position", { id, kind, mount }, []);
         }
+        const rect = pctRectToPxWindowMan(rectForMount(mount), ctx.snapshot.viewport);
         const events: AgentEvent[] = [
           { type: "ui.room", room: target.kind },
           {
             type: "ui.resize",
             room: target.kind,
-            rect: { mount },
+            rect,
           },
         ];
         return applyAndEmit(ctx, "winman_move_to_position", { id: target.id, kind, mount }, events);
@@ -201,7 +223,7 @@ export function windowManagementTools(ctx: AgentToolCtx) {
           ctx.emit({
             type: "ui.resize",
             room: w.kind as WindowKind,
-            rect: pctRectToPx(w.rect, ctx.snapshot.viewport),
+            rect: pctRectToPxWindowMan(w.rect, ctx.snapshot.viewport),
           });
         }
 
@@ -493,7 +515,7 @@ export function windowManagementTools(ctx: AgentToolCtx) {
           {
             type: "ui.resize",
             room: target.kind,
-            rect: pctRectToPx(rect, ctx.snapshot.viewport),
+            rect: pctRectToPxWindowMan(rect, ctx.snapshot.viewport),
           },
         ];
 
@@ -517,12 +539,13 @@ export function windowManagementTools(ctx: AgentToolCtx) {
           return applyAndEmit(ctx, "winman_maximize_window", { id, kind }, []);
         }
 
+        const rect = pctRectToPxWindowMan(rectForMount("full"), ctx.snapshot.viewport);
         const events: AgentEvent[] = [
           { type: "ui.room", room: target.kind },
           {
             type: "ui.resize",
             room: target.kind,
-            rect: { mount: "full" },
+            rect,
           },
         ];
 
@@ -546,12 +569,13 @@ export function windowManagementTools(ctx: AgentToolCtx) {
           return applyAndEmit(ctx, "winman_minimize_window", { id, kind }, []);
         }
 
+        const rect = pctRectToPxWindowMan(rectForMount("pip-br"), ctx.snapshot.viewport);
         const events: AgentEvent[] = [
           { type: "ui.room", room: target.kind },
           {
             type: "ui.resize",
             room: target.kind,
-            rect: { mount: "pip-br" },
+            rect,
           },
         ];
 
@@ -628,7 +652,7 @@ export function windowManagementTools(ctx: AgentToolCtx) {
           ctx.emit({
             type: "ui.resize",
             room: w.kind as WindowKind,
-            rect: pctRectToPx(w.rect, ctx.snapshot.viewport),
+            rect: pctRectToPxWindowMan(w.rect, ctx.snapshot.viewport),
           });
         }
 

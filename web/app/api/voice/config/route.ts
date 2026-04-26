@@ -17,6 +17,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const eleven = !!process.env.ELEVENLABS_API_KEY;
   const elevenVoice = !!process.env.ELEVENLABS_VOICE_ID;
+  const elevenAgent = !!process.env.ELEVENLABS_CONVAI_AGENT_ID;
   const cartesia = !!process.env.CARTESIA_API_KEY && !!process.env.CARTESIA_VOICE_ID;
   const deepgram = !!process.env.DEEPGRAM_API_KEY;
 
@@ -27,5 +28,8 @@ export async function GET() {
   const stt: "elevenlabs" | "deepgram" | "browser" =
     eleven ? "elevenlabs" : deepgram ? "deepgram" : "browser";
 
-  return NextResponse.json({ tts, stt });
+  // Conversational AI is available when all required keys are set
+  const convai = eleven && elevenAgent;
+
+  return NextResponse.json({ tts, stt, convai });
 }

@@ -37,6 +37,7 @@ const ROOM_COMPONENTS: Record<WindowKind, React.ComponentType<{ payload?: Record
   workflows: PlaceholderModal,
   wiki: PlaceholderModal,
   chats_summary: PlaceholderModal,
+  composio_connect: PlaceholderModal,
 };
 
 const CORNER_POS: Record<string, { x: number; y: number }> = {

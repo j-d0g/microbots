@@ -179,6 +179,89 @@ export function integrationsWindowTools(ctx: AgentToolCtx) {
       inputSchema: z.object({}),
       execute: async () => dispatch("count_active", {}),
     }),
+
+    /** Open the composio_connect window to manage OAuth connections. */
+    integrations_open_connect_manager: tool({
+      description:
+        "Open the integration connection manager (composio_connect window). Use this when the user wants to connect a new integration, authorize an app via OAuth, or enter an API key. Shows all available toolkits with their connection status.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const toolName = "open_connect_manager";
+        ctx.emit({ type: "agent.tool.start", name: toolName, args: {} });
+        const events: AgentEvent[] = [
+          { type: "ui.room", room: "composio_connect" as WindowKind },
+        ];
+        for (const e of events) ctx.emit(e);
+        const result = applyToolToSnapshot(ctx.snapshot, `integrations_${toolName}`, {});
+        ctx.snapshot = result.snapshot;
+        ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok ?? true });
+        return "Opened the connection manager. Available integrations and their OAuth status are displayed.";
+      },
+    }),
+
+    /** Check the connection status of a specific toolkit. */
+    integrations_check_status: tool({
+      description:
+        "Check the connection status of a specific toolkit (e.g. 'slack', 'github', 'linear', 'gmail', 'notion', 'perplexityai'). Returns whether it is ACTIVE, INITIATED, EXPIRED, FAILED, or not connected.",
+      inputSchema: z.object({
+        toolkit: z.string().min(1).describe("The toolkit slug to check"),
+      }),
+      execute: async ({ toolkit }) => {
+        const toolName = "check_status";
+        const args = { toolkit };
+        ctx.emit({ type: "agent.tool.start", name: toolName, args });
+
+        const connection = (ctx.snapshot.integrations ?? []).find(
+          (c: { slug: string; status: string }) => c.slug === toolkit,
+        );
+
+        const result = applyToolToSnapshot(ctx.snapshot, `integrations_${toolName}`, args);
+        ctx.snapshot = result.snapshot;
+        ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok ?? true });
+
+        if (!connection) {
+          return `${toolkit}: not connected — open the connection manager to authorize it.`;
+        }
+        const labels: Record<string, string> = {
+          ACTIVE: "connected and ready",
+          INITIATED: "connection pending — authorize in the popup",
+          EXPIRED: "expired — needs reauthorization",
+          FAILED: "failed — try connecting again",
+        };
+        return `${toolkit}: ${labels[connection.status] ?? connection.status}.`;
+      },
+    }),
+
+    /** Connect a specific toolkit via OAuth (opens the composio_connect window focused on that toolkit). */
+    integrations_connect_toolkit: tool({
+      description:
+        "Initiate the OAuth connection flow for a specific toolkit. Opens the connection manager window so the user can authorize the integration. Use this when the user says 'connect slack', 'link github', etc.",
+      inputSchema: z.object({
+        toolkit: z
+          .string()
+          .min(1)
+          .describe(
+            "The toolkit slug to connect (slack, github, linear, gmail, notion, perplexityai)",
+          ),
+      }),
+      execute: async ({ toolkit }) => {
+        const toolName = "connect_toolkit";
+        const args = { toolkit };
+        ctx.emit({ type: "agent.tool.start", name: toolName, args });
+        const events: AgentEvent[] = [
+          {
+            type: "ui.room",
+            room: "composio_connect" as WindowKind,
+            payload: { highlight: toolkit },
+          } as AgentEvent,
+        ];
+        for (const e of events) ctx.emit(e);
+        const result = applyToolToSnapshot(ctx.snapshot, `integrations_${toolName}`, args);
+        ctx.snapshot = result.snapshot;
+        ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok ?? true });
+        return `Opening connection manager for ${toolkit}. The user will need to authorize in the OAuth popup.`;
+      },
+    }),
   };
 }
 

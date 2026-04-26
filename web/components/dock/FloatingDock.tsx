@@ -11,7 +11,7 @@
  */
 
 import { motion } from "framer-motion";
-import { MessageSquare, VolumeX } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { VoiceDot } from "./VoiceDot";
@@ -34,12 +34,14 @@ export function FloatingDock() {
   const hasReply = reply.trim().length > 0;
   const hasTranscript = transcript.trim().length > 0;
 
-  const narrationKind: "speaking" | "listening" | null =
+  const narrationKind: "speaking" | "listening" | "conversing" | null =
     hasReply && (dock === "speaking" || dock === "thinking" || dock === "idle")
       ? "speaking"
       : dock === "listening" && hasTranscript
         ? "listening"
-        : null;
+        : dock === "conversing"
+          ? "conversing"
+          : null;
 
   const narrationText =
     narrationKind === "speaking"
@@ -163,6 +165,7 @@ export function FloatingDock() {
       >
         <MessageSquare size={14} strokeWidth={1.5} />
       </button>
+
     </motion.nav>
     <TelemetryStrip />
     </>
@@ -177,6 +180,8 @@ function dockHint(dock: DockState): string {
       return "thinking...";
     case "speaking":
       return "speaking...";
+    case "conversing":
+      return "conversing...";
     case "hidden":
       return "";
     default:

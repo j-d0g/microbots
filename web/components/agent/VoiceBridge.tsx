@@ -86,6 +86,9 @@ export function VoiceBridge() {
 
   /* ---------- `.` hold-to-talk (installed once) --------------------- */
   useEffect(() => {
+    // Don't activate when in conversation mode
+    const isConversationMode = () => useAgentStore.getState().conversationMode;
+
     let pressed = false;
 
     const isTyping = (target: EventTarget | null) => {
@@ -101,6 +104,7 @@ export function VoiceBridge() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "." || e.repeat) return;
       if (isTyping(e.target)) return;
+      if (isConversationMode()) return; // Pause in conversation mode
       e.preventDefault();
       if (!pressed) {
         pressed = true;

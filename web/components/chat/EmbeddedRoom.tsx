@@ -18,6 +18,7 @@ import { SkillsWindow } from "@/components/windows/SkillsWindow";
 import { WorkflowsWindow } from "@/components/windows/WorkflowsWindow";
 import { WikiWindow } from "@/components/windows/WikiWindow";
 import { ChatsSummaryWindow } from "@/components/windows/ChatsSummaryWindow";
+import { ComposioConnectWindow } from "@/components/windows/ComposioConnectWindow";
 import { WINDOW_LABEL } from "@/components/stage/window-labels";
 import { getDummyPayload } from "@/lib/chat-dummy-payloads";
 import { cn } from "@/lib/cn";
@@ -40,6 +41,7 @@ const ROOM_COMPONENTS: Record<
   workflows: WorkflowsWindow,
   wiki: WikiWindow,
   chats_summary: ChatsSummaryWindow,
+  composio_connect: ComposioConnectWindow,
 };
 
 /**

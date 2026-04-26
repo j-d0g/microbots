@@ -7,4 +7,8 @@ export default defineConfig({
       "@": path.resolve(__dirname),
     },
   },
+  test: {
+    // Playwright owns tests/e2e — vitest must not pick those up.
+    exclude: ["node_modules/**", "tests/e2e/**", ".next/**"],
+  },
 });

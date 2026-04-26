@@ -31,7 +31,8 @@ export type WindowKind =
   | "skills"
   | "workflows"
   | "wiki"
-  | "chats_summary";
+  | "chats_summary"
+  | "composio_connect";
 
 /** Backward-compat alias — consumers migrating to WindowKind. */
 export type RoomKind = WindowKind;
@@ -113,6 +114,7 @@ const MIN_SIZES: Record<WindowKind, { w: number; h: number }> = {
   workflows: { w: 560, h: 460 },
   wiki: { w: 600, h: 480 },
   chats_summary: { w: 520, h: 380 },
+  composio_connect: { w: 480, h: 460 },
 };
 
 export function getMinSize(kind: RoomKind) { return MIN_SIZES[kind]; }
@@ -477,8 +479,20 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   chatRoom: "chat",
   setChatRoom: (room) => set({ chatRoom: room, room }),
   chatMessages: [],
-  appendChatMessage: (m) =>
-    set((s) => ({ chatMessages: [...s.chatMessages, m] })),
+  appendChatMessage: (m) => {
+    set((s) => ({ chatMessages: [...s.chatMessages, m] }));
+    // Fire-and-forget persistence to /api/kg/chats. The helper
+    // dedupes on `source_id = msg.id` server-side so retries (or
+    // duplicate appends from the orchestrator + voice paths) don't
+    // double-write. Only finalised messages are persisted; streaming
+    // chunks are upserted on `finalizeLastAgentMessage`.
+    if (m.text.trim() && m.status !== "streaming") {
+      void import("./chat-persistence").then(({ persistChatMessage }) => {
+        const userId = (get() as { userId: string | null }).userId;
+        void persistChatMessage(m, userId);
+      });
+    }
+  },
   appendToLastAgentMessage: (chunk) =>
     set((s) => {
       const list = s.chatMessages;
@@ -496,18 +510,31 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       }
       return s;
     }),
-  finalizeLastAgentMessage: () =>
+  finalizeLastAgentMessage: () => {
+    let finalised: ChatMessage | null = null;
     set((s) => {
       const list = s.chatMessages;
       for (let i = list.length - 1; i >= 0; i--) {
         if (list[i].role === "agent") {
           const next = list.slice();
           next[i] = { ...list[i], status: "done" };
+          finalised = next[i];
           return { chatMessages: next };
         }
       }
       return s;
-    }),
+    });
+    // Persist the finished agent reply now that streaming chunks have
+    // been collapsed into the final text. agent-client.ts also calls
+    // persistChatTurn but going through the store keeps voice-path
+    // replies covered without requiring every caller to opt in.
+    if (finalised && (finalised as ChatMessage).text.trim()) {
+      void import("./chat-persistence").then(({ persistChatMessage }) => {
+        const userId = (get() as { userId: string | null }).userId;
+        void persistChatMessage(finalised as ChatMessage, userId);
+      });
+    }
+  },
   clearChatHistory: () => set({ chatMessages: [] }),
 
   modals: [],

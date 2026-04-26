@@ -199,6 +199,18 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
       return truncate(`chats · ${total} signals`);
     },
   },
+
+  composio_connect: {
+    title: "composio_connect",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "center-third",
+    summary: (state) => {
+      const active = state.connections.filter((c) => c.status === "ACTIVE").length;
+      const total = state.toolkits.length;
+      return truncate(`connect integrations · ${active}/${total > 0 ? total : "?"} active`);
+    },
+  },
 };
 
 /** Returns the kind identifiers as a plain array. */

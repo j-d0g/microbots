@@ -16,6 +16,7 @@ export const WINDOW_LABEL: Record<WindowKind, string> = {
   workflows: "workflows",
   wiki: "wiki",
   chats_summary: "chats",
+  composio_connect: "connect",
 };
 
 /** Single-line summary used on sideline thumbnails — kept tiny on
@@ -36,4 +37,5 @@ export const WINDOW_SIDELINE_HINT: Record<WindowKind, string> = {
   workflows: "playbooks",
   wiki: "knowledge",
   chats_summary: "signal heatmap",
+  composio_connect: "oauth connect",
 };

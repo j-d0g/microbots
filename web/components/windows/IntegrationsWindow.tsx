@@ -83,18 +83,32 @@ export function IntegrationsWindow({
                       {it.user_purpose}
                     </p>
                   )}
-                  {it.co_used_with_slugs.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {it.co_used_with_slugs.slice(0, 4).map((s) => (
-                        <span
-                          key={s}
-                          className="rounded bg-paper-2 px-1.5 py-0.5 font-mono text-[9px] text-ink-35"
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {(() => {
+                    /* The backend returns `{ out: { slug } }[]` even though
+                     * the kg-client type still claims `Slug[]`. Normalize
+                     * defensively so we accept either shape and never feed
+                     * an object into React's `key`. */
+                    const slugs = (it.co_used_with_slugs ?? [])
+                      .map((s: unknown) =>
+                        typeof s === "string"
+                          ? s
+                          : (s as { out?: { slug?: string } })?.out?.slug ?? "",
+                      )
+                      .filter((s): s is string => s.length > 0);
+                    if (slugs.length === 0) return null;
+                    return (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {slugs.slice(0, 4).map((s) => (
+                          <span
+                            key={s}
+                            className="rounded bg-paper-2 px-1.5 py-0.5 font-mono text-[9px] text-ink-35"
+                          >
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </button>
               </li>
             ))}

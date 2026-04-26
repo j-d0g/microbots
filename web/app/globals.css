@@ -108,6 +108,16 @@ body {
   animation: breathe 1.8s var(--ease-muji) infinite;
 }
 
+/* Fast breathing for conversation mode */
+@keyframes breathing-fast {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.breathing-fast {
+  animation: breathing-fast 1s ease-in-out infinite;
+}
+
 /* Hide scrollbars but keep scroll */
 .calm-scroll::-webkit-scrollbar {
   display: none;

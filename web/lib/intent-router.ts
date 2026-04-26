@@ -55,6 +55,7 @@ export async function routeIntentSummary(intent: IntentSummary): Promise<boolean
 
   // Chat intent: no UI action needed
   if (intent.type === "chat") {
+    console.log("[intent-router] Chat intent - no UI action");
     if (intent.responseText && intent.shouldSpeak) {
       await requestSpeak(intent.responseText, "ui");
     }
@@ -63,35 +64,63 @@ export async function routeIntentSummary(intent: IntentSummary): Promise<boolean
 
   // Handle confirmation gates
   if (intent.type === "confirm" || intent.type === "cancel") {
+    console.log("[intent-router] Handling confirm/cancel:", intent.confirmationId);
     if (intent.confirmationId) {
-      applyAgentEvent({
-        type: "ui.confirm.resolved",
-        id: intent.confirmationId,
-        approved: intent.type === "confirm",
-      });
+      // Try event first, then direct store manipulation as fallback
+      try {
+        applyAgentEvent({
+          type: "ui.confirm.resolved",
+          id: intent.confirmationId,
+          approved: intent.type === "confirm",
+        });
+        console.log("[intent-router] Confirm event dispatched");
+      } catch (err) {
+        console.warn("[intent-router] Event dispatch failed, using direct store:", err);
+        store.resolveConfirm(intent.confirmationId, intent.type === "confirm");
+      }
       return true;
     }
   }
 
   // Navigate: open window/change room
   if (intent.type === "navigate" && intent.target) {
+    console.log("[intent-router] Navigate intent target:", intent.target);
     const target = intent.target as WindowKind;
-    applyAgentEvent({
-      type: "ui.room",
-      room: target,
-      payload: intent.data,
-    });
+    
+    // DIRECT STORE MANIPULATION - ensure window actually opens
+    console.log("[intent-router] Opening window via store:", target);
+    store.openWindow(target);
+    store.setChatRoom(target as any);
+    
+    // Also dispatch event for any listeners
+    try {
+      applyAgentEvent({
+        type: "ui.room",
+        room: target,
+        payload: intent.data,
+      });
+    } catch (err) {
+      console.warn("[intent-router] Event dispatch failed (store already updated):", err);
+    }
     return true;
   }
 
   // Query: execute and show results
   if (intent.type === "query" && intent.query) {
-    // Open chat window with query results
-    applyAgentEvent({
-      type: "ui.room",
-      room: "chat",
-      payload: { query: intent.query, results: intent.data },
-    });
+    console.log("[intent-router] Query intent:", intent.query);
+    // Direct store manipulation first
+    store.openWindow("chat");
+    store.setChatRoom("chat");
+    
+    try {
+      applyAgentEvent({
+        type: "ui.room",
+        room: "chat",
+        payload: { query: intent.query, results: intent.data },
+      });
+    } catch (err) {
+      console.warn("[intent-router] Event dispatch failed (store already updated):", err);
+    }
     return true;
   }
 
@@ -102,6 +131,7 @@ export async function routeIntentSummary(intent: IntentSummary): Promise<boolean
       intent.type === "delete") &&
     intent.entityType
   ) {
+    console.log("[intent-router] CUD intent:", intent.type, intent.entityType);
     const confirmIntent = {
       id: `intent-${Date.now()}`,
       toolName: `${intent.type}_${intent.entityType}`,
@@ -112,10 +142,17 @@ export async function routeIntentSummary(intent: IntentSummary): Promise<boolean
       args: intent.data ?? {},
     };
 
-    applyAgentEvent({
-      type: "ui.confirm",
-      intent: confirmIntent,
-    });
+    // Direct store manipulation
+    store.stageConfirm(confirmIntent);
+    
+    try {
+      applyAgentEvent({
+        type: "ui.confirm",
+        intent: confirmIntent,
+      });
+    } catch (err) {
+      console.warn("[intent-router] Event dispatch failed (store already updated):", err);
+    }
 
     // Optionally speak the confirmation request
     if (intent.responseText && intent.shouldSpeak) {

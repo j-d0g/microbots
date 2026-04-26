@@ -24,6 +24,7 @@ import { SkillsWindow } from "@/components/windows/SkillsWindow";
 import { WorkflowsWindow } from "@/components/windows/WorkflowsWindow";
 import { WikiWindow } from "@/components/windows/WikiWindow";
 import { ChatsSummaryWindow } from "@/components/windows/ChatsSummaryWindow";
+import { ComposioConnectWindow } from "@/components/windows/ComposioConnectWindow";
 
 const ROOM_COMPONENTS: Record<
   WindowKind,
@@ -43,6 +44,7 @@ const ROOM_COMPONENTS: Record<
   workflows: WorkflowsWindow,
   wiki: WikiWindow,
   chats_summary: ChatsSummaryWindow,
+  composio_connect: ComposioConnectWindow,
 };
 
 const SPRING = {

@@ -11,6 +11,27 @@
  * simple map lookup to pick the right bag.
  */
 
+// Imports first (for factories table)
+import { graphWindowTools } from "./graph";
+import { chatWindowTools } from "./chat";
+import { askUserWindowTools } from "./ask-user";
+import { settingsWindowTools } from "./settings";
+import { profileWindowTools } from "./profile";
+import { integrationsWindowTools } from "./integrations";
+import { integrationDetailWindowTools } from "./integration-detail";
+import { entitiesWindowTools } from "./entities";
+import { entityDetailWindowTools } from "./entity-detail";
+import { memoriesWindowTools } from "./memories";
+import { skillsWindowTools } from "./skills";
+import { workflowsWindowTools } from "./workflows";
+import { wikiWindowTools } from "./wiki";
+import { chatsSummaryWindowTools } from "./chats-summary";
+import { windowManagementTools } from "./window-management";
+
+import type { AgentToolCtx } from "../tools";
+import type { WindowKind } from "@/lib/store";
+
+// Re-exports
 export { graphWindowTools, type GraphWindowToolBag } from "./graph";
 export { chatWindowTools, type ChatWindowToolBag } from "./chat";
 export { askUserWindowTools, type AskUserWindowToolBag } from "./ask-user";
@@ -26,9 +47,6 @@ export { workflowsWindowTools, type WorkflowsWindowToolBag } from "./workflows";
 export { wikiWindowTools, type WikiWindowToolBag } from "./wiki";
 export { chatsSummaryWindowTools, type ChatsSummaryWindowToolBag } from "./chats-summary";
 export { windowManagementTools, type WindowManagementToolBag } from "./window-management";
-
-import type { AgentToolCtx } from "../tools";
-import type { WindowKind } from "@/lib/store";
 
 /* ------------------------------------------------------------------ *
  *  Mapping table: WindowKind -> tool factory
@@ -51,4 +69,7 @@ export const WINDOW_TOOL_FACTORIES: Record<WindowKind, WindowToolFactory> = {
   workflows: (ctx) => workflowsWindowTools(ctx),
   wiki: (ctx) => wikiWindowTools(ctx),
   chats_summary: (ctx) => chatsSummaryWindowTools(ctx),
+  // composio_connect reuses integrations tools — the connect manager
+  // shares the same OAuth-centric tool bag.
+  composio_connect: (ctx) => integrationsWindowTools(ctx),
 };
