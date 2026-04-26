@@ -1,7 +1,7 @@
 "use client";
 
 import { createParser, type EventSourceMessage } from "eventsource-parser";
-import { useAgentStore, type RoomKind, type VerbPayload } from "./store";
+import { useAgentStore, type WindowKind, type RoomKind, type VerbPayload, type ConfirmIntent } from "./store";
 import { callRoomTool } from "./room-tools";
 import { buildSnapshot } from "./agent/snapshot";
 
@@ -36,6 +36,36 @@ export type AgentEvent =
       tool: string;
       args?: Record<string, unknown>;
     }
+  /* ── V1 tool-window events ── */
+  | {
+      type: "ui.tool.open";
+      kind: WindowKind;
+      payload: Record<string, unknown>;
+    }
+  | {
+      type: "ui.tool.update";
+      kind: WindowKind;
+      payload: Record<string, unknown>;
+    }
+  | {
+      type: "ui.tool.done";
+      kind: WindowKind;
+      payload?: Record<string, unknown>;
+    }
+  | {
+      type: "ui.ask";
+      question: string;
+      options: string[];
+    }
+  | {
+      type: "ui.confirm";
+      intent: ConfirmIntent;
+    }
+  | {
+      type: "ui.confirm.resolved";
+      id: string;
+      approved: boolean;
+    }
   | { type: "speak.chunk"; text: string }
   | { type: "agent.status"; status: string }
   | { type: "dock"; state: "idle" | "listening" | "thinking" | "speaking" | "hidden" }
@@ -44,11 +74,11 @@ export type AgentEvent =
   | { type: "reply.done" }
   /** Orchestrator handed off to a sub-agent. The sidecar renders a chip. */
   | { type: "agent.delegate"; to: "layout" | "content"; intent: string }
-  /** A sub-agent issued a tool. The sidecar pushes a live row. */
+  /** A tool was called. The sidecar pushes a live row. */
   | { type: "agent.tool.start"; name: string; args: Record<string, unknown> }
-  /** A sub-agent's tool returned. The sidecar marks the row done. */
+  /** A tool returned. The sidecar marks the row done. */
   | { type: "agent.tool.done"; name: string; ok: boolean }
-  /** Sub-agent granted bonus steps after a tool failure (recovery). */
+  /** Bonus steps after a tool failure (recovery). */
   | { type: "agent.tool.retry"; bonus: number; effectiveCap: number };
 
 export function applyAgentEvent(evt: AgentEvent): void {
@@ -93,6 +123,45 @@ export function applyAgentEvent(evt: AgentEvent): void {
       // In-window tools work in BOTH modes.
       // Fire-and-forget; agents don't await tool side-effects in the event stream.
       void callRoomTool(evt.room, evt.tool, evt.args ?? {});
+      break;
+    }
+    /* ── V1 tool-window events ── */
+    case "ui.tool.open": {
+      // Open the tool's window with payload (or update if already open).
+      s.openWindow(evt.kind, { payload: evt.payload });
+      break;
+    }
+    case "ui.tool.update": {
+      // Update an existing tool window's payload. Find and re-open.
+      const target = s.windows.find((w) => w.kind === evt.kind);
+      if (target) {
+        s.openWindow(evt.kind, { payload: { ...target.payload, ...evt.payload } });
+      }
+      break;
+    }
+    case "ui.tool.done": {
+      // Mark the tool window as done by merging status into payload.
+      const target = s.windows.find((w) => w.kind === evt.kind);
+      if (target) {
+        s.openWindow(evt.kind, { payload: { ...target.payload, ...evt.payload, status: "done" } });
+      }
+      break;
+    }
+    case "ui.ask": {
+      // Open ask_user as a modal window with the question + options.
+      s.openWindow("ask_user", {
+        payload: { question: evt.question, options: evt.options },
+      });
+      break;
+    }
+    case "ui.confirm": {
+      // Stage a confirm gate.
+      s.stageConfirm(evt.intent);
+      break;
+    }
+    case "ui.confirm.resolved": {
+      // Resolve a pending confirm gate.
+      s.resolveConfirm(evt.id, evt.approved);
       break;
     }
     case "ui.verb":

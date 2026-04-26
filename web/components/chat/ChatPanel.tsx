@@ -39,12 +39,11 @@ const SUGGESTIONS = [
 ];
 
 const ROOMS: Array<{ kind: RoomKind; label: string }> = [
-  { kind: "brief", label: "brief" },
+  { kind: "run_code", label: "run code" },
   { kind: "graph", label: "graph" },
-  { kind: "workflow", label: "workflows" },
-  { kind: "stack", label: "stack" },
-  { kind: "waffle", label: "waffle" },
-  { kind: "playbooks", label: "playbooks" },
+  { kind: "list_workflows", label: "workflows" },
+  { kind: "search_memory", label: "memory" },
+  { kind: "find_examples", label: "examples" },
   { kind: "settings", label: "settings" },
 ];
 

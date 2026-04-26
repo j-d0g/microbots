@@ -226,11 +226,62 @@ function makeElevenSttSession(): SttSession {
   };
 }
 
+/* ---------- Voice confirm grammar ---------------------------------------- */
+
+/** Maps voice confirmations/cancellations to boolean decisions. */
+const CONFIRM_GRAMMAR: Record<string, boolean> = {
+  yes: true, yeah: true, yep: true, yup: true,
+  save: true, "save it": true,
+  run: true, "run it": true,
+  deploy: true, "deploy it": true,
+  confirm: true, approved: true, "go ahead": true, go: true, do: true,
+  no: false, nope: false, nah: false,
+  hold: false, "hold on": false, "not yet": false,
+  cancel: false, stop: false, wait: false, "never mind": false,
+};
+
+/** Check if a transcript matches a confirm/cancel grammar phrase.
+ *  Returns `true` (confirm), `false` (cancel), or `null` (no match). */
+export function matchConfirmGrammar(transcript: string): boolean | null {
+  const t = transcript.toLowerCase().trim();
+  if (t in CONFIRM_GRAMMAR) return CONFIRM_GRAMMAR[t];
+  // Check multi-word matches
+  for (const [phrase, decision] of Object.entries(CONFIRM_GRAMMAR)) {
+    if (t === phrase || t.startsWith(phrase + " ") || t.endsWith(" " + phrase)) {
+      return decision;
+    }
+  }
+  return null;
+}
+
+/** Maps voice commands to store actions (quiet mode, pin, etc.). */
+const VOICE_ACTIONS: Record<string, string> = {
+  quiet: "quietMode",
+  shh: "quietMode",
+  mute: "quietMode",
+  "go silent": "quietMode",
+  "quiet mode": "quietMode",
+  "pin this": "pinWindow",
+  "pin it": "pinWindow",
+  "unpin": "unpinWindow",
+  "unpin this": "unpinWindow",
+};
+
+/** Check if a transcript matches a voice action.
+ *  Returns the action name or `null`. */
+export function matchVoiceAction(transcript: string): string | null {
+  const t = transcript.toLowerCase().trim();
+  return VOICE_ACTIONS[t] ?? null;
+}
+
 /* ---------- Unified hold-to-talk hook ----------------------------------- */
 
 export interface UsePushToTalkOpts {
   /** Called with the final transcript after release. */
   onTranscript?: (text: string) => void;
+  /** If true, use VAD (voice activity detection) instead of push-to-talk.
+   *  VAD starts listening on mount and auto-submits on silence. Default: true. */
+  vadMode?: boolean;
 }
 
 export function usePushToTalk(opts: UsePushToTalkOpts = {}) {

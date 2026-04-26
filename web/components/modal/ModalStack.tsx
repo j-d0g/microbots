@@ -3,26 +3,31 @@
 import { useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Maximize2 } from "lucide-react";
-import { useAgentStore, type Modal, type RoomKind } from "@/lib/store";
+import { useAgentStore, type Modal, type RoomKind, type WindowKind } from "@/lib/store";
 import { cn } from "@/lib/cn";
-import { BriefRoom } from "@/components/rooms/BriefRoom";
 import { GraphRoom } from "@/components/rooms/GraphRoom";
-import { WorkflowRoom } from "@/components/rooms/WorkflowRoom";
-import { StackRoom } from "@/components/rooms/StackRoom";
-import { WaffleRoom } from "@/components/rooms/WaffleRoom";
-import { PlaybooksRoom } from "@/components/rooms/PlaybooksRoom";
 import { SettingsRoom } from "@/components/rooms/SettingsRoom";
-import { IntegrationRoom } from "@/components/rooms/IntegrationRoom";
 
-const ROOM_COMPONENTS: Record<RoomKind, React.ComponentType<{ payload?: Record<string, unknown> }>> = {
-  brief: BriefRoom,
+/** Placeholder for unbuilt window types (Phase 5). */
+function PlaceholderModal({ payload }: { payload?: Record<string, unknown> }) {
+  return (
+    <div className="flex items-center justify-center h-full text-ink-35 text-xs font-mono">
+      modal content pending
+    </div>
+  );
+}
+
+const ROOM_COMPONENTS: Record<WindowKind, React.ComponentType<{ payload?: Record<string, unknown> }>> = {
+  run_code: PlaceholderModal,
+  save_workflow: PlaceholderModal,
+  view_workflow: PlaceholderModal,
+  run_workflow: PlaceholderModal,
+  list_workflows: PlaceholderModal,
+  find_examples: PlaceholderModal,
+  search_memory: PlaceholderModal,
+  ask_user: PlaceholderModal,
   graph: GraphRoom,
-  workflow: WorkflowRoom,
-  stack: StackRoom,
-  waffle: WaffleRoom,
-  playbooks: PlaybooksRoom,
   settings: SettingsRoom,
-  integration: IntegrationRoom,
 };
 
 const CORNER_POS: Record<string, { x: number; y: number }> = {
@@ -73,8 +78,9 @@ export function ModalStack() {
         return;
       }
       if (e.ctrlKey || e.metaKey) {
-        const rooms: RoomKind[] = [
-          "brief", "graph", "workflow", "stack", "waffle", "playbooks", "settings",
+        const rooms: WindowKind[] = [
+          "run_code", "graph", "list_workflows", "search_memory",
+          "find_examples", "settings",
         ];
         const idx = parseInt(e.key, 10) - 1;
         if (idx >= 0 && idx < rooms.length) {

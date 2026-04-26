@@ -2,26 +2,31 @@
 
 import { useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useAgentStore, type RoomKind } from "@/lib/store";
+import { useAgentStore, type RoomKind, type WindowKind } from "@/lib/store";
 import { WindowFrame } from "./WindowFrame";
-import { BriefRoom } from "@/components/rooms/BriefRoom";
+import { ConfirmCardStack } from "./ConfirmCard";
 import { GraphRoom } from "@/components/rooms/GraphRoom";
-import { WorkflowRoom } from "@/components/rooms/WorkflowRoom";
-import { StackRoom } from "@/components/rooms/StackRoom";
-import { WaffleRoom } from "@/components/rooms/WaffleRoom";
-import { PlaybooksRoom } from "@/components/rooms/PlaybooksRoom";
 import { SettingsRoom } from "@/components/rooms/SettingsRoom";
-import { IntegrationRoom } from "@/components/rooms/IntegrationRoom";
+import { RunCodeWindow } from "@/components/windows/RunCodeWindow";
+import { SaveWorkflowWindow } from "@/components/windows/SaveWorkflowWindow";
+import { ViewWorkflowWindow } from "@/components/windows/ViewWorkflowWindow";
+import { RunWorkflowWindow } from "@/components/windows/RunWorkflowWindow";
+import { ListWorkflowsWindow } from "@/components/windows/ListWorkflowsWindow";
+import { FindExamplesWindow } from "@/components/windows/FindExamplesWindow";
+import { SearchMemoryWindow } from "@/components/windows/SearchMemoryWindow";
+import { AskUserCard } from "@/components/windows/AskUserCard";
 
-const ROOM_COMPONENTS: Record<RoomKind, React.ComponentType<{ payload?: Record<string, unknown> }>> = {
-  brief: BriefRoom,
+const ROOM_COMPONENTS: Record<WindowKind, React.ComponentType<{ payload?: Record<string, unknown> }>> = {
+  run_code: RunCodeWindow,
+  save_workflow: SaveWorkflowWindow,
+  view_workflow: ViewWorkflowWindow,
+  run_workflow: RunWorkflowWindow,
+  list_workflows: ListWorkflowsWindow,
+  find_examples: FindExamplesWindow,
+  search_memory: SearchMemoryWindow,
+  ask_user: AskUserCard,
   graph: GraphRoom,
-  workflow: WorkflowRoom,
-  stack: StackRoom,
-  waffle: WaffleRoom,
-  playbooks: PlaybooksRoom,
   settings: SettingsRoom,
-  integration: IntegrationRoom,
 };
 
 const SPRING = { type: "spring", stiffness: 400, damping: 32, mass: 0.8 } as const;
@@ -40,8 +45,9 @@ export function Desktop() {
         return;
       }
       if (e.ctrlKey || e.metaKey) {
-        const rooms: RoomKind[] = [
-          "brief", "graph", "workflow", "stack", "waffle", "playbooks", "settings",
+        const rooms: WindowKind[] = [
+          "run_code", "graph", "list_workflows", "search_memory",
+          "find_examples", "settings",
         ];
         const idx = parseInt(e.key, 10) - 1;
         if (idx >= 0 && idx < rooms.length) {
@@ -122,6 +128,7 @@ export function Desktop() {
             );
           })}
       </AnimatePresence>
+      <ConfirmCardStack />
     </div>
   );
 }

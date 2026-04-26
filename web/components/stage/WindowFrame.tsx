@@ -18,14 +18,16 @@ const EDGE_CURSORS: Record<Edge, string> = {
 };
 
 const ROOM_LABELS: Record<string, string> = {
-  brief: "brief",
+  run_code: "run_code",
+  save_workflow: "save_workflow",
+  view_workflow: "view_workflow",
+  run_workflow: "run_workflow",
+  list_workflows: "list_workflows",
+  find_examples: "find_examples",
+  search_memory: "search_memory",
+  ask_user: "ask_user",
   graph: "graph",
-  workflow: "workflows",
-  stack: "stack",
-  waffle: "waffle",
-  playbooks: "playbooks",
   settings: "settings",
-  integration: "integration",
 };
 
 export function WindowFrame({
@@ -192,11 +194,7 @@ export function WindowFrame({
         )}
       >
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-35">
-          {/* For integration windows show the slug after the kind so
-              two slack/github windows are distinguishable in the chrome. */}
-          {win.kind === "integration"
-            ? `integration · ${(win.payload?.slug as string | undefined) ?? "?"}`
-            : (ROOM_LABELS[win.kind] ?? win.kind)}
+          {ROOM_LABELS[win.kind] ?? win.kind}
         </span>
         <div className="flex items-center gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
           <button

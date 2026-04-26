@@ -8,7 +8,7 @@ export function AgentBridge() {
   useEffect(() => {
     const s = useAgentStore.getState();
     if (s.windows.length === 0) {
-      s.openWindow("brief");
+      s.openWindow("graph");
     }
     // Expose store for Playwright/testing in dev. No-op in prod.
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {

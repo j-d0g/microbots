@@ -31,6 +31,23 @@
 
   /* Motion */
   --ease-muji: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Motion table — single source of truth (plan §10) */
+  --window-open-line: 120ms;
+  --window-open-content: 180ms;
+  --window-close-content: 140ms;
+  --window-close-line: 140ms;
+  --telemetry-fade-in: 160ms;
+  --telemetry-linger: 1500ms;
+  --telemetry-fade-out: 220ms;
+  --confirm-slide-in: 200ms;
+  --confirm-slide-out: 180ms;
+  --stage-recompute: 240ms;
+  --stage-stagger: 30ms;
+  --graph-backdrop-fade: 200ms;
+  --ask-user-slide: 220ms;
+  --pin-border: 0ms; /* instant */
+  --quiet-dot-crossfade: 160ms;
 }
 
 :root {
@@ -144,4 +161,49 @@ body {
 /* For text that needs to scroll in the thin dock */
 .animate-marquee {
   animation: marquee 20s linear infinite;
+}
+
+/* Agent window trace — 1px indigo line draws the rect */
+@keyframes trace-rect {
+  from {
+    clip-path: inset(0 100% 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.window-trace {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-accent-indigo);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: trace-rect var(--window-open-line) var(--ease-muji) both;
+}
+
+/* Stage-manager recompute transition */
+.stage-window {
+  transition:
+    transform var(--stage-recompute) var(--ease-muji),
+    width var(--stage-recompute) var(--ease-muji),
+    height var(--stage-recompute) var(--ease-muji),
+    opacity var(--stage-recompute) var(--ease-muji);
+}
+
+/* Graph atmospheric backdrop */
+.graph-backdrop {
+  transition: opacity var(--graph-backdrop-fade) var(--ease-muji);
+}
+
+/* Reduce motion: skip all custom animations */
+@media (prefers-reduced-motion: reduce) {
+  .window-trace,
+  .stage-window,
+  .graph-backdrop,
+  .breathing,
+  .ink-in {
+    animation: none !important;
+    transition: none !important;
+  }
 }

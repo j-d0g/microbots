@@ -89,9 +89,8 @@ export interface CanvasSnapshot {
   windows: WindowSnapshot[];
   recentActions: ToolCallRecord[];
   user: { query: string; lastQuery?: string; userId?: string | null };
-  /** Active UI mode. Tools and prompts gate behaviour off this. In
-   *  `windowed` only `graph | settings | integration` may be opened;
-   *  in `chat` the legacy seven kinds are reachable. */
+  /** Active UI mode. In V1 all 10 window kinds are valid in both
+   *  modes. The distinction only affects how the dock renders. */
   ui?: { mode: "windowed" | "chat" };
   /** Live composio connection status mirror — agent can check whether
    *  a toolkit is connected without burning a tool call. */

@@ -4,21 +4,22 @@ import { create } from "zustand";
 import { resolveMount, DOCK_PX_H } from "./agent/mount-points";
 import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
 
-export type RoomKind =
-  | "brief"
+/** V1 window kinds — the 8 harness tools + graph + settings. */
+export type WindowKind =
+  | "run_code"
+  | "save_workflow"
+  | "view_workflow"
+  | "run_workflow"
+  | "list_workflows"
+  | "find_examples"
+  | "search_memory"
+  | "ask_user"
   | "graph"
-  | "workflow"
-  | "stack"
-  | "waffle"
-  | "playbooks"
-  | "settings"
-  /** Per-toolkit integration window. The `slug` lives in
-   *  `WindowState.payload.slug` so multiple integration windows
-   *  (e.g. slack + github) can coexist on the canvas. */
-  | "integration";
+  | "settings";
 
-/** Keep backward compat alias */
-export type RoomName = RoomKind;
+/** Backward-compat alias — consumers migrating to WindowKind. */
+export type RoomKind = WindowKind;
+export type RoomName = WindowKind;
 
 export type DockState =
   | "idle"
@@ -56,6 +57,10 @@ export interface WindowState {
   rect: WindowRect;
   zIndex: number;
   minimized: boolean;
+  /** Whether the user pinned this window (exempt from sideline demotion). */
+  pinned: boolean;
+  /** Who opened this window — drives the trace animation. */
+  openedBy: "agent" | "user";
   payload?: Record<string, unknown>;
   /** ms since canvas mount when the window was opened. Powers the
    *  `openedAt` field in `CanvasSnapshot.windows[]`. */
@@ -76,15 +81,17 @@ export interface ActionRecord {
 
 export type LayoutPreset = "focus" | "split" | "grid" | "stack-right";
 
-const MIN_SIZES: Record<RoomKind, { w: number; h: number }> = {
-  brief: { w: 400, h: 360 },
+const MIN_SIZES: Record<WindowKind, { w: number; h: number }> = {
+  run_code: { w: 400, h: 360 },
+  save_workflow: { w: 400, h: 320 },
+  view_workflow: { w: 400, h: 320 },
+  run_workflow: { w: 400, h: 320 },
+  list_workflows: { w: 400, h: 300 },
+  find_examples: { w: 520, h: 360 },
+  search_memory: { w: 400, h: 320 },
+  ask_user: { w: 360, h: 200 },
   graph: { w: 480, h: 400 },
-  workflow: { w: 400, h: 320 },
-  stack: { w: 400, h: 320 },
-  waffle: { w: 360, h: 300 },
-  playbooks: { w: 520, h: 360 },
   settings: { w: 480, h: 400 },
-  integration: { w: 360, h: 320 },
 };
 
 export function getMinSize(kind: RoomKind) { return MIN_SIZES[kind]; }
@@ -154,6 +161,15 @@ export type RoomState =
   | "deploying"
   | "approval-success";
 
+/** Confirm gate — staged destructive tool call awaiting user approval. */
+export interface ConfirmIntent {
+  id: string;
+  toolName: string;
+  description: string;
+  stagedAt: number;
+  args: Record<string, unknown>;
+}
+
 export interface AgentCard {
   id: string;
   kind: CardKind;
@@ -207,6 +223,21 @@ export interface AgentStoreState {
   uiMode: UiMode;
   setUiMode: (mode: UiMode) => void;
   toggleUiMode: () => void;
+
+  /* --- org scaffold (Phase 1) --- */
+  orgId: string | null;
+  setOrgId: (id: string | null) => void;
+
+  /* --- agency primitives --- */
+  quietMode: boolean;
+  setQuietMode: (q: boolean) => void;
+  confirmQueue: ConfirmIntent[];
+  stageConfirm: (intent: ConfirmIntent) => void;
+  resolveConfirm: (id: string, approved: boolean) => void;
+
+  /* --- window pinning --- */
+  pinWindow: (id: string) => void;
+  unpinWindow: (id: string) => void;
 
   /* --- backend identity & connectivity ---
    *
@@ -325,6 +356,35 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   onboarded: false,
   setOnboarded: (v) => set({ onboarded: v }),
 
+  /* --- org scaffold --- */
+  orgId: null,
+  setOrgId: (id) => set({ orgId: id }),
+
+  /* --- agency primitives --- */
+  quietMode: false,
+  setQuietMode: (q) => set({ quietMode: q }),
+  confirmQueue: [],
+  stageConfirm: (intent) =>
+    set((s) => ({ confirmQueue: [...s.confirmQueue, intent] })),
+  resolveConfirm: (id, approved) =>
+    set((s) => ({
+      confirmQueue: s.confirmQueue.filter((c) => c.id !== id),
+    })),
+
+  /* --- window pinning --- */
+  pinWindow: (id) =>
+    set((s) => ({
+      windows: s.windows.map((w) =>
+        w.id === id ? { ...w, pinned: true } : w,
+      ),
+    })),
+  unpinWindow: (id) =>
+    set((s) => ({
+      windows: s.windows.map((w) =>
+        w.id === id ? { ...w, pinned: false } : w,
+      ),
+    })),
+
   /* --- ui mode --- */
   uiMode: "windowed",
   setUiMode: (mode) => set({ uiMode: mode }),
@@ -368,7 +428,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   setBackendHealth: (backendHealth) => set({ backendHealth }),
 
   /* --- chat mode --- */
-  chatRoom: "brief",
+  chatRoom: "run_code",
   setChatRoom: (room) => set({ chatRoom: room, room }),
   chatMessages: [],
   appendChatMessage: (m) =>
@@ -488,18 +548,9 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
 
   openWindow: (kind, opts) => {
     const s = get();
-    // Integration windows are slug-keyed: multiple instances may coexist
-    // (slack + github), distinguished by `payload.slug`. All other kinds
-    // dedupe by kind alone.
-    const wantedSlug =
-      kind === "integration"
-        ? (opts?.payload?.slug as string | undefined)
-        : undefined;
+    // Dedupe by kind — if a window of this kind is already open, focus it.
     const existing = s.windows.find((w) => {
       if (w.kind !== kind || w.minimized) return false;
-      if (kind === "integration") {
-        return (w.payload?.slug as string | undefined) === wantedSlug;
-      }
       return true;
     });
     if (existing) {
@@ -582,6 +633,8 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       rect: { x: dx, y: dy, w: dw, h: dh },
       zIndex: z,
       minimized: false,
+      pinned: false,
+      openedBy: (opts?.payload?.openedBy as "agent" | "user") ?? "user",
       payload: opts?.payload,
       openedAt: now,
     };
@@ -793,7 +846,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       return { windows: arranged, recentActions };
     }),
 
-  room: "brief",
+  room: "run_code",
   roomSlug: null,
   setRoom: (room) => set({ room }),
   setRoomSlug: (roomSlug) => set({ roomSlug }),

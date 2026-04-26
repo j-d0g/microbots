@@ -11,10 +11,11 @@
  */
 
 import { motion } from "framer-motion";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { VoiceDot } from "./VoiceDot";
+import { TelemetryStrip } from "./TelemetryStrip";
 import { cn } from "@/lib/cn";
 
 type DockState = ReturnType<typeof useAgentStore.getState>["dock"];
@@ -25,6 +26,8 @@ export function FloatingDock() {
   const reply = useAgentStore((s) => s.agentReply);
   const transcript = useAgentStore((s) => s.transcript);
   const toggleUiMode = useAgentStore((s) => s.toggleUiMode);
+  const quietMode = useAgentStore((s) => s.quietMode);
+  const setQuietMode = useAgentStore((s) => s.setQuietMode);
 
   const hidden = dock === "hidden";
 
@@ -74,6 +77,7 @@ export function FloatingDock() {
     : "text-ink-30";
 
   return (
+    <>
     <motion.nav
       aria-label="agent dock"
       initial={{ y: 12, opacity: 0 }}
@@ -120,6 +124,30 @@ export function FloatingDock() {
         </motion.div>
       </div>
 
+      {/* Quiet mode toggle */}
+      <button
+        type="button"
+        onClick={() => setQuietMode(!quietMode)}
+        aria-label={quietMode ? "resume agent" : "quiet mode"}
+        title={quietMode ? "resume (go ahead)" : "quiet mode"}
+        data-testid="dock-quiet-mode"
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
+          "hover:bg-paper-2 transition-colors duration-200",
+          quietMode ? "text-accent-indigo" : "text-ink-35 hover:text-ink-90",
+        )}
+      >
+        <div
+          className={cn(
+            "w-3 h-3 rounded-full transition-all",
+            quietMode
+              ? "border-2 border-accent-indigo bg-transparent"
+              : "bg-ink-35",
+          )}
+          style={{ transitionDuration: "var(--quiet-dot-crossfade)" }}
+        />
+      </button>
+
       {/* Chat mode toggle */}
       <button
         type="button"
@@ -131,12 +159,13 @@ export function FloatingDock() {
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
           "text-ink-35 hover:text-ink-90 hover:bg-paper-2",
           "transition-colors duration-200",
-          "ml-22",
         )}
       >
         <MessageSquare size={14} strokeWidth={1.5} />
       </button>
     </motion.nav>
+    <TelemetryStrip />
+    </>
   );
 }
 

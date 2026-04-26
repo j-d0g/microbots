@@ -382,28 +382,11 @@ export function applyToolToSnapshot(
 
       // Windowed-mode hard gate. Defense-in-depth so a runaway agent
       // can't open hidden kinds. Chat mode allows everything.
-      if (
-        snap.ui?.mode === "windowed" &&
-        kind !== "graph" &&
-        kind !== "settings" &&
-        kind !== "integration"
-      ) {
-        return {
-          snapshot: {
-            ...snap,
-            recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
-          },
-          message: `windowed mode allows only graph, settings, or integration windows; '${kind}' refused.`,
-        };
-      }
+      // All V1 window kinds are allowed in windowed mode.
 
-      // Integration windows are slug-keyed: dedupe by (kind, slug).
-      // Other kinds dedupe by kind alone — same behaviour as before.
+      // Dedupe by kind alone.
       const existing = snap.windows.find((w) => {
         if (w.kind !== kind) return false;
-        if (kind === "integration") {
-          return ((w as WindowSnapshot & { slug?: string }).slug ?? null) === (slug ?? null);
-        }
         return true;
       });
       if (existing) {
@@ -430,10 +413,7 @@ export function applyToolToSnapshot(
         zIndex: z,
         focused: true,
         openedAt: now,
-        summary:
-          kind === "integration" && slug
-            ? `integration ${slug}`
-            : kind,
+        summary: kind,
         ...(slug ? { slug } : {}),
       };
       const next: CanvasSnapshot = {
@@ -606,14 +586,25 @@ export function applyToolToSnapshot(
       };
     }
 
-    /* --- content tools: don't mutate the canvas, just record + surface
-     *     a message so the agent's loop sees evidence the tool ran. */
+    /* --- V1 work tools: open their own windows via ui.tool.open events.
+     *     Don't mutate the canvas snapshot, just record + surface a
+     *     message so the agent's loop sees evidence the tool ran. */
+    case "run_code":
+    case "save_workflow":
+    case "view_workflow":
+    case "run_workflow":
+    case "list_workflows":
+    case "find_examples":
+    case "search_memory":
+    case "ask_user":
+    /* --- content tools (legacy, may still be called by graph verbs) */
     case "push_card":
     case "highlight":
     case "explain":
     case "compare":
     case "draft":
     case "speak":
+    /* --- graph tools */
     case "graph_focus_node":
     case "graph_zoom_fit":
     case "graph_select":

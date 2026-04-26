@@ -1,39 +1,46 @@
 "use client";
 
-import { useAgentStore, type RoomKind } from "@/lib/store";
-import { BriefRoom } from "@/components/rooms/BriefRoom";
+import { useAgentStore, type WindowKind } from "@/lib/store";
 import { GraphRoom } from "@/components/rooms/GraphRoom";
-import { WorkflowRoom } from "@/components/rooms/WorkflowRoom";
-import { StackRoom } from "@/components/rooms/StackRoom";
-import { WaffleRoom } from "@/components/rooms/WaffleRoom";
-import { PlaybooksRoom } from "@/components/rooms/PlaybooksRoom";
 import { SettingsRoom } from "@/components/rooms/SettingsRoom";
-import { IntegrationRoom } from "@/components/rooms/IntegrationRoom";
 import { cn } from "@/lib/cn";
 
+/** Placeholder for tool windows not yet built (Phase 5). */
+function PlaceholderEmbedded({ payload }: { payload?: Record<string, unknown> }) {
+  return (
+    <div className="flex items-center justify-center h-full text-ink-35 text-xs font-mono">
+      window content pending
+    </div>
+  );
+}
+
 const ROOM_COMPONENTS: Record<
-  RoomKind,
+  WindowKind,
   React.ComponentType<{ payload?: Record<string, unknown> }>
 > = {
-  brief: BriefRoom,
+  run_code: PlaceholderEmbedded,
+  save_workflow: PlaceholderEmbedded,
+  view_workflow: PlaceholderEmbedded,
+  run_workflow: PlaceholderEmbedded,
+  list_workflows: PlaceholderEmbedded,
+  find_examples: PlaceholderEmbedded,
+  search_memory: PlaceholderEmbedded,
+  ask_user: PlaceholderEmbedded,
   graph: GraphRoom,
-  workflow: WorkflowRoom,
-  stack: StackRoom,
-  waffle: WaffleRoom,
-  playbooks: PlaybooksRoom,
   settings: SettingsRoom,
-  integration: IntegrationRoom,
 };
 
-const ROOM_LABEL: Record<RoomKind, string> = {
-  brief: "brief",
+const ROOM_LABEL: Record<WindowKind, string> = {
+  run_code: "run code",
+  save_workflow: "save workflow",
+  view_workflow: "view workflow",
+  run_workflow: "run workflow",
+  list_workflows: "workflows",
+  find_examples: "examples",
+  search_memory: "memory",
+  ask_user: "ask user",
   graph: "graph",
-  workflow: "workflows",
-  stack: "stack",
-  waffle: "waffle",
-  playbooks: "playbooks",
   settings: "settings",
-  integration: "integration",
 };
 
 /**

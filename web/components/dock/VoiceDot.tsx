@@ -18,6 +18,7 @@ type VoiceHandle = {
 
 export function VoiceDot() {
   const dock = useAgentStore((s) => s.dock);
+  const quietMode = useAgentStore((s) => s.quietMode);
   const [, force] = useState(0);
   const active = dock === "listening";
   const speaking = dock === "speaking";
@@ -79,10 +80,11 @@ export function VoiceDot() {
     >
       <span
         className={cn(
-          "block h-2.5 w-2.5 rounded-full transition-all duration-200",
+          "block h-2.5 w-2.5 rounded-full transition-all duration-[160ms]",
           active && "scale-110 bg-accent-indigo breathing",
           speaking && "bg-accent-indigo breathing",
-          !active && !speaking && "bg-ink-90",
+          !active && !speaking && !quietMode && "bg-ink-90",
+          !active && !speaking && quietMode && "border border-accent-indigo bg-transparent",
         )}
       />
       {active && (

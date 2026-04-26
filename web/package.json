@@ -10,7 +10,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "agent:eval": "tsx agent-evals/run.ts",
-    "agent:eval:quick": "tsx agent-evals/run.ts --quick"
+    "agent:eval:quick": "tsx agent-evals/run.ts --quick",
+    "agent:eval:voice": "tsx agent-evals/voice-grammar.eval.ts",
+    "agent:eval:demo": "tsx agent-evals/demo-rehearsal.eval.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.41",
