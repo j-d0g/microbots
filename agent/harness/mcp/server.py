@@ -1,10 +1,14 @@
 """MCP server for the microbot harness.
 
-Exposes 4 tools to the chat agent:
-  - run_code     — executes Python via Render Workflows run_user_code task
-  - find_examples — substring search over templates/index.json
-  - save_workflow — writes code to saved/<name>.py, returns mock URL
-  - ask_user     — schema-only; resolved by the frontend (client-side tool)
+Exposes 8 tools to the chat agent:
+  - run_code       — executes Python via Render Workflows run_user_code task
+  - find_examples  — substring search over templates/index.json
+  - save_workflow  — writes code to saved/<name>.py, returns URL
+  - view_workflow  — reads back a saved workflow's source (mirror of save)
+  - run_workflow   — invokes a saved workflow by name (load + run)
+  - list_workflows — lists all saved workflows with one-line summaries
+  - search_memory  — searches user's KG and recent chats (V1 stub)
+  - ask_user       — schema-only; resolved by the frontend (client-side tool)
 """
 
 import hmac
@@ -33,6 +37,10 @@ HERE = Path(__file__).parent
 TEMPLATES_PATH = HERE / "templates" / "index.json"
 SAVED_DIR = HERE / "saved"
 SAVED_DIR.mkdir(parents=True, exist_ok=True)
+
+# Hardening caps (adversarial findings p2-v1-tools/notes/02-adversarial-findings.md)
+MAX_SLUG_LEN = 64        # filesystem-safe; far below ext4/APFS NAME_MAX (255)
+MAX_CODE_BYTES = 1_000_000  # 1 MB hard ceiling on saved workflow source
 
 
 # ---------- Render Workflows client (lazy) ----------
@@ -128,23 +136,211 @@ def find_examples(query: str) -> dict:
     return {"matches": matches, "count": len(matches)}
 
 
+def _slugify(name: str) -> str:
+    """Normalise a workflow name to a filesystem-safe slug.
+
+    Truncates to MAX_SLUG_LEN (64) chars to avoid OSError on very long
+    names — adversarial probe found 1000-char names crashed with
+    Errno 63 (file name too long).
+    """
+    slug = re.sub(r"[^a-z0-9-]+", "-", name.lower()).strip("-")
+    return slug[:MAX_SLUG_LEN].rstrip("-")
+
+
+def _first_summary(text: str) -> str:
+    """Extract a one-line summary from a Python source file.
+
+    Prefers the first line of the module docstring; falls back to the first
+    non-blank, non-import, non-comment line.
+    """
+    m = re.search(r'^"""([^"\n]+)', text, re.MULTILINE)
+    if m:
+        return m.group(1).strip()
+    for line in text.splitlines():
+        s = line.strip()
+        if not s or s.startswith("#") or s.startswith("import") or s.startswith("from"):
+            continue
+        return s[:120]
+    return ""
+
+
 @mcp.tool()
-def save_workflow(name: str, code: str) -> dict:
+def save_workflow(name: str, code: str, overwrite: bool = False) -> dict:
     """Persist a Python snippet as a named workflow.
 
     Writes to saved/<slug>.py and returns a stable URL. Use when the user
     asks to save / promote / publish work.
+
+    By default REFUSES to overwrite an existing workflow — returns
+    {error: "exists", slug, existing_bytes} so the agent can decide
+    whether to ask_user, pick a new name, or call again with
+    overwrite=True. This prevents silent data loss on slug collision
+    (e.g. "data sync" and "data-sync" share the same slug).
+
+    Caps:
+      * slug length capped at 64 chars (longer names truncate)
+      * code size capped at ~1 MB (refuses larger payloads)
     """
-    slug = re.sub(r"[^a-z0-9-]+", "-", name.lower()).strip("-")
+    slug = _slugify(name)
     if not slug:
         return {"error": "invalid name (must produce a non-empty slug)"}
+    code_bytes = len(code.encode("utf-8"))
+    if code_bytes > MAX_CODE_BYTES:
+        return {
+            "error": "code too large",
+            "bytes": code_bytes,
+            "max_bytes": MAX_CODE_BYTES,
+        }
     target = SAVED_DIR / f"{slug}.py"
+    if target.exists() and not overwrite:
+        existing_bytes = target.stat().st_size
+        return {
+            "error": "exists",
+            "slug": slug,
+            "existing_bytes": existing_bytes,
+            "hint": "pass overwrite=True to replace, or pick a different name",
+        }
     target.write_text(code, encoding="utf-8")
     return {
         "url": f"https://example.com/workflows/{slug}",
         "saved_to": str(target),
+        "bytes": code_bytes,
+        "overwritten": overwrite and target.exists(),
+    }
+
+
+@mcp.tool()
+def view_workflow(name: str) -> dict:
+    """Read back the source of a previously saved workflow.
+
+    Use to inspect existing workflows before editing or running them — the
+    agent's read-back partner to save_workflow. Without this, every
+    conversation starts from scratch because the agent has no way to see
+    what's already in saved/<slug>.py.
+
+    Returns {name, slug, code, bytes} on success, or {error} if missing.
+    """
+    slug = _slugify(name)
+    if not slug:
+        return {"error": "invalid name (must produce a non-empty slug)"}
+    target = SAVED_DIR / f"{slug}.py"
+    if not target.exists():
+        return {"error": f"workflow not found: {slug}"}
+    code = target.read_text(encoding="utf-8")
+    return {
+        "name": name,
+        "slug": slug,
+        "code": code,
         "bytes": len(code.encode("utf-8")),
     }
+
+
+@mcp.tool()
+async def run_workflow(name: str, args: dict | None = None) -> dict:
+    """Invoke a saved workflow by name with optional arguments.
+
+    Loads saved/<slug>.py and executes it via the same Render Workflows
+    runner that backs run_code. Use this when the user wants to invoke
+    something already saved (their own past work, or something the agent
+    saved earlier in the session) — distinct from run_code, which executes
+    ad-hoc snippets.
+
+    Returns the same shape as run_code: {result, stdout, stderr, error}.
+    """
+    slug = _slugify(name)
+    if not slug:
+        return {"result": None, "stdout": "", "stderr": "", "error": "invalid name"}
+    target = SAVED_DIR / f"{slug}.py"
+    if not target.exists():
+        return {
+            "result": None,
+            "stdout": "",
+            "stderr": "",
+            "error": f"workflow not found: {slug}",
+        }
+    code = target.read_text(encoding="utf-8")
+    return await run_code(code, args)
+
+
+@mcp.tool()
+def list_workflows() -> dict:
+    """List all saved workflows with their slugs and a short summary.
+
+    Sorted by most-recently-modified first, so the agent surfaces the
+    user's recent work naturally. Use this when the user asks "what have
+    I built?" or refers ambiguously to a past workflow.
+
+    Each entry: {slug, summary, bytes, modified}.
+    """
+    items: list[dict[str, Any]] = []
+    for path in SAVED_DIR.glob("*.py"):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        items.append({
+            "slug": path.stem,
+            "summary": _first_summary(text),
+            "bytes": path.stat().st_size,
+            "modified": path.stat().st_mtime,
+        })
+    items.sort(key=lambda d: -d["modified"])
+    return {"workflows": items, "count": len(items)}
+
+
+@mcp.tool()
+async def search_memory(query: str, scope: str = "all") -> dict:
+    """Search the user's memory for context grounded in their own data.
+
+    Scopes:
+      - "kg":           knowledge graph (Slack, Notion, Gmail, Linear, GitHub)
+      - "recent_chats": rolling summaries of the user's last 1 / 7 days (stub)
+      - "all":          both, merged and re-ranked
+
+    Returns ranked results, each with {source, scope, snippet, score}.
+    Prefer this BEFORE asking the user open-ended context questions — the
+    answer is often already in their data.
+
+    V1 wiring: scope "kg" / "all" proxies to kg_mcp's `kg_memories_top` tool
+    over streamable-HTTP MCP and substring-filters the result by `query`.
+    Real ranked search (FTS / vector) is a P3 follow-up. scope "recent_chats"
+    stays empty until the chat-summary pipeline lands.
+    """
+    # scope=recent_chats → no pipeline yet; honest empty.
+    if scope == "recent_chats":
+        return {"results": [], "query": query, "scope": scope,
+                "note": "recent_chats pipeline not yet implemented"}
+
+    kg_url = os.environ.get("KG_MCP_URL", "https://kg-mcp-2983.onrender.com/mcp")
+    try:
+        from mcp import ClientSession
+        from mcp.client.streamable_http import streamablehttp_client
+
+        async with streamablehttp_client(kg_url) as (read, write, _):
+            async with ClientSession(read, write) as kg:
+                await kg.initialize()
+                resp = await kg.call_tool("kg_memories_top",
+                                          {"params": {"by": "confidence", "limit": 50}})
+        # FastMCP returns content as a list of TextContent — payload is a JSON string.
+        text = "".join(getattr(c, "text", "") for c in (resp.content or []))
+        rows = json.loads(text) if text else []
+    except Exception as exc:  # noqa: BLE001
+        return {"results": [], "query": query, "scope": scope,
+                "error": f"kg_mcp unreachable: {exc.__class__.__name__}"}
+
+    q = (query or "").lower().strip()
+    matched = []
+    for row in rows if isinstance(rows, list) else []:
+        content = str(row.get("content") or row.get("text") or "")
+        if not q or q in content.lower():
+            matched.append({
+                "source": f"kg:{row.get('id', 'memory')}",
+                "scope": "kg",
+                "snippet": content[:300],
+                "score": float(row.get("confidence") or 0.0),
+            })
+    matched.sort(key=lambda r: -r["score"])
+    return {"results": matched[:10], "query": query, "scope": scope}
 
 
 @mcp.tool()
