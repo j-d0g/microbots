@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { CanvasSnapshot } from "@/lib/agent/types";
-import { hasOpenRouterKey, activeModelSlug } from "@/lib/agent/providers/openrouter";
+import { hasOpenRouterKey, activeModelSlug, prewarmConnection } from "@/lib/agent/providers/openrouter";
 import { runOrchestrator } from "@/lib/agent/orchestrator";
 import type { AgentToolCtx } from "@/lib/agent/tools";
 
@@ -25,6 +25,7 @@ interface RequestBody {
  * can degrade to the scripted `routeIntent()` fallback.
  */
 export async function POST(req: NextRequest) {
+  prewarmConnection();
   if (!hasOpenRouterKey()) {
     return new Response(
       JSON.stringify({

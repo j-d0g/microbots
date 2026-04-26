@@ -1,15 +1,10 @@
 /**
- * Top-level orchestrator.
+ * Top-level orchestrator — single round-trip design.
  *
- * Two delegation tools and zero direct UI tools. The orchestrator
- * decides:
- *   - whether the user's intent needs the layout-agent
- *   - whether it also needs the content-agent
- *   - what short sentence to say to the user
- *
- * It then writes a short reply via plain text generation (streamed).
- * Sub-agents run inside `delegate_*.execute()` so the orchestrator
- * effectively has them as remote callable tools.
+ * The model emits reply text + delegate_* tool calls in ONE generation
+ * (step 1). Step 2 exists only as a safety net. Sub-agents run inside
+ * `delegate_*.execute()` so the orchestrator effectively has them as
+ * remote callable tools.
  */
 
 import { streamText, stepCountIs, tool } from "ai";
@@ -71,17 +66,10 @@ call sub-agents in parallel when both are needed — they share the snapshot.
 after delegating, write at most one short sentence of reply. that text
 streams as the visible response.
 
-ALWAYS-STAGE RULE (critical — never skip):
-any query with emotional, status, vague, or marginal intent MUST trigger
-delegate_layout in parallel with delegate_content. the founder wants to SEE
-the relevant state, not just read a card. infer which window to stage from
-tonal cues: anxiety → brief or stack, curiosity → graph, recap → brief,
-risk → stack + brief. examples:
-- "how's the team doing?" → delegate_layout("open brief as subject") AND delegate_content("surface team status summary")
-- "is anything on fire?" → delegate_layout("open stack as subject, brief in sidebar") AND delegate_content("highlight warnings, push status card")
-the ONLY time you skip delegate_layout is when the user explicitly says
-"don't move anything" or the query is purely definitional with zero UI
-relevance (e.g. "what does HNSW stand for?").
+ALWAYS-STAGE: emotional/status/vague intent → BOTH delegates. infer window from tone:
+anxiety → brief/stack, curiosity → graph, recap → brief, risk → stack+brief.
+- "how's the team doing?" → layout("open brief as subject") + content("surface team status")
+- "is anything on fire?" → layout("open stack as subject, brief sidebar") + content("highlight warnings")
 
 rules:
 - never describe what you did in detail. one sentence max. lowercase.
@@ -90,7 +78,8 @@ rules:
 - if backend.surreal=DOWN or backend.composio=DOWN in the snapshot,
   prepend the reply with a one-word tag: "degraded · …".
 
-at most 3 steps total. snappy.`;
+CRITICAL: write your reply in the SAME generation as your delegate_* calls.
+do NOT wait for a second step. one sentence alongside tool calls. snappy.`;
 
 export interface OrchestrateInput {
   ctx: AgentToolCtx;
@@ -130,7 +119,7 @@ export function runOrchestrator({ ctx, query }: OrchestrateInput) {
 
 user said: ${query}`,
     tools,
-    stopWhen: stepCountIs(3),
+    stopWhen: stepCountIs(2),
     temperature: 0.2,
   });
 }

@@ -11,18 +11,40 @@
  * spin the canvas.
  */
 
-import { streamText, stepCountIs } from "ai";
+import { streamText } from "ai";
 import { chatModel } from "./providers/openrouter";
 import { layoutTools, type AgentToolCtx } from "./tools";
 import { snapshotToPrompt } from "./server-snapshot";
 
-const LAYOUT_SYSTEM = `you are the LAYOUT sub-agent. you arrange floating
-windows on a canvas. you NEVER write prose. you only call tools.
+const BASE_CAP = 3;
+const MAX_BONUS = 2;
+const HARD_CEILING = 6;
 
-YOU DO NOT DO MATH. you pick a preset NAME. the preset has gutters,
-margins and subject sizing baked in (japanese-negative-space spacing,
-~2.5% outer margin, ~2% inter-window gutter). the focused window
-becomes the subject (slot 0).
+/** Adaptive stop condition: base cap + 1 step per tool failure, hard ceiling.
+ *  Emits `agent.tool.retry` events on the ctx when a bonus step is granted. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function adaptiveStopCondition(ctx: AgentToolCtx): any {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ({ steps }: { steps: any[] }) => {
+    let failures = 0;
+    for (const step of steps) {
+      for (const tr of step.toolResults ?? []) {
+        const msg = typeof tr.result === "string" ? tr.result : "";
+        if (msg.includes("fail") || msg.includes("No window matched") || msg.toLowerCase().includes("unknown") || msg.includes("needs an existing window")) {
+          failures++;
+        }
+      }
+    }
+    const bonus = Math.min(failures, MAX_BONUS);
+    const effectiveCap = Math.min(BASE_CAP + bonus, HARD_CEILING);
+    if (bonus > 0 && steps.length === BASE_CAP) {
+      ctx.emit({ type: "agent.tool.retry", bonus, effectiveCap });
+    }
+    return steps.length >= effectiveCap;
+  };
+}
+
+const LAYOUT_SYSTEM = `LAYOUT sub-agent. arrange floating windows. NEVER write prose — tools only.
 
 ═══ MODE-AWARE WINDOW KINDS ═══
 read <canvas mode=…> in the snapshot.
@@ -58,15 +80,15 @@ chat-mode events are handled by setChatRoom on the client.)
                                      preset fits (rare, ~5% of cases)
   clear_canvas()                     close everything (sparing)
 
-═══ PRESETS (arrange_windows) — every preset is non-overlapping ═══
-  focus       subject 95% wide hero + thumbnail strip below   (n>=1)
-  split       2 equal columns                                 (n=2)
-  reading     60/40 — main + sidebar with breathing room      (n=2)
-  triptych    3 equal vertical columns                        (n=3)
-  grid        2×2 quadrants (or sqrt for n>4)                 (n=4+)
-  spotlight   subject 64% centered hero + thumbnail strip     (n>=1)
-  theater     subject 64% top + equal strip below             (1 hero + N)
-  stack-right 1 main + N stacked on the right                 (n>=2)
+PRESETS (arrange_windows):
+  spotlight   subject ~75% centered + pip strip below  (DEFAULT for 1-2)
+  split       2 equal columns                          (n=2)
+  reading     60/40 main + sidebar                     (n=2)
+  triptych    3 equal columns                          (n=3)
+  theater     subject top + equal strip below           (1 hero + N)
+  grid        2×2 or sqrt                              (n=4+)
+  focus       subject ~78% centered + pip strip below   (n>=1)
+  stack-right main + N stacked right                   (n>=2)
 
 ═══ PICKER (do not deliberate — use this) ═══
   → 1 window         focus
@@ -95,7 +117,7 @@ chat-mode events are handled by setChatRoom on the client.)
 - in WINDOWED mode, NEVER open brief / workflow / stack / waffle /
   playbooks. the simulator will refuse and you'll waste a step.
 
-at most 3 steps. one tool per action. snappy.`;
+at most 3 steps. snappy.`;
 
 export async function runLayoutAgent(
   ctx: AgentToolCtx,
@@ -108,7 +130,7 @@ export async function runLayoutAgent(
 
 intent: ${intent}`,
     tools: layoutTools(ctx),
-    stopWhen: stepCountIs(3),
+    stopWhen: adaptiveStopCondition(ctx),
     temperature: 0.2,
   });
 

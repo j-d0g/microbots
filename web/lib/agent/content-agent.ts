@@ -9,16 +9,40 @@
  * prose. Returns a brief result string the orchestrator can mention.
  */
 
-import { streamText, stepCountIs } from "ai";
+import { streamText } from "ai";
 import { chatModel } from "./providers/openrouter";
 import { contentTools, graphTools, type AgentToolCtx } from "./tools";
 import { activeWindowTools, pickRelevantKinds } from "./window-tools";
 import { snapshotToPrompt } from "./server-snapshot";
 import type { RoomKind } from "@/lib/store";
 
-const BASE_SYSTEM = `you are the CONTENT sub-agent for the microbots canvas.
-your job is to surface relevant content inside windows the user is looking at.
+const BASE_CAP = 3;
+const MAX_BONUS = 2;
+const HARD_CEILING = 6;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function adaptiveStopCondition(ctx: AgentToolCtx): any {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ({ steps }: { steps: any[] }) => {
+    let failures = 0;
+    for (const step of steps) {
+      for (const tr of step.toolResults ?? []) {
+        const msg = typeof tr.result === "string" ? tr.result : "";
+        if (msg.includes("fail") || msg.includes("No window matched") || msg.toLowerCase().includes("unknown") || msg.includes("needs an existing window")) {
+          failures++;
+        }
+      }
+    }
+    const bonus = Math.min(failures, MAX_BONUS);
+    const effectiveCap = Math.min(BASE_CAP + bonus, HARD_CEILING);
+    if (bonus > 0 && steps.length === BASE_CAP) {
+      ctx.emit({ type: "agent.tool.retry", bonus, effectiveCap });
+    }
+    return steps.length >= effectiveCap;
+  };
+}
+
+const BASE_SYSTEM = `CONTENT sub-agent. surface content inside windows. NEVER write prose — tools only.
 general tools (always available):
 - push_card(kind, text, confidence?, ttl?) — surface a transient card
     kinds: memory | entity | source | diff | toast
@@ -30,10 +54,8 @@ general tools (always available):
   ONLY call when user_id is set (check the snapshot). slugs: slack,
   github, gmail, linear, notion, perplexityai.
 
-graph window tools (always available — open the graph if needed):
-- graph_focus_node, graph_zoom_fit, graph_select, graph_neighbors,
-  graph_path, graph_filter_layer, graph_filter_integration,
-  graph_search, graph_clear
+tools: push_card(kind,text,ttl?) · highlight(target) · explain(topic) · compare(a,b) · draft(topic)
+graph: graph_focus_node · graph_zoom_fit · graph_select · graph_neighbors · graph_path · graph_filter_layer · graph_filter_integration · graph_search · graph_clear
 
 rules:
 - never write prose. only call tools.
@@ -48,7 +70,7 @@ rules:
   NOT call integration_connect. delegate the layout-agent to surface
   settings instead (already handled by the orchestrator).
 
-at most 3 steps. be decisive.`;
+at most 3 steps. decisive.`;
 
 const PER_WINDOW_HINT: Record<RoomKind, string> = {
   brief:
@@ -96,8 +118,8 @@ export async function runContentAgent(
 
   const result = streamText({
     model: chatModel(),
-    system: buildSystemPrompt(relevantKinds, mode),
-    prompt: `${snapshotToPrompt(ctx.snapshot)}
+    system: buildSystemPrompt(relevantKinds),
+    prompt: `${snapshotToPrompt(ctx.snapshot, { includeGrid: false })}
 
 intent: ${intent}`,
     tools: {
@@ -105,7 +127,7 @@ intent: ${intent}`,
       ...graphTools(ctx),
       ...activeWindowTools(ctx, intent),
     },
-    stopWhen: stepCountIs(3),
+    stopWhen: adaptiveStopCondition(ctx),
     temperature: 0.2,
   });
 

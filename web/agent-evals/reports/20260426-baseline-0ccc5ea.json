@@ -1,0 +1,5247 @@
+{
+  "meta": {
+    "date": "2026-04-26T01:29:16.964Z",
+    "sha": "0ccc5ea",
+    "model": "google/gemini-2.5-flash-lite",
+    "quick": false,
+    "totalQueries": 80
+  },
+  "metrics": {
+    "total": 80,
+    "passed": 78,
+    "passRate": 0.975,
+    "toolCallCorrectness": 0.9925,
+    "ttfwP50": 966.6109880000004,
+    "fullTurnP50": 2976.724901000038,
+    "fullTurnP95": 13783.093538999994,
+    "meanToolCallsMultiStep": 4.4,
+    "marginalPassRate": 1,
+    "recoveryRate": 0.16666666666666666,
+    "calmCanvasAvg": 4.9125,
+    "layoutAestheticAvg": 5,
+    "perCategory": {
+      "layout": {
+        "total": 10,
+        "passed": 10,
+        "passRate": 1
+      },
+      "content": {
+        "total": 10,
+        "passed": 10,
+        "passRate": 1
+      },
+      "multi_step": {
+        "total": 20,
+        "passed": 19,
+        "passRate": 0.95
+      },
+      "marginal": {
+        "total": 25,
+        "passed": 25,
+        "passRate": 1
+      },
+      "failure_recovery": {
+        "total": 10,
+        "passed": 10,
+        "passRate": 1
+      },
+      "edge_case": {
+        "total": 5,
+        "passed": 4,
+        "passRate": 0.8
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "layout-01",
+      "category": "layout",
+      "query": "split the brief and the graph side by side",
+      "passed": true,
+      "durationMs": 10510,
+      "ttfwMs": 9241,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "split the brief and the graph side by side.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=9241ms full=10510ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused graph off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "layout-02",
+      "category": "layout",
+      "query": "focus the workflow",
+      "passed": true,
+      "durationMs": 2568,
+      "ttfwMs": 1356,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window",
+        "focus_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "focus_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "focusing the workflow.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 3,
+          "rationale": "ttfw=1356ms full=2568ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "layout-03",
+      "category": "layout",
+      "query": "clean slate",
+      "passed": true,
+      "durationMs": 1450,
+      "ttfwMs": 680,
+      "toolCalls": [
+        "delegate_layout",
+        "clear_canvas"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "clear_canvas",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "clean slate.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=680ms full=1450ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "layout-04",
+      "category": "layout",
+      "query": "tile everything",
+      "passed": true,
+      "durationMs": 6058,
+      "ttfwMs": 4741,
+      "toolCalls": [
+        "delegate_layout",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": false
+        }
+      ],
+      "replyText": "everything is tiled.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=4741ms full=6058ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 0,
+          "rationale": "0/1 failures had a follow-up success"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "layout-05",
+      "category": "layout",
+      "query": "put the stack on the right and the brief on the left",
+      "passed": true,
+      "durationMs": 4247,
+      "ttfwMs": 3536,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "ok, stack right, brief left.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=3536ms full=4247ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "2 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "layout-06",
+      "category": "layout",
+      "query": "close the settings",
+      "passed": true,
+      "durationMs": 1610,
+      "ttfwMs": 808,
+      "toolCalls": [
+        "delegate_layout",
+        "close_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "close_window",
+          "durationMs": 0,
+          "ok": false
+        }
+      ],
+      "replyText": "closing settings.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=808ms full=1610ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 0,
+          "rationale": "0/1 failures had a follow-up success"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "layout-07",
+      "category": "layout",
+      "query": "show the graph full screen",
+      "passed": true,
+      "durationMs": 2293,
+      "ttfwMs": 1200,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window",
+        "focus_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "focus_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "show the graph full screen.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=1200ms full=2293ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "2 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "layout-08",
+      "category": "layout",
+      "query": "open playbooks next to the workflow",
+      "passed": true,
+      "durationMs": 11066,
+      "ttfwMs": 10398,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "open playbooks next to the workflow.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=10398ms full=11066ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused playbooks off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "layout-09",
+      "category": "layout",
+      "query": "minimize everything except the brief",
+      "passed": true,
+      "durationMs": 1963,
+      "ttfwMs": 1044,
+      "toolCalls": [
+        "delegate_layout",
+        "close_window",
+        "close_window",
+        "close_window",
+        "close_window",
+        "close_window",
+        "close_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "close_window",
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "name": "close_window",
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "name": "close_window",
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "name": "close_window",
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "name": "close_window",
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "name": "close_window",
+          "durationMs": 0,
+          "ok": false
+        }
+      ],
+      "replyText": "minimizing all windows except the brief.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=1044ms full=1963ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "6 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 0,
+          "rationale": "0/6 failures had a follow-up success"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "layout-10",
+      "category": "layout",
+      "query": "i need a reading layout with the workflow and the stack",
+      "passed": true,
+      "durationMs": 2754,
+      "ttfwMs": 1558,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i'll open the workflow and stack for you.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 3,
+          "rationale": "ttfw=1558ms full=2754ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "content-01",
+      "category": "content",
+      "query": "highlight notion-scribe in the stack",
+      "passed": true,
+      "durationMs": 2144,
+      "ttfwMs": 754,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "stack_highlight"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "stack_highlight",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "I'll highlight notion-scribe in the stack.I'll highlight notion-scribe in the stack.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=754ms full=2144ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "2 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "content-02",
+      "category": "content",
+      "query": "compare slack and gmail integrations",
+      "passed": true,
+      "durationMs": 11516,
+      "ttfwMs": 1059,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "compare",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "compare",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "comparing integrations now.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=1059ms full=11516ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused graph off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "content-03",
+      "category": "content",
+      "query": "explain bp-001",
+      "passed": true,
+      "durationMs": 1964,
+      "ttfwMs": 791,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_expand",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_expand",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i can explain bp-001 for you.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=791ms full=1964ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "content-04",
+      "category": "content",
+      "query": "filter the brief to high confidence only",
+      "passed": true,
+      "durationMs": 2048,
+      "ttfwMs": 1186,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_filter"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_filter",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "filtering the brief.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=1186ms full=2048ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "content-05",
+      "category": "content",
+      "query": "show me the bug triage workflow steps",
+      "passed": true,
+      "durationMs": 2125,
+      "ttfwMs": 885,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "workflow_select",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "workflow_select",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "showing the bug triage workflow.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=885ms full=2125ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "content-06",
+      "category": "content",
+      "query": "who is connected to notion in the graph?",
+      "passed": true,
+      "durationMs": 1721,
+      "ttfwMs": 855,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "graph_filter_integration"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_filter_integration",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "showing connections to notion.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=855ms full=1721ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: graph"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "content-07",
+      "category": "content",
+      "query": "expand the email routing proposal",
+      "passed": true,
+      "durationMs": 2560,
+      "ttfwMs": 952,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_expand",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_expand",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "expanding the email routing proposal.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=952ms full=2560ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "2 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "content-08",
+      "category": "content",
+      "query": "filter the stack to warnings only",
+      "passed": true,
+      "durationMs": 13254,
+      "ttfwMs": 1006,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "ok, showing only warnings.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=1006ms full=13254ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 46%"
+        }
+      }
+    },
+    {
+      "id": "content-09",
+      "category": "content",
+      "query": "search the graph for maya",
+      "passed": true,
+      "durationMs": 2178,
+      "ttfwMs": 713,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "graph_search",
+        "focus_window",
+        "graph_focus_node"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_search",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "focus_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_focus_node",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "looking for maya.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=713ms full=2178ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "content-10",
+      "category": "content",
+      "query": "scroll to yesterday's proposals in the brief",
+      "passed": true,
+      "durationMs": 2168,
+      "ttfwMs": 942,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_scroll_to",
+        "focus_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_scroll_to",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "focus_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "Scrolling to yesterday's proposals.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=942ms full=2168ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "2 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "multi-01",
+      "category": "multi_step",
+      "query": "show me what's broken and explain why",
+      "passed": true,
+      "durationMs": 13867,
+      "ttfwMs": 1268,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "explain",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "explain",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "showing you what's broken and why.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1268ms full=13867ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "5 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "multi-02",
+      "category": "multi_step",
+      "query": "open the bug triage workflow, scroll to step 3, and explain it",
+      "passed": true,
+      "durationMs": 14703,
+      "ttfwMs": 1622,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "move_window",
+        "set_window_rect",
+        "focus_window",
+        "workflow_select",
+        "workflow_scroll_to",
+        "workflow_highlight",
+        "workflow_show_recipe",
+        "highlight"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "move_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "set_window_rect",
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "name": "focus_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "workflow_select",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "workflow_scroll_to",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "workflow_highlight",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "workflow_show_recipe",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "highlight",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "opening the workflow and explaining step 3.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1622ms full=14703ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "9 tool calls (min 4)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "1/1 failures had a follow-up success"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "multi-03",
+      "category": "multi_step",
+      "query": "open the brief, filter to high confidence, and expand the top one",
+      "passed": true,
+      "durationMs": 13736,
+      "ttfwMs": 1333,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "arrange_windows",
+        "graph_filter_layer",
+        "graph_focus_node",
+        "graph_neighbors"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_filter_layer",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_focus_node",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_neighbors",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "opening the brief and expanding the top item.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1333ms full=13736ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "5 tool calls (min 4)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "multi-04",
+      "category": "multi_step",
+      "query": "show me the stack, highlight notion-scribe, and tell me what's wrong",
+      "passed": true,
+      "durationMs": 8944,
+      "ttfwMs": 1295,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_highlight",
+        "stack_filter",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_highlight",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "showing the stack and highlighting notion-scribe.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1295ms full=8944ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "5 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "multi-05",
+      "category": "multi_step",
+      "query": "put the graph and the workflow side by side and filter the graph to memories",
+      "passed": true,
+      "durationMs": 2009,
+      "ttfwMs": 806,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "graph_filter_layer",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_filter_layer",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": false
+        }
+      ],
+      "replyText": "put the graph and workflow side by side, filtering the graph to memories.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=806ms full=2009ms"
+        },
+        "multi_step": {
+          "score": 2,
+          "rationale": "2 tool calls, wanted 3+"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 0,
+          "rationale": "0/1 failures had a follow-up success"
+        },
+        "calm_canvas": {
+          "score": 3,
+          "rationale": "missing: graph,workflow"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "multi-06",
+      "category": "multi_step",
+      "query": "open the brief and the stack, then compare what's broken with what's proposed",
+      "passed": true,
+      "durationMs": 1918,
+      "ttfwMs": 748,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "open_window",
+        "arrange_windows",
+        "compare"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "compare",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "opening the brief and stack to compare issues and proposals.opening the brief and stack to compare issues and proposals.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=748ms full=1918ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "4 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "multi-07",
+      "category": "multi_step",
+      "query": "find everything related to notion in the graph and explain the rate limit warning",
+      "passed": true,
+      "durationMs": 13565,
+      "ttfwMs": 7727,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "graph_filter_integration",
+        "explain",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_filter_integration",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "explain",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "I'll graph notion and explain the rate limit warning.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=7727ms full=13565ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "5 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "multi-08",
+      "category": "multi_step",
+      "query": "show me the morning brief, approve bp-001, then open the workflow",
+      "passed": true,
+      "durationMs": 9355,
+      "ttfwMs": 1075,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_approve"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_approve",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "ok, showing morning brief, approving bp-001, and opening workflow.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=1075ms full=9355ms"
+        },
+        "multi_step": {
+          "score": 2,
+          "rationale": "1 tool calls, wanted 3+"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: workflow"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "multi-09",
+      "category": "multi_step",
+      "query": "open settings, check which integrations are connected, then show me the graph filtered to gmail",
+      "passed": true,
+      "durationMs": 13558,
+      "ttfwMs": 1683,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "settings_scroll_to",
+        "settings_filter",
+        "graph_filter_integration",
+        "open_window",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "settings_scroll_to",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "settings_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_filter_integration",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "opening settings, integrations, and the graph, and filtering the graph to gmail.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1683ms full=13558ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "7 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "multi-10",
+      "category": "multi_step",
+      "query": "clean the canvas, open just the stack, filter to warnings, and explain the warn",
+      "passed": true,
+      "durationMs": 7280,
+      "ttfwMs": 1632,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "clear_canvas",
+        "open_window",
+        "open_window",
+        "stack_filter",
+        "explain"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "clear_canvas",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "explain",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "cleaning canvas, filtering stack to warnings, and explaining them.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1632ms full=7280ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "5 tool calls (min 4)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 46%"
+        }
+      }
+    },
+    {
+      "id": "multi-11",
+      "category": "multi_step",
+      "query": "show the playbooks, search for standup, then open the workflow to compare",
+      "passed": true,
+      "durationMs": 8625,
+      "ttfwMs": 1125,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "playbooks_search",
+        "compare",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "playbooks_search",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "compare",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "showing playbooks and searching for standup.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=1125ms full=8625ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "5 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused workflow off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "multi-12",
+      "category": "multi_step",
+      "query": "open the brief and graph together, then highlight bp-003 in the brief and search for it in the graph",
+      "passed": true,
+      "durationMs": 2449,
+      "ttfwMs": 967,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "delegate_content",
+        "graph_search",
+        "open_window",
+        "open_window",
+        "arrange_windows",
+        "brief_highlight",
+        "graph_focus_node"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_search",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "brief_highlight",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_focus_node",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "opening brief and graph, and searching for bp-003.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=967ms full=2449ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "6 tool calls (min 4)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused graph off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "multi-13",
+      "category": "multi_step",
+      "query": "focus the stack, select notion-scribe, and push a memory card about the rate limit",
+      "passed": true,
+      "durationMs": 10667,
+      "ttfwMs": 1360,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "push_card",
+        "open_window",
+        "open_window",
+        "focus_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "push_card",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "focus_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "focusing the stack and adding a memory card about the rate limit.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1360ms full=10667ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "4 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "multi-14",
+      "category": "multi_step",
+      "query": "show the workflow list, select bug-triage-pipeline, then show its recipe",
+      "passed": false,
+      "durationMs": 13783,
+      "ttfwMs": 12550,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "show the workflow list, select the bug-triage-pipeline, and then show its recipe.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 2,
+          "rationale": "missing delegate_content"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=12550ms full=13783ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "3 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: graph"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused workflow off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "multi-15",
+      "category": "multi_step",
+      "query": "tile the brief, stack, and workflow, then filter the brief to low confidence",
+      "passed": true,
+      "durationMs": 13246,
+      "ttfwMs": 1029,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_filter",
+        "open_window",
+        "open_window",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "ok, tiling and filtering.I'm tiling and filtering for you.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=1029ms full=13246ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "4 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused workflow off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "multi-16",
+      "category": "multi_step",
+      "query": "open the graph, zoom to fit, then filter by the slack integration",
+      "passed": true,
+      "durationMs": 2611,
+      "ttfwMs": 846,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "graph_filter_integration",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_filter_integration",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "opening the graph and filtering by the slack integration.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=846ms full=2611ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "3 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "multi-17",
+      "category": "multi_step",
+      "query": "show me the morning brief, defer the newsletter cleanup, then focus on bug triage",
+      "passed": true,
+      "durationMs": 13975,
+      "ttfwMs": 1862,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_scroll_to",
+        "brief_defer",
+        "graph_focus_node",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_scroll_to",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "brief_defer",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_focus_node",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "ok, showing morning brief and bug triage.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1862ms full=13975ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "6 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: workflow"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused workflow off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "multi-18",
+      "category": "multi_step",
+      "query": "put the graph full screen, search for raj, and show his neighbors",
+      "passed": true,
+      "durationMs": 8370,
+      "ttfwMs": 945,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "graph_search",
+        "graph_neighbors"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_search",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_neighbors",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "putting the graph full screen and searching for raj's neighbors.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=945ms full=8370ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "3 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "multi-19",
+      "category": "multi_step",
+      "query": "open the stack and the settings side by side, then check if notion is connected",
+      "passed": true,
+      "durationMs": 1851,
+      "ttfwMs": 948,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "graph_filter_integration",
+        "open_window",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_filter_integration",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "opening stack and settings, and checking Notion connection.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=948ms full=1851ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "3 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused settings off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "multi-20",
+      "category": "multi_step",
+      "query": "show the workflow, toggle to dag view, and explain the first step",
+      "passed": true,
+      "durationMs": 10620,
+      "ttfwMs": 667,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "focus_window",
+        "push_card"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "focus_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "push_card",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "showing the dag view and explaining the first step.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=667ms full=10620ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "3 tool calls (min 3)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: workflow; stray: graph"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-01",
+      "category": "marginal",
+      "query": "i'm anxious about friday",
+      "passed": true,
+      "durationMs": 8476,
+      "ttfwMs": 895,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i'm sorry to hear that. let's see what's going on.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=895ms full=8476ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-02",
+      "category": "marginal",
+      "query": "what should i worry about today?",
+      "passed": true,
+      "durationMs": 6195,
+      "ttfwMs": 878,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i'll keep an eye out for anything urgent.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=878ms full=6195ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-03",
+      "category": "marginal",
+      "query": "give me a vibe check",
+      "passed": true,
+      "durationMs": 1920,
+      "ttfwMs": 716,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "push_card",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "push_card",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "let's get a sense of things.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=716ms full=1920ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-04",
+      "category": "marginal",
+      "query": "how's the team doing?",
+      "passed": true,
+      "durationMs": 1941,
+      "ttfwMs": 732,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "explain",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "explain",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "how's the team doing?",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=732ms full=1941ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-05",
+      "category": "marginal",
+      "query": "anything urgent?",
+      "passed": true,
+      "durationMs": 13476,
+      "ttfwMs": 976,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "anything urgent? i'll check for you.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=976ms full=13476ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-06",
+      "category": "marginal",
+      "query": "what happened while i was sleeping?",
+      "passed": true,
+      "durationMs": 2349,
+      "ttfwMs": 827,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "draft",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "draft",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "let's get you caught up.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=827ms full=2349ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-07",
+      "category": "marginal",
+      "query": "should i be worried about notion?",
+      "passed": true,
+      "durationMs": 13312,
+      "ttfwMs": 1393,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "explain",
+        "open_window",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "explain",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "worried about notion? let's take a look.it's probably best to check the stack.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1393ms full=13312ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 46%"
+        }
+      }
+    },
+    {
+      "id": "marginal-08",
+      "category": "marginal",
+      "query": "is raj keeping up?",
+      "passed": true,
+      "durationMs": 6465,
+      "ttfwMs": 978,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "graph_focus_node",
+        "graph_neighbors",
+        "graph_filter_layer",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_focus_node",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_neighbors",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_filter_layer",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "let's check raj's progress.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=978ms full=6465ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "6 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-09",
+      "category": "marginal",
+      "query": "catch me up",
+      "passed": true,
+      "durationMs": 3192,
+      "ttfwMs": 1444,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "brief_scroll_to",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "brief_scroll_to",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "let's get you caught up.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 3,
+          "rationale": "ttfw=1444ms full=3192ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-10",
+      "category": "marginal",
+      "query": "what's the health of the system?",
+      "passed": true,
+      "durationMs": 2480,
+      "ttfwMs": 1086,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "let's check on that for you.I'm looking into the system's health now.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=1086ms full=2480ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "marginal-11",
+      "category": "marginal",
+      "query": "am i behind on anything?",
+      "passed": true,
+      "durationMs": 13331,
+      "ttfwMs": 716,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "graph_filter_layer",
+        "graph_search",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_filter_layer",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_search",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i'll check for anything urgent.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=716ms full=13331ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "5 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-12",
+      "category": "marginal",
+      "query": "what did i miss yesterday?",
+      "passed": true,
+      "durationMs": 2195,
+      "ttfwMs": 912,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "draft",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "draft",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i can give you a rundown of yesterday's activity.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=912ms full=2195ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-13",
+      "category": "marginal",
+      "query": "how are the automations holding up?",
+      "passed": true,
+      "durationMs": 2450,
+      "ttfwMs": 1318,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "open_window",
+        "arrange_windows",
+        "brief_highlight"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "brief_highlight",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "the automations are holding up.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 3,
+          "rationale": "ttfw=1318ms full=2450ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "marginal-14",
+      "category": "marginal",
+      "query": "tell me something useful",
+      "passed": true,
+      "durationMs": 3421,
+      "ttfwMs": 780,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "graph_zoom_fit",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_zoom_fit",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "tell me something useful.i'll find something useful for you.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 3,
+          "rationale": "ttfw=780ms full=3421ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-15",
+      "category": "marginal",
+      "query": "is everything running smoothly?",
+      "passed": true,
+      "durationMs": 8589,
+      "ttfwMs": 762,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "everything looks okay for now.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=762ms full=8589ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "marginal-16",
+      "category": "marginal",
+      "query": "i feel like something is off",
+      "passed": true,
+      "durationMs": 3424,
+      "ttfwMs": 1129,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "open_window",
+        "arrange_windows",
+        "stack_filter"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i'll check what's wrong.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 3,
+          "rationale": "ttfw=1129ms full=3424ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-17",
+      "category": "marginal",
+      "query": "what's the biggest risk right now?",
+      "passed": true,
+      "durationMs": 14530,
+      "ttfwMs": 1956,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "is anything on fire?",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1956ms full=14530ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-18",
+      "category": "marginal",
+      "query": "should i check on anything before standup?",
+      "passed": true,
+      "durationMs": 13639,
+      "ttfwMs": 1448,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i'll check for anything urgent.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=1448ms full=13639ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-19",
+      "category": "marginal",
+      "query": "how confident are we in the proposals?",
+      "passed": true,
+      "durationMs": 13266,
+      "ttfwMs": 855,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "push_card",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "push_card",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "we're looking into the confidence levels of the proposals.we're looking into the confidence levels of the proposals.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=855ms full=13266ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: stack"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused stack off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-20",
+      "category": "marginal",
+      "query": "what needs my attention?",
+      "passed": true,
+      "durationMs": 13078,
+      "ttfwMs": 789,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "anything on fire?",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=789ms full=13078ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 46%"
+        }
+      }
+    },
+    {
+      "id": "marginal-21",
+      "category": "marginal",
+      "query": "give me the executive summary",
+      "passed": true,
+      "durationMs": 2684,
+      "ttfwMs": 735,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "draft",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "draft",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "here's your executive summary.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=735ms full=2684ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-22",
+      "category": "marginal",
+      "query": "i have five minutes before a meeting",
+      "passed": true,
+      "durationMs": 2550,
+      "ttfwMs": 807,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_scroll_to",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_scroll_to",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "ok, here's your morning brief.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=807ms full=2550ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-23",
+      "category": "marginal",
+      "query": "is anything on fire?",
+      "passed": true,
+      "durationMs": 7083,
+      "ttfwMs": 834,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "anything on fire? i'll check for you.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=834ms full=7083ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 48%"
+        }
+      }
+    },
+    {
+      "id": "marginal-24",
+      "category": "marginal",
+      "query": "what's the state of play?",
+      "passed": true,
+      "durationMs": 1831,
+      "ttfwMs": 777,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "graph_clear",
+        "push_card",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "graph_clear",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "push_card",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "here's a summary of recent activity.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=777ms full=1831ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-25",
+      "category": "marginal",
+      "query": "help me prepare for the investor call",
+      "passed": true,
+      "durationMs": 2059,
+      "ttfwMs": 1002,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "draft",
+        "open_window",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "draft",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "let's get you prepped for the investor call.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=1002ms full=2059ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "4 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated and sub-agent acted"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: graph"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused graph off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "fail-01",
+      "category": "failure_recovery",
+      "query": "approve the slack thing",
+      "passed": true,
+      "durationMs": 1646,
+      "ttfwMs": 778,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_approve"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_approve",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "ok, approved.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=778ms full=1646ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "fail-02",
+      "category": "failure_recovery",
+      "query": "show me the customer-onboarding workflow",
+      "passed": true,
+      "durationMs": 1899,
+      "ttfwMs": 1102,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "workflow_select",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "workflow_select",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "opening the customer onboarding workflow.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=1102ms full=1899ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "stray: brief"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 47%"
+        }
+      }
+    },
+    {
+      "id": "fail-03",
+      "category": "failure_recovery",
+      "query": "open the dashboard",
+      "passed": true,
+      "durationMs": 2977,
+      "ttfwMs": 1798,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "open the dashboard.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 3,
+          "rationale": "ttfw=1798ms full=2977ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "2 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "fail-04",
+      "category": "failure_recovery",
+      "query": "highlight bp-999",
+      "passed": true,
+      "durationMs": 2188,
+      "ttfwMs": 942,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "brief_highlight"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "brief_highlight",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "putting bp-999 in focus.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=942ms full=2188ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "fail-05",
+      "category": "failure_recovery",
+      "query": "filter the stack to critical",
+      "passed": true,
+      "durationMs": 1560,
+      "ttfwMs": 878,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "focus_window",
+        "stack_filter"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "focus_window",
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i'll filter the stack to critical.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=878ms full=1560ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "2 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "1/1 failures had a follow-up success"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "fail-06",
+      "category": "failure_recovery",
+      "query": "close the calendar",
+      "passed": true,
+      "durationMs": 11230,
+      "ttfwMs": 10188,
+      "toolCalls": [
+        "delegate_layout",
+        "close_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "close_window",
+          "durationMs": 0,
+          "ok": false
+        }
+      ],
+      "replyText": "closing the calendar.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=10188ms full=11230ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 0,
+          "rationale": "0/1 failures had a follow-up success"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "fail-07",
+      "category": "failure_recovery",
+      "query": "show me the jenkins logs",
+      "passed": true,
+      "durationMs": 2172,
+      "ttfwMs": 790,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_select",
+        "open_window",
+        "arrange_windows"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_select",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "arrange_windows",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "showing jenkins logs.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=790ms full=2172ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused workflow off-center by 49%"
+        }
+      }
+    },
+    {
+      "id": "fail-08",
+      "category": "failure_recovery",
+      "query": "select the deployment workflow",
+      "passed": true,
+      "durationMs": 1997,
+      "ttfwMs": 944,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "workflow_select"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "workflow_select",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "put the deployment workflow forward.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=944ms full=1997ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "canvas matches expectations"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "fail-09",
+      "category": "failure_recovery",
+      "query": "zoom into the slack node",
+      "passed": true,
+      "durationMs": 1999,
+      "ttfwMs": 700,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "open_window",
+        "graph_focus_node"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "graph_focus_node",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "let's take a look at slack.let's take a look at slack.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=700ms full=1999ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "2 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: graph; stray: stack"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "fail-10",
+      "category": "failure_recovery",
+      "query": "open the X window",
+      "passed": true,
+      "durationMs": 1580,
+      "ttfwMs": 677,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "open the X window.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=677ms full=1580ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "edge-01",
+      "category": "edge_case",
+      "query": "",
+      "passed": false,
+      "durationMs": 296,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "hi",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=296ms full=296ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "edge-02",
+      "category": "edge_case",
+      "query": "do nothing",
+      "passed": true,
+      "durationMs": 1848,
+      "ttfwMs": 924,
+      "toolCalls": [
+        "delegate_layout",
+        "clear_canvas"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "clear_canvas",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "ok, resetting layout.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 4,
+          "rationale": "ttfw=924ms full=1848ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "edge-03",
+      "category": "edge_case",
+      "query": "open everything then close everything",
+      "passed": true,
+      "durationMs": 8693,
+      "ttfwMs": 6816,
+      "toolCalls": [
+        "delegate_layout",
+        "clear_canvas"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "clear_canvas",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "opening and closing everything.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=6816ms full=8693ms"
+        },
+        "multi_step": {
+          "score": 4,
+          "rationale": "1 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "edge-04",
+      "category": "edge_case",
+      "query": "🔥🔥🔥",
+      "passed": true,
+      "durationMs": 13295,
+      "ttfwMs": 879,
+      "toolCalls": [
+        "delegate_layout",
+        "delegate_content",
+        "stack_filter",
+        "open_window",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "stack_filter",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "anything on fire?",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 2,
+          "rationale": "ttfw=879ms full=13295ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "focused brief off-center by 46%"
+        }
+      }
+    },
+    {
+      "id": "edge-05",
+      "category": "edge_case",
+      "query": "open the brief close the brief open the brief close the brief",
+      "passed": true,
+      "durationMs": 11024,
+      "ttfwMs": 10285,
+      "toolCalls": [
+        "delegate_layout",
+        "open_window",
+        "close_window",
+        "open_window"
+      ],
+      "subAgentToolCalls": [
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "close_window",
+          "durationMs": 0,
+          "ok": true
+        },
+        {
+          "name": "open_window",
+          "durationMs": 0,
+          "ok": true
+        }
+      ],
+      "replyText": "i'll open and close the brief for you.",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 1,
+          "rationale": "ttfw=10285ms full=11024ms"
+        },
+        "multi_step": {
+          "score": 5,
+          "rationale": "3 tool calls (min 1)"
+        },
+        "coverage": {
+          "score": 5,
+          "rationale": "delegated"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    }
+  ]
+}
