@@ -3,8 +3,8 @@
 # HANDOFF — overnight ralph loop
 
 **Started:** 2026-04-25 ~00:30
-**Branch:** `research/2026-04-25-overnight` (worktree at `/Users/jordantran/Agemo/agent-workspace`)
-**Source repo:** `/Users/jordantran/Agemo/microbots` (untouched on `main`)
+**Branch:** `research/2026-04-25-overnight` (worktree at `<internal-workspace>`)
+**Source repo:** `/Users/jordantran/the upstream codebase/microbots` (untouched on `main`)
 
 ---
 
@@ -21,7 +21,7 @@
 
 - ✅ No git pushes
 - ✅ No deploys
-- ✅ No Agemo code copied (read-only architectural reference)
+- ✅ No the upstream codebase code copied (read-only architectural reference)
 - ✅ No money spent (no live LLM calls, no Composio activations)
 - ✅ `.env` not touched (your modifications preserved)
 
@@ -30,10 +30,10 @@
 | # | Decision | Why default | Where to revise |
 |---|---|---|---|
 | 1 | Demo task: morning-brief frame + Gmail-to-Linear copy-paste cluster as the promoted workflow | Most visible cluster pattern, cleanest Composio wiring (Gmail + Linear toolkits), strongest IoA fit | design doc §11 |
-| 2 | Agemo IP boundary: read for patterns, clean-room rebuild | Safest re: employer IP — read-only references, zero copies | n/a |
+| 2 | the upstream codebase IP boundary: read for patterns, clean-room rebuild | Safest re: employer IP — read-only references, zero copies | n/a |
 | 3 | Stack: Python/FastAPI + pydantic-ai + SurrealDB + vanilla-JS iframe | Existing scaffold matches; pydantic-ai gives Logfire synergy; vanilla JS for iframe leanness | design doc §5 |
 | 4 | Demo integrations: Gmail + Slack + Linear via Composio MCP | Zero-config pydantic-ai integration; founder-resonant; free tier 20k calls/mo | design doc §11 |
-| 5 | Workflow primitive: PEP-723 `server.py` FastAPI per Render Web Service | Stolen verbatim from Agemo runtime pattern (R2 finding) | design doc §5.4, §7.5 |
+| 5 | Workflow primitive: PEP-723 `server.py` FastAPI per Render Web Service | Stolen verbatim from runtime pattern pattern (R2 finding) | design doc §5.4, §7.5 |
 | 6 | Multi-tenancy: row-level `owner` + table PERMISSIONS, not db-per-user | Live queries can't span databases — would break playbook layer | design doc §6.2 |
 | 7 | Auth model: BYO API key (Anthropic) + per-user JWT (SurrealDB) | Anthropic banned 3rd-party OAuth (Feb 2026 ToS); paste + validate is fine | design doc §8 |
 | 8 | Devin demo: hybrid (pre-record + live theater + canned PR fallback) | Pure-live too risky (67% success, 15-min ACUs); pure-recorded weak signal | design doc §11.2 |
@@ -59,8 +59,8 @@ These were settled tonight by research and contradict things I said earlier in o
 - `.gitignore` — Python / pytest / .env.local / .DS_Store
 
 ### Research notes (10 files, ~13.8k words total)
-- `../harness/agemo-agents.md` — agent + sub-agent + harness patterns from Agemo
-- `../harness/agemo-runtime-pattern.md` — workflow execution architecture (PEP-723 server.py contract)
+- `../harness/agent-architecture.md` — agent + sub-agent + harness patterns from the upstream codebase
+- `../harness/runtime-pattern.md` — workflow execution architecture (PEP-723 server.py contract)
 - `../harness/ralph-loop.md` — Geoffrey Huntley pattern, Stop-hook mechanism
 - `../harness/atomic-sdk.md` — flora131/atomic, why we don't use it
 - `../harness/kaig-martin.md` — Martin's SurrealDB-as-filesystem patterns
@@ -96,11 +96,11 @@ These were settled tonight by research and contradict things I said earlier in o
 
 ## Files I deliberately did NOT touch
 
-- `/Users/jordantran/Agemo/microbots/.env` — your modified env, off-limits
-- `/Users/jordantran/Agemo/microbots/` source checkout (worktree on a separate branch)
-- `/Users/jordantran/Agemo/agemo/` — read-only architectural reference
-- `/Users/jordantran/Agemo/agemo-pre-ralph-loop/` — read-only diff target
-- Any other top-level Agemo directory
+- `/Users/jordantran/the upstream codebase/microbots/.env` — your modified env, off-limits
+- `/Users/jordantran/the upstream codebase/microbots/` source checkout (worktree on a separate branch)
+- `<internal-source>` — read-only architectural reference
+- `<internal-source>` — read-only diff target
+- Any other top-level the upstream codebase directory
 
 ## Verification status
 
@@ -124,8 +124,8 @@ These were settled tonight by research and contradict things I said earlier in o
 
 When you wake up:
 
-1. `cd /Users/jordantran/Agemo/microbots && git fetch && git checkout research/2026-04-25-overnight`
-2. `cat /Users/jordantran/Agemo/agent-workspace/skimple.md` (or open in editor)
+1. `cd /Users/jordantran/the upstream codebase/microbots && git fetch && git checkout research/2026-04-25-overnight`
+2. `cat <internal-workspace>` (or open in editor)
 3. Skim this file
 4. Read design doc + impl plan
 5. Drop the credentials in `microbots/.env.local`
@@ -146,10 +146,10 @@ If you're happy:
 This worktree was committed as one commit on `research/2026-04-25-overnight` containing all overnight artifacts. Source `microbots/` checkout (`main` branch) is untouched. To merge into your main work:
 
 ```bash
-cd /Users/jordantran/Agemo/microbots
+cd /Users/jordantran/the upstream codebase/microbots
 git fetch
 git log research/2026-04-25-overnight --oneline  # confirm commit
 git merge --no-ff research/2026-04-25-overnight  # or cherry-pick what you want
 ```
 
-Or just keep the branch parallel and reference files via the worktree at `/Users/jordantran/Agemo/agent-workspace/`.
+Or just keep the branch parallel and reference files via the worktree at `<internal-workspace>`.

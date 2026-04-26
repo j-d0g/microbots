@@ -6,7 +6,7 @@ Running log of activity. Newest at top.
 
 ## 2026-04-25 — kickoff
 
-- ✅ Created worktree at `/Users/jordantran/Agemo/agent-workspace` on branch `research/2026-04-25-overnight`
+- ✅ Created worktree at `<internal-workspace>` on branch `research/2026-04-25-overnight`
 - ✅ Discovered existing microbots foundation (schema + seed + markdown layer system) — already committed at `dfc6018`
 - ✅ Scaffolded directory structure: `docs/{research,specs,plans}`, `notes/`, `scaffold/{agent,web,tools}`
 - ✅ Seeded skimple.md, handoff.md, progress.md
@@ -16,8 +16,8 @@ Running log of activity. Newest at top.
 
 | ID | Topic | Output | Headline finding |
 |----|-------|--------|------------------|
-| R1 | Agemo agents/harness | `../harness/agemo-agents.md` | Cody's `consult_docs` ≅ microbots' `layer_index` graph (graph version stronger). Wire pydantic-ai to `read_layer(id)`. One dispatcher per provider, not N tools. |
-| R2 | Agemo runtime | `../harness/agemo-runtime-pattern.md` | Workflow = single PEP-723 `server.py` FastAPI. **Drop E2B+coordinator for promoted bots** → one Render Web Service per microbot, Render API for programmatic deploy. Steal `server.py` contract verbatim. |
+| R1 | agent + harness patterns | `../harness/agent-architecture.md` | the upstream agent's `consult_docs` ≅ microbots' `layer_index` graph (graph version stronger). Wire pydantic-ai to `read_layer(id)`. One dispatcher per provider, not N tools. |
+| R2 | runtime pattern | `../harness/runtime-pattern.md` | Workflow = single PEP-723 `server.py` FastAPI. **Drop E2B+coordinator for promoted bots** → one Render Web Service per microbot, Render API for programmatic deploy. Steal `server.py` contract verbatim. |
 | R3 | Ralph loop | `../harness/ralph-loop.md` | Geoffrey Huntley's `while true` re-feeding same prompt until `<promise>DONE</promise>`. Stop-hook driver + `.claude/ralph-loop.local.md` state. ~190 LOC bash. **Borrow scaffold, replace static prompt with templated reflect-replan for our consolidator.** |
 | R4 | Atomic SDK | `../harness/atomic-sdk.md` | TS-only, wraps black-box CLIs via tmux. **Don't adopt.** Port concepts: frozen workflow graph, transcript-only stage hand-off, sub-agent role taxonomy. |
 | R5 | Martin's kaig | `../harness/kaig-martin.md` | Flat `file` table + computed path. pydantic-ai `FunctionToolset` with cat/ls/edit/write/mkdir/retrieve. `db.live(Table('file'))` for UI sync. **Port tool shape verbatim. Our `layer_index` already richer than kaig's flat FS.** |
@@ -45,4 +45,4 @@ Running log of activity. Newest at top.
 
 ## Final state
 
-Worktree at `/Users/jordantran/Agemo/agent-workspace/` on branch `research/2026-04-25-overnight`. Ready for commit. Source `microbots/` checkout untouched. Zero pushes, zero deploys, zero money spent.
+Worktree at `<internal-workspace>` on branch `research/2026-04-25-overnight`. Ready for commit. Source `microbots/` checkout untouched. Zero pushes, zero deploys, zero money spent.

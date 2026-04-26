@@ -30,7 +30,7 @@ Archived planning docs from the overnight ralph loop. Useful for context, but so
 
 Small number of high-signal product/architecture insights that survived later pressure-testing.
 
-- [`key-insights.md`](insights/key-insights.md) — CodeWords-gap framing, card-deck suggestion UX, and live → consulting → rigid microbot lifecycle.
+- [`key-insights.md`](insights/key-insights.md) — the upstream stack-gap framing, card-deck suggestion UX, and live → consulting → rigid microbot lifecycle.
 
 ### [`stack/`](stack/)
 
@@ -45,8 +45,8 @@ Sponsor and platform research. Use this when wiring dependencies or deciding wha
 
 Patterns from other agent systems. Pull concepts, not code.
 
-- [`agemo-agents.md`](harness/agemo-agents.md) — Cody/Claude harness patterns: just-in-time markdown navigation, modes, reminders.
-- [`agemo-runtime-pattern.md`](harness/agemo-runtime-pattern.md) — PEP-723 FastAPI workflow primitive and Render deployment idea.
+- [`agent-architecture.md`](harness/agent-architecture.md) — the upstream agent/Claude harness patterns: just-in-time markdown navigation, modes, reminders.
+- [`runtime-pattern.md`](harness/runtime-pattern.md) — PEP-723 FastAPI workflow primitive and Render deployment idea.
 - [`ralph-loop.md`](harness/ralph-loop.md) — while-true outer-loop pattern for iterative agent work.
 - [`atomic-sdk.md`](harness/atomic-sdk.md) — frozen workflow graph, transcript hand-offs, model/tool tiers.
 - [`coding-agents-external.md`](harness/coding-agents-external.md) — Devin and pi as peripherals rather than core substrate.
@@ -63,8 +63,8 @@ Unstructured source material. Only read this if you need quotes or provenance.
 
 | Lane | Topic | File |
 |---|---|---|
-| R1 | Agemo agents/harness | [`harness/agemo-agents.md`](harness/agemo-agents.md) |
-| R2 | Agemo runtime | [`harness/agemo-runtime-pattern.md`](harness/agemo-runtime-pattern.md) |
+| R1 | agent + harness patterns | [`harness/agent-architecture.md`](harness/agent-architecture.md) |
+| R2 | runtime pattern | [`harness/runtime-pattern.md`](harness/runtime-pattern.md) |
 | R3 | Ralph loop | [`harness/ralph-loop.md`](harness/ralph-loop.md) |
 | R6 | SurrealDB v2 | [`stack/surrealdb.md`](stack/surrealdb.md) |
 | R7 | Pydantic-AI + Logfire | [`stack/pydantic-stack.md`](stack/pydantic-stack.md) |

@@ -8,7 +8,7 @@
 
 Atomic (flora131/atomic) is an open-source CLI + TypeScript SDK that wraps production coding-agent CLIs in deterministic, multi-session pipelines. It does **not** run an LLM loop itself — it spawns Claude Code / OpenCode / Copilot in isolated tmux sessions and coordinates their transcripts. The pitch: encode "research → spec → implement → review → debug" as a reproducible TS pipeline that runs identically on every dev machine and CI box. Headline use cases are Ralph-style autonomous loops and parallel codebase research with sub-agents.
 
-The local trial worktree at `/Users/jordantran/Agemo/agemo/.worktrees/atomic-trial/` contains **no atomic-specific additions** — its diff against main is unrelated kuby/k8s/UI work. Treat this as "branch reserved, never populated."
+The local trial worktree at `<internal-source>` contains **no atomic-specific additions** — its diff against main is unrelated kuby/k8s/UI work. Treat this as "branch reserved, never populated."
 
 ## Architecture / primitives
 

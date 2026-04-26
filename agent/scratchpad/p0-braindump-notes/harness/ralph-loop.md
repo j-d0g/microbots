@@ -20,8 +20,8 @@ Ralph Loop is the "Ralph Wiggum technique" pioneered by Geoffrey Huntley: a `whi
   - `scripts/setup-ralph-loop.sh` — writes `.claude/ralph-loop.local.md` containing YAML frontmatter (`active`, `iteration: 1`, `session_id`, `max_iterations`, `completion_promise`, `started_at`) and the prompt body.
   - `hooks/hooks.json` — registers a single `Stop` hook.
   - `hooks/stop-hook.sh` — the heart of it. Reads transcript, looks for `<promise>...</promise>` in the last assistant text block, decrements/checks iterations; if not done, returns `{"decision":"block","reason":<original prompt>,"systemMessage":"Ralph iteration N | ..."}` to force Claude to keep going.
-- `/Users/jordantran/Agemo/agemo/` vs `/Users/jordantran/Agemo/agemo-pre-ralph-loop/` diff: the pre-ralph-loop snapshot is just a generic timestamped backup of the agemo repo. Many divergences are unrelated (CI workflows, container changes, schema). The only ralph-loop-correlated artifact is the *absence* of `.claude/ralph-loop.local.md` and `.worktrees/` in the snapshot. There is no Agemo-specific "ralph integration" — ralph-loop is purely a Claude harness plugin, not an Agemo repo feature.
-- `~/.claude/projects/-Users-jordantran-Agemo-agemo--worktrees-poweruser-ralph/` — exists but I did not need to grep it; the worktree name `poweruser-ralph` confirms Jordan ran a ralph experiment in a dedicated worktree at some point.
+- `<internal-source>` vs `<internal-source>` diff: the pre-ralph-loop snapshot is just a generic timestamped backup of the upstream repo. Many divergences are unrelated (CI workflows, container changes, schema). The only ralph-loop-correlated artifact is the *absence* of `.claude/ralph-loop.local.md` and `.worktrees/` in the snapshot. There is no upstream-specific "ralph integration" — ralph-loop is purely a Claude harness plugin, not an upstream repo feature.
+- `<internal-claude-projects-path>` — exists but I did not need to grep it; the worktree name `poweruser-ralph` confirms Jordan ran a ralph experiment in a dedicated worktree at some point.
 
 ## Pattern
 

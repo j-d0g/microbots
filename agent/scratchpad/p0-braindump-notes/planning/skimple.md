@@ -5,8 +5,8 @@
 > The first thing you read. Liquid-gold findings from a night of research and scaffolding. If you only read one file, this is it.
 
 **Status:** complete
-**Branch:** `research/2026-04-25-overnight` (worktree at `/Users/jordantran/Agemo/agent-workspace`)
-**Constraints honored:** no keys, no pushes, no deploys, no Agemo code copied
+**Branch:** `research/2026-04-25-overnight` (worktree at `<internal-workspace>`)
+**Constraints honored:** no keys, no pushes, no deploys, no the upstream codebase code copied
 
 ---
 
@@ -30,15 +30,15 @@ The 90-second pitch:
 | Devin demo | "Promote accepted suggestion live" | 67% PR merge rate, sessions can hang for hours, ACUs are 15-min chunks | **Hybrid demo:** pre-record happy path + parallel live session for theater + canned PR fallback. |
 | Render hosting | "Free tier" | Free tier sleeps after 15 min — demo killer | **Starter tier ($7/mo)** required. |
 | SurrealDB multi-tenancy | "DB per user maybe" | Live queries can't span databases — would break the playbook layer | **Row-level `owner` + table PERMISSIONS in one ns/db.** |
-| Workflow primitive | "Python microservice in E2B" | Agemo runs them in E2B per-request from a coordinator | **Drop coordinator + E2B for promoted bots.** One Render Web Service per microbot, Render REST API for programmatic create. Keep E2B only for pre-promotion sandboxing. |
+| Workflow primitive | "Python microservice in E2B" | the upstream codebase runs them in E2B per-request from a coordinator | **Drop coordinator + E2B for promoted bots.** One Render Web Service per microbot, Render REST API for programmatic create. Keep E2B only for pre-promotion sandboxing. |
 
 ## Top 5 actionable findings
 
 ### 1. The existing schema *is* the moat — wire it to a `read_layer` tool
 
-microbots' `layer_index` + `drills_into` + `indexed_by` graph pattern is functionally identical to Agemo's `consult_docs` filesystem-of-markdown — but **strictly better**: token budgets per layer, FTS + HNSW backing, polymorphic edges, live-query-able. The highest-ROI port from Agemo is wiring pydantic-ai to a `read_layer(layer_id)` tool that returns the budgeted markdown for that layer. The agent navigates the graph by drilling layers — not by stuffing all memory in context.
+microbots' `layer_index` + `drills_into` + `indexed_by` graph pattern is functionally identical to the upstream codebase's `consult_docs` filesystem-of-markdown — but **strictly better**: token budgets per layer, FTS + HNSW backing, polymorphic edges, live-query-able. The highest-ROI port from the upstream codebase is wiring pydantic-ai to a `read_layer(layer_id)` tool that returns the budgeted markdown for that layer. The agent navigates the graph by drilling layers — not by stuffing all memory in context.
 
-→ See `../harness/agemo-agents.md`
+→ See `../harness/agent-architecture.md`
 
 ### 2. Composio + pydantic-ai = zero-config via MCP
 
@@ -48,14 +48,14 @@ Composio publishes a first-party MCP integration. One line: `composio.create(use
 
 ### 3. Workflow primitive locked: PEP-723 `server.py` → Render Web Service per microbot
 
-Agemo's workflow contract: a single Python file with `# /// script` PEP-723 deps header, a FastAPI app, typed Pydantic request/response models, structlog middleware. We **steal this contract verbatim**. When a founder accepts a proposed automation:
+The upstream codebase's workflow contract: a single Python file with `# /// script` PEP-723 deps header, a FastAPI app, typed Pydantic request/response models, structlog middleware. We **steal this contract verbatim**. When a founder accepts a proposed automation:
 1. Devin (or our own LLM) drafts `server.py` in a new repo from a template
 2. Agent calls Render REST API: `POST /v1/services` with that repo
 3. Render auto-deploys
 4. Agent registers it in SurrealDB as a `workflow:slug` node + `workflow_uses → integration` edges
 5. Render Cron Job hooks the schedule
 
-→ See `../harness/agemo-runtime-pattern.md`
+→ See `../harness/runtime-pattern.md`
 
 ### 4. Live-query iframe is the demo weapon
 
@@ -81,7 +81,7 @@ Geoffrey Huntley's "Ralph Wiggum" technique (now a Claude plugin): a `while true
 
 ## What's already in the repo
 
-The microbots checkout at `/Users/jordantran/Agemo/microbots` (commit `dfc6018`) has:
+The microbots checkout at `/Users/jordantran/the upstream codebase/microbots` (commit `dfc6018`) has:
 
 - ✅ SurrealDB v2 in `docker-compose.yml`
 - ✅ Schema: `00_setup.surql`, `01_nodes.surql` (8 tables), `02_relations.surql` (16 relations including polymorphic), `03_indexes.surql` (HNSW + FTS), `apply.py`
@@ -169,7 +169,7 @@ A FastAPI app hosts the agent loop and the chat UI. The agent loop is a pydantic
 - `plan-v1.md` — bounded ordered tasks for the team
 - `scaffold/` — verifiable static scaffolding: agent loop interface contracts, iframe HTML mock, render.yaml, type definitions
 
-**Untouched:** the source `microbots/` checkout, your `.env`, all of `agemo/`, Mubit credit, Render dollars, GitHub remote.
+**Untouched:** the source `microbots/` checkout, your `.env`, all of `the upstream codebase/`, Mubit credit, Render dollars, GitHub remote.
 
 ## Where to look next (priority order Friday morning)
 

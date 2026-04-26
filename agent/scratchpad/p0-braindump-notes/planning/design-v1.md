@@ -166,7 +166,7 @@ The loop scaffold borrows from Geoffrey Huntley's ralph-loop (~190 LOC bash → 
    - The candidate's `description`, `trigger`, `outcome`
    - SurrealQL schema (as Devin Knowledge entry)
    - Composio tool list relevant to the workflow
-   - The PEP-723 `server.py` template (stolen verbatim from Agemo runtime)
+   - The PEP-723 `server.py` template (borrowed from the upstream runtime pattern)
 4. Two paths run in parallel:
    - **Live path:** `POST /v3/organizations/{org}/sessions` to Devin with the spec + a fresh repo URL
    - **Recorded path:** pre-recorded Devin session video starts playing in iframe (synthetic timing)
@@ -193,7 +193,7 @@ Onboarding RAGs the playbook graph: at signup, after first 3 toolkits connected,
 
 ## 6. Data model
 
-See `/Users/jordantran/Agemo/agent-workspace/schema/*.surql` for the actual SurrealQL definitions. Highlights:
+See `<internal-workspace>` for the actual SurrealQL definitions. Highlights:
 
 - **8 node tables:** `user_profile`, `integration`, `entity`, `chat`, `memory`, `skill`, `workflow`, `layer_index`
 - **16 relations** including polymorphic edges (`memory_about IN memory OUT entity | integration`, `memory_informs IN memory OUT skill | workflow`, `indexed_by IN ... OUT layer_index`)
@@ -295,7 +295,7 @@ async def propose_workflow(ctx: RunContext[AgentDeps], name: str, description: s
 
 ### 7.2 System prompt (skinny, indexes into navigation)
 
-Borrowing R1's pattern from Agemo's Cody:
+Borrowing R1's pattern from the upstream codebase's the upstream agent:
 
 ```
 You are microbots, an opinionated assistant for {founder_name}.
@@ -489,7 +489,7 @@ Five founder-flavored tasks, each scored on success / time / quality vs Claude (
 | "Find me the best flights from A to B" | combined (price × time × stops) |
 | "Find me intel on person X" | research depth (num verified facts) |
 
-Jordan has prior data showing CodeWords beats both on these. We replicate the harness with microbots and submit the report alongside the live demo.
+Jordan has prior data showing the upstream stack beats both on these. We replicate the harness with microbots and submit the report alongside the live demo.
 
 ## 13. Risks and open questions
 

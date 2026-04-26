@@ -63,10 +63,10 @@ These unblock everyone — do them first thing Friday morning.
 - **Time:** 5 min
 - **Action:**
   ```bash
-  cd /Users/jordantran/Agemo/microbots
+  cd /Users/jordantran/the upstream codebase/microbots
   git fetch
   git checkout research/2026-04-25-overnight  # the overnight branch
-  cat /Users/jordantran/Agemo/agent-workspace/skimple.md  # read first
+  cat <internal-workspace>  # read first
   ```
 - **Gate:** branch checked out; SKIMPLE read
 
@@ -201,7 +201,7 @@ These unblock everyone — do them first thing Friday morning.
 - **Owner:** Desmond (in parallel with S1/S2 if Jordan takes it)
 - **Time:** 120 min
 - **Depends:** F4 (agent works)
-- **Action:** Adapt Jordan's existing CodeWords bench. Five tasks (route, blogs, flats, flights, person research). Run microbots, Claude raw, Perplexity raw. Score per task.
+- **Action:** Adapt Jordan's existing the upstream stack bench. Five tasks (route, blogs, flats, flights, person research). Run microbots, Claude raw, Perplexity raw. Score per task.
 - **Gate:** `bench/results.md` with per-task scores; visual chart for pitch
 
 ---

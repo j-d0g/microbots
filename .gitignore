@@ -59,3 +59,6 @@ kaig/
 
 # --- Worktrees ---
 .worktrees/
+
+# --- Personal scratch (third-party content, not for commit) ---
+agent/scratchpad/p0-braindump-notes/raw/whatsapp.md

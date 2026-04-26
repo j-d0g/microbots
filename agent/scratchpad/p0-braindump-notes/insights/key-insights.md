@@ -4,13 +4,13 @@
 
 ---
 
-## 1. The CodeWords-gap framing
+## 1. The the upstream stack-gap framing
 
-**Insight.** CodeWords ships two products in one — Cody (the agentic chat) and the deployed workflow runtime — and Cody is meaningfully better than the workflows it builds, because workflows lose the reasoning layer and reduce to plain LLM calls inside rigid Python. Users vote with their feet: they default to chat. **microbots' move is to collapse the two surfaces — every microbot is just an agent on a schedule.**
+**Insight.** the upstream stack ships two products in one — the upstream agent (the agentic chat) and the deployed workflow runtime — and the upstream agent is meaningfully better than the workflows it builds, because workflows lose the reasoning layer and reduce to plain LLM calls inside rigid Python. Users vote with their feet: they default to chat. **microbots' move is to collapse the two surfaces — every microbot is just an agent on a schedule.**
 
-**Pitch line.** *"CodeWords' workflows are dumber than its chat — and that's why people use the chat. We collapse them."*
+**Pitch line.** *"an upstream workflows are dumber than its chat — and that's why people use the chat. We collapse them."*
 
-**Why it matters.** This is a defensible architectural pitch beat that other teams won't have. It explains WHY microbots is different from "Zapier with Claude" or "Cody but for non-technicals." It also unifies the sponsor story: Mubit captures lessons that let agent-runs *graduate* into deterministic code; Devin handles that crystallization step. Without this framing, Mubit and Devin feel like bolted-on logos.
+**Why it matters.** This is a defensible architectural pitch beat that other teams won't have. It explains WHY microbots is different from "Zapier with Claude" or "the upstream agent but for non-technicals." It also unifies the sponsor story: Mubit captures lessons that let agent-runs *graduate* into deterministic code; Devin handles that crystallization step. Without this framing, Mubit and Devin feel like bolted-on logos.
 
 ---
 
@@ -36,7 +36,7 @@
 
 ## Pointers (not duplicated here)
 
-The broader overnight research (10 files, ~13.8k words on Agemo, sponsors, kaig, ralph loop, atomic, etc.) now lives in `agent/research/`:
+The broader overnight research (10 files, ~13.8k words on the upstream codebase, sponsors, kaig, ralph loop, atomic, etc.) now lives in `agent/research/`:
 
 - `../planning/skimple.md` — distilled overview
 - `*.md` — per-topic deep dives
