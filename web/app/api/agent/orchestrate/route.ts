@@ -91,16 +91,23 @@ export async function POST(req: NextRequest) {
         // Two parallel streams from one streamText() result:
         //   - textStream: orchestrator's reply text (drives reply.chunk)
         //   - tool calls: handled internally via ctx.emit from tool handlers
-        let started = false;
+        //
+        // Emit reply.start unconditionally so the client clears any
+        // stale `agentReply` from the previous turn — otherwise tools-
+        // only turns leave the windowed-mode dock narrating an outdated
+        // reply while the canvas mutates. The chat-history slot is
+        // created lazily on first reply.chunk in agent-client.ts so
+        // tools-only turns don't leave empty agent bubbles.
+        emit({ type: "reply.start", query });
+        let speaking = false;
         for await (const chunk of result.textStream) {
-          if (!started) {
-            emit({ type: "reply.start", query });
+          if (!speaking) {
             emit({ type: "dock", state: "speaking" });
-            started = true;
+            speaking = true;
           }
           if (chunk.length > 0) emit({ type: "reply.chunk", text: chunk });
         }
-        if (started) emit({ type: "reply.done" });
+        emit({ type: "reply.done" });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         // eslint-disable-next-line no-console

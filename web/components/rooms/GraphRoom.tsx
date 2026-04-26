@@ -68,20 +68,51 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
+    // Count per-call rejections so we can distinguish "backend down →
+    // every call failed" from "user genuinely has no data". Without
+    // this, all-failure collapses into the empty-graph branch and the
+    // existing loadError overlay + retry button is unreachable.
+    let rejectedCount = 0;
+    const total = 7;
     Promise.all([
-      backend.getKgUser(userId).catch(() => null),
-      backend.getKgIntegrations(userId).catch(() => []),
-      backend.getKgEntities(undefined, userId).catch(() => []),
+      backend.getKgUser(userId).catch(() => {
+        rejectedCount++;
+        return null;
+      }),
+      backend.getKgIntegrations(userId).catch(() => {
+        rejectedCount++;
+        return [];
+      }),
+      backend.getKgEntities(undefined, userId).catch(() => {
+        rejectedCount++;
+        return [];
+      }),
       backend
         .getKgMemories({ by: "confidence", limit: 30 }, userId)
-        .catch(() => []),
-      backend.getKgSkills({ minStrength: 1 }, userId).catch(() => []),
-      backend.getKgWorkflows(userId).catch(() => []),
-      backend.getConnections(userId).catch(() => []),
+        .catch(() => {
+          rejectedCount++;
+          return [];
+        }),
+      backend.getKgSkills({ minStrength: 1 }, userId).catch(() => {
+        rejectedCount++;
+        return [];
+      }),
+      backend.getKgWorkflows(userId).catch(() => {
+        rejectedCount++;
+        return [];
+      }),
+      backend.getConnections(userId).catch(() => {
+        rejectedCount++;
+        return [];
+      }),
     ])
       .then(
         ([user, integrations, entities, memories, skills, workflows, connections]) => {
           if (cancelled) return;
+          if (rejectedCount === total) {
+            setLoadError("backend offline — your data is safe, retry in a moment.");
+            return;
+          }
           setGraph(
             toGraph({
               user,

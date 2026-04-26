@@ -119,27 +119,36 @@ export function applyAgentEvent(evt: AgentEvent): void {
       s.setDock(evt.state);
       break;
     case "reply.start":
+      // Clear any stale agentReply from the previous turn. The chat-
+      // history slot is created lazily in reply.chunk below so tools-
+      // only turns (no text) don't leave empty agent bubbles.
       s.startReply(evt.query);
-      // In chat mode, push a fresh agent message placeholder. The user
-      // message itself is pushed by the chat input handler at submit
-      // time so we don't double-record it here.
-      if (chat) {
-        s.appendChatMessage({
-          id: `agent-${Date.now()}`,
-          role: "agent",
-          text: "",
-          ts: Date.now(),
-          room: s.chatRoom,
-          status: "streaming",
-        });
-      }
       break;
     case "reply.chunk":
       s.appendReply(evt.text);
-      if (chat) s.appendToLastAgentMessage(evt.text);
+      if (chat) {
+        const last = useAgentStore.getState().chatMessages.at(-1);
+        if (last?.role === "agent" && last.status === "streaming") {
+          s.appendToLastAgentMessage(evt.text);
+        } else {
+          s.appendChatMessage({
+            id: `agent-${Date.now()}`,
+            role: "agent",
+            text: evt.text,
+            ts: Date.now(),
+            room: s.chatRoom,
+            status: "streaming",
+          });
+        }
+      }
       break;
     case "reply.done":
-      if (chat) s.finalizeLastAgentMessage();
+      if (chat) {
+        const last = useAgentStore.getState().chatMessages.at(-1);
+        if (last?.role === "agent" && last.status === "streaming") {
+          s.finalizeLastAgentMessage();
+        }
+      }
       break;
     case "agent.delegate":
       // Mirror into the recent-actions ring so the SnapshotInspector

@@ -547,6 +547,26 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
         (touchesBottom ? insetY : Math.round(insetY / 2));
       dw = Math.max(rawW - widthAdjust, min.w);
       dh = Math.max(rawH - heightAdjust, min.h);
+      // Fan-out for multiple same-kind windows. defaultMount-resolved
+      // windows can be near-fullscreen, so plain jitter just clamps
+      // them all to the same edge. Shrink subsequent ones to ~65% so
+      // there's actual room for the offset to land somewhere distinct.
+      const sameKindCount = s.windows.filter(
+        (w) => w.kind === kind && !w.minimized,
+      ).length;
+      if (sameKindCount > 0) {
+        dw = Math.max(min.w, Math.round(dw * 0.65));
+        dh = Math.max(min.h, Math.round(dh * 0.8));
+      }
+      const jitterStep = sameKindCount % 5;
+      dx = Math.min(
+        Math.max(GAP, dx + jitterStep * 64),
+        vw - dw - GAP,
+      );
+      dy = Math.min(
+        Math.max(GAP, dy + jitterStep * 32),
+        vh - DOCK_VISUAL_RESERVE - dh - GAP,
+      );
     }
 
     const id = `win-${++_modalId}`;
