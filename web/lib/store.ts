@@ -967,5 +967,32 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   roomStates: {},
   setRoomState: (room, state) =>
     set((s) => ({ roomStates: { ...s.roomStates, [room]: state } })),
+
+  /* --- conversation mode --- */
+  conversationMode: false,
+  setConversationMode: (enabled) => set({ conversationMode: enabled }),
+  toggleConversationMode: () =>
+    set((s) => {
+      const next = !s.conversationMode;
+      if (!next) {
+        return { conversationMode: next, dock: "idle" };
+      }
+      return { conversationMode: next };
+    }),
+  isAgentSpeaking: false,
+  setIsAgentSpeaking: (speaking) => set({ isAgentSpeaking: speaking }),
+
+  /* --- conversation state (ElevenLabs agent) --- */
+  conversationHistory: [],
+  currentIntent: null,
+  setConversationHistory: (history) => set({ conversationHistory: history }),
+  setCurrentIntent: (intent) => set({ currentIntent: intent }),
+  addConversationTurn: (turn) =>
+    set((s) => {
+      const MAX_HISTORY = 10;
+      const newHistory = [...s.conversationHistory, turn].slice(-MAX_HISTORY);
+      return { conversationHistory: newHistory };
+    }),
+  clearConversation: () => set({ conversationHistory: [], currentIntent: null }),
 }));
 

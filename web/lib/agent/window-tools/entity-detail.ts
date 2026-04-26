@@ -36,13 +36,10 @@ function applyAndEmit(
 function ensureEntityDetailWindow(ctx: AgentToolCtx, entityId?: string): AgentEvent[] {
   const alreadyOpen = ctx.snapshot.windows.some((w) => w.kind === "entity_detail");
   if (alreadyOpen) return [];
-  const events: AgentEvent[] = [
-    { type: "ui.room", room: "entity_detail" as WindowKind },
-  ];
-  if (entityId) {
-    events[0] = { ...events[0], slug: entityId };
-  }
-  return events;
+  const event: AgentEvent = entityId
+    ? { type: "ui.room", room: "entity_detail" as WindowKind, slug: entityId }
+    : { type: "ui.room", room: "entity_detail" as WindowKind };
+  return [event];
 }
 
 /** Dispatch a tool event to the entity_detail window. */
