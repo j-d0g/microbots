@@ -2,6 +2,32 @@
 
 Chronological diary so a fresh agent can pick up cold. Latest at top.
 
+## 2026-04-26 ~07:00 UTC — merged jordan/p2-v1-tools (4→8 tools)
+
+**Merged in** (commit `faf66a1`, no file conflicts — fully additive):
+- 4 new MCP tools: `view_workflow`, `run_workflow`, `list_workflows`, `search_memory`
+- `save_workflow` hardened: `overwrite=False` default, 64-char slug cap, 1MB code-size cap
+- 41 unit tests at `agent/harness/mcp/tests/`
+- e2e Playwright at `agent/harness/tests/e2e/`
+- p2 scratchpad at `agent/scratchpad/p2-v1-tools/`
+
+**Cloud redeploy auto-triggered**: deploy `dep-d7mrdvvaqgkc73fqrp10` live at 06:58:55 UTC. MCP server now exposes 8 tools.
+
+**Smoke-tested through deployed prod chain:**
+- `list_workflows` → `{workflows: [], count: 0}` (cloud disk is ephemeral; saved/ is empty after redeploy)
+- `view_workflow("daily-greet")` → `{error: "workflow not found"}` (same root cause)
+- Agent narrated both gracefully — no crash, no error to user
+
+**Quirk worth knowing:** the cloud MCP's `saved/` directory is on the container's ephemeral filesystem. Every redeploy wipes user-saved workflows. For the demo we either:
+1. Pre-seed `saved/` in the repo before deploy (commit example workflows)
+2. Move `saved/` to a persistent volume (Render Disk, $1/mo)
+3. Move to S3/R2/Postgres
+4. Accept it for v0 demo and re-save during the demo session
+
+Updated `notes/05-tool-schemas.md` for friend's UI mocking with the new 4 tools (now 8 total).
+
+---
+
 ## 2026-04-26 ~06:21 UTC — M2 deploy half done
 
 **Deployed:**
