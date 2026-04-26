@@ -48,14 +48,15 @@ def _serialize(value: Any) -> Any:
 
 
 @app.task
-def run_user_code(code: str, args: dict | None = None) -> dict:
+async def run_user_code(code: str, args: dict | None = None) -> dict:
     """Execute Python code in this container.
 
     - Captures stdout and stderr.
     - Pre-imports the bundled deps so the LLM can `import httpx`, etc.
-    - If the code defines `main(args)`, calls it and returns its result.
-    - Otherwise, the result is the namespace's last expression value (best
-      effort) or None.
+    - If the code defines `main(args)`, calls it and awaits if it's a
+      coroutine. Workflows dispatch tasks from inside an asyncio event
+      loop already, so this must be `async def` and `await` (not
+      `asyncio.run`, which refuses a running loop).
     - On exception, returns the traceback in `error`.
     """
     args = args or {}
@@ -75,7 +76,7 @@ def run_user_code(code: str, args: dict | None = None) -> dict:
             if callable(main):
                 value = main(args)
                 if asyncio.iscoroutine(value):
-                    value = asyncio.run(value)
+                    value = await value
                 result = value
     except SystemExit as exc:
         # Treat SystemExit(0) as success, anything else as error.

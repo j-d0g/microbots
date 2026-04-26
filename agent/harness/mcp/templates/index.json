@@ -14,6 +14,13 @@
     "code": "from urllib.request import urlopen\nfrom html.parser import HTMLParser\n\nclass _Strip(HTMLParser):\n    def __init__(self):\n        super().__init__(); self.parts = []\n    def handle_data(self, data):\n        self.parts.append(data)\n\nbody = urlopen('https://example.com', timeout=20).read().decode('utf-8', errors='replace')\nstripper = _Strip(); stripper.feed(body)\ntext = ' '.join(p.strip() for p in stripper.parts if p.strip())\nprint(len(text.split()))"
   },
   {
+    "id": "parallel-fetch-urls",
+    "title": "Fetch N URLs in parallel",
+    "description": "Fetches a list of URLs concurrently via httpx.AsyncClient + asyncio.gather. Returns status, byte count, and word count per URL plus total elapsed time. Use this pattern whenever the user asks for parallel I/O — one run_code call with internal gather is faster than N sequential run_code calls.",
+    "tags": ["parallel", "async", "fetch", "httpx", "asyncio", "url", "scrape"],
+    "code": "import asyncio\nimport time\nimport httpx\n\nasync def _fetch(client, url):\n    try:\n        r = await client.get(url)\n        byte_count = len(r.content)\n        word_count = len(r.text.split())\n        print(f\"[{r.status_code}] {url} bytes={byte_count} words={word_count}\")\n        return {\"url\": url, \"status_code\": r.status_code, \"byte_count\": byte_count, \"word_count\": word_count}\n    except Exception as e:\n        err = f\"{type(e).__name__}: {e}\"\n        print(f\"[ERR] {url} {err}\")\n        return {\"url\": url, \"error\": err}\n\nasync def main(args):\n    urls = args.get(\"urls\", [])\n    t0 = time.perf_counter()\n    async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:\n        results = await asyncio.gather(*(_fetch(client, u) for u in urls))\n    elapsed = time.perf_counter() - t0\n    print(f\"total {len(results)} urls in {elapsed:.2f}s\")\n    return {\"results\": results, \"elapsed_s\": elapsed}"
+  },
+  {
     "id": "slack-ping",
     "title": "Send a Slack message via Composio",
     "description": "Uses the Composio Python SDK to send a Slack message to a channel. Requires Composio Slack auth pre-linked.",
