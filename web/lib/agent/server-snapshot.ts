@@ -412,6 +412,7 @@ export function applyToolToSnapshot(
         rect: rectForMount(mount),
         zIndex: z,
         focused: true,
+        pinned: false,
         openedAt: now,
         summary: kind,
         ...(slug ? { slug } : {}),

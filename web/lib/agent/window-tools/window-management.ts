@@ -77,6 +77,7 @@ const WINDOW_KIND = z.enum([
   "workflows",
   "wiki",
   "chats_summary",
+  "composio_connect",
 ]);
 
 /** Rectangle schema for position/size operations */

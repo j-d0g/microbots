@@ -74,6 +74,7 @@ export const WINDOW_KIND = z.enum([
   "graph",
   "ask_user",
   "settings",
+  "composio_connect",
 ]);
 
 export const MOUNT_POINT = z.enum([

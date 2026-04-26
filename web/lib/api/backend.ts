@@ -137,7 +137,7 @@ export interface Workflow {
   description: string;
   trigger?: string;
   outcome?: string;
-  skill_chain?: { out: { skill_slug: string }; step_order: number }[];
+  skill_chain?: { skill_slug: string; step_order: number }[];
 }
 
 export interface EntityRow {

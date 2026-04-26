@@ -151,8 +151,14 @@ export function toGraph(bundle: KgBundle): {
       layer: safeLayer("workflow"),
     });
     for (const step of w.skill_chain ?? []) {
-      // skill_chain.out.skill_slug — backend uses slugs, not full ids.
-      const skillId = `skill:${step.out.skill_slug}`;
+      // KG REST returns flat { skill_slug, step_order }; defend
+      // against legacy { out: { skill_slug } } shape just in case
+      // a stale snapshot is still in flight.
+      const slug =
+        (step as { skill_slug?: string }).skill_slug ??
+        (step as { out?: { skill_slug?: string } }).out?.skill_slug;
+      if (!slug) continue;
+      const skillId = `skill:${slug}`;
       pushLink(acc, w.id, skillId, `step ${step.step_order}`);
     }
   }

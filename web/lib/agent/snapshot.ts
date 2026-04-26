@@ -68,6 +68,7 @@ function snapshotWindow(
     rect: round1(rectPct),
     zIndex: win.zIndex,
     focused: win.zIndex === topZ,
+    pinned: win.pinned,
     openedAt: 0, // populated by the caller using its own clock
     summary,
   };

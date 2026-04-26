@@ -66,7 +66,17 @@ export function IntegrationDetailWindow({
           empty={!data}
           onRetry={refetch}
         >
-          {data && (
+          {data && (() => {
+            /* Upstream data may arrive partial — e.g. when the agent
+             * seeds the window with just `{slug, name}` before the real
+             * /api/kg/integrations/{slug} response lands, or when the
+             * backend returns a stub for an unknown integration. Treat
+             * the nested arrays as optional here so the window renders
+             * "none yet" instead of crashing. */
+            const entities = data.entities ?? [];
+            const topMemories = data.top_memories ?? [];
+            const skills = data.skills ?? [];
+            return (
             <div className="space-y-4">
               <div>
                 <p className="font-mono text-[14px] text-ink-90">{data.name}</p>
@@ -77,12 +87,12 @@ export function IntegrationDetailWindow({
                 )}
               </div>
 
-              <Section title={`entities · ${data.entities.length}`}>
-                {data.entities.length === 0 ? (
+              <Section title={`entities · ${entities.length}`}>
+                {entities.length === 0 ? (
                   <Empty>none yet</Empty>
                 ) : (
                   <ul className="flex flex-wrap gap-1.5">
-                    {data.entities.map((e) => (
+                    {entities.map((e) => (
                       <li key={e.id}>
                         <button
                           type="button"
@@ -113,12 +123,12 @@ export function IntegrationDetailWindow({
                 )}
               </Section>
 
-              <Section title={`top memories · ${data.top_memories.length}`}>
-                {data.top_memories.length === 0 ? (
+              <Section title={`top memories · ${topMemories.length}`}>
+                {topMemories.length === 0 ? (
                   <Empty>none yet</Empty>
                 ) : (
                   <ul className="space-y-1.5">
-                    {data.top_memories.map((m) => (
+                    {topMemories.map((m) => (
                       <li
                         key={m.id}
                         className="rounded border border-rule/50 bg-paper-2/30 p-2"
@@ -140,12 +150,12 @@ export function IntegrationDetailWindow({
                 )}
               </Section>
 
-              <Section title={`skills · ${data.skills.length}`}>
-                {data.skills.length === 0 ? (
+              <Section title={`skills · ${skills.length}`}>
+                {skills.length === 0 ? (
                   <Empty>none yet</Empty>
                 ) : (
                   <ul className="space-y-1">
-                    {data.skills.map((s) => (
+                    {skills.map((s) => (
                       <li
                         key={s.id}
                         className="flex items-baseline justify-between rounded border border-rule/50 bg-paper-2/30 p-2"
@@ -167,7 +177,8 @@ export function IntegrationDetailWindow({
                 )}
               </Section>
             </div>
-          )}
+            );
+          })()}
         </KgShell>
       </div>
     </div>

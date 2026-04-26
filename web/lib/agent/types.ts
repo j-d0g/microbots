@@ -58,6 +58,10 @@ export interface WindowSnapshot {
   rect: RectPct;
   zIndex: number;
   focused: boolean;
+  /** Whether the user (or agent) has pinned this window. Required for
+   *  the orchestrator to compute the stage layout server-side and pick
+   *  centre-stage tools instead of plain top-z tools. */
+  pinned: boolean;
   /** ms since the canvas mounted (relative time so payloads compress). */
   openedAt: number;
   summary: string;

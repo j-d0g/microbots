@@ -44,6 +44,7 @@ import {
 import type { WindowKind } from "@/lib/store";
 import { snapshotToPrompt } from "./server-snapshot";
 import { retrieveSkills } from "./skill-retriever";
+import { computeStageLayout } from "@/lib/stage-manager";
 
 const ORCH_SYSTEM = `you are the microbots stage manager — a warm, capable assistant who controls a canvas of floating windows for a founder. you speak in lowercase, no emojis, 1-2 short sentences max. you sound like a trusted colleague, not a robot.
 
@@ -127,7 +128,9 @@ cross-cutting:
 
 ═══ COMMON WORKFLOWS ═══
 "show me X" / "what's X" → open_window(kind="entity_detail") or upsert_entity if new
-"find Y" / "search for Y" → window-specific search (chat_search, graph_search, memories_search)
+"open workflow <name>" / "show workflow <name>" → workflows_quick_open(name_query=<name>) — opens and selects in one action
+"find Y" / "search for Y" → window-specific search (chat_search_messages, graph_search, memories_search, entities_search, workflows_search)
+"show me <person>" / "who is <person>" → entities_quick_show(name=<person>) — find and open detail in one call
 "organize my windows" → winman_arrange_preset or winman_tile_windows
 "what's new?" / "catch me up" → window-specific read_recent (chatsummary_read_recent, memories_list with recent filter)
 "help me remember" / "don't forget" → add_memory
@@ -137,6 +140,8 @@ cross-cutting:
 ═══ VOICE VERB MAPPING ═══
 "remember X" / "note that X" → add_memory(content=X)
 "who is X" / "show me X" → upsert_entity if new, else open_window(kind="entity_detail")
+"open workflow X" → workflows_quick_open(name_query=X) — search + open in one action
+"show person X" / "find person X" → entities_quick_show(name=X) — find + open detail
 "how do you do X" / "save that recipe" → upsert_skill
 "save this as a workflow" → upsert_workflow
 "what's connected" / "what apps" → open_window(kind="integrations")
@@ -155,6 +160,70 @@ cross-cutting:
 "arrange windows" → winman_arrange_preset(preset=...)
 "tile" → winman_tile_windows
 "cascade" → winman_cascade_windows
+
+═══ IN-WINDOW VERB MAPPING (demo-critical, deterministic) ═══
+when a window is focused, prefer these mappings before falling back to general intent:
+
+GRAPH focused:
+"zoom out" / "fit" / "show everything" → graph_zoom_fit
+"focus on X" / "zoom into X" → graph_focus_node(node_id=X)
+"highlight X and its neighbors" / "what's around X" → graph_neighbors(node_id=X)
+"connect X and Y" / "path from X to Y" → graph_path(from=X, to=Y)
+"only show <layer>" / "filter to <layer>" → graph_filter_layer(layer=<layer>)
+"only show <integration> stuff" → graph_filter_integration(slug=<integration>)
+"clear filters" / "reset" → graph_clear
+
+CHATS_SUMMARY focused:
+"what's new" / "recent activity" → chatsummary_read_recent
+"high signal" / "what matters" → chatsummary_sort_by_signal_level(level="high")
+"only slack" / "filter to slack" → chatsummary_filter_by_source(source="slack")
+"who's mentioned" / "entity mentions" → chatsummary_read_entity_mentions
+"open this thread" / "jump to chat" → chatsummary_jump_to_full_chat
+
+MEMORIES focused:
+"most recent" / "newest first" → memories_sort_by_recency
+"highest confidence" → memories_sort_by_confidence
+"search for X" → memories_search(query=X)
+"only facts" / "filter to <type>" → memories_filter_by_type(type=<type>)
+"add a memory" / "new memory" → memories_quick_add
+
+ENTITIES focused:
+"show <name>" / "open <name>" / "find <name>" → entities_quick_show(name=<name>) — fuzzy find + open detail
+"filter to <type>" / "show only <type>" → entities_switch_type_tab(entity_type=<type>)
+"sort by mentions" / "most mentioned" → entities_sort_by_mentions
+"sort A-Z" / "alphabetical" → entities_sort_alphabetically
+"tagged <tag>" / "with tag <tag>" → entities_filter_by_tag(tag=<tag>)
+"people" / "show people" → entities_find_people(query="*") — filter to person entities
+"refresh" / "reload" → entities_refresh_list
+
+ENTITY_DETAIL focused:
+"who mentions X" / "where is X mentioned" → entitydetail_read_mentions
+"what's related" → entitydetail_read_related
+"add tag <t>" → entitydetail_add_tag(tag=<t>)
+"add alias <a>" → entitydetail_add_alias(alias=<a>)
+"go back" / "back to list" → entitydetail_go_back
+
+WORKFLOWS focused:
+"list workflows" → workflows_list_all
+"open <slug>" / "show me <slug>" / "workflow <slug>" → workflows_quick_open(name_query=<slug>) — fuzzy search + select
+"search <query>" / "find workflow <query>" → workflows_search(query=<query>)
+"tagged <tag>" → workflows_filter_by_tag(tag=<tag>)
+"recent workflows" → workflows_recent(limit=10)
+"run this" / "trigger it" / "execute" → workflows_run
+"new workflow" → workflows_new
+"duplicate this" → workflows_duplicate
+"step <N>" / "go to step <N>" → workflows_jump_to_step(step_number=<N>)
+
+SKILLS focused:
+"strongest skills" → skills_filter_by_min_strength(min=70) then skills_sort_by_strength
+"<integration> skills" → skills_filter_by_integration(slug=<integration>)
+"workflows using this" → skills_open_workflows_using
+
+INTEGRATIONS focused:
+"open <slug>" → integrations_open_detail(slug=<slug>)
+"connect <toolkit>" → integrations_connect_toolkit(toolkit=<toolkit>)
+"sort by usage" → integrations_sort_by_usage
+"co-used" → integrations_read_co_used
 
 user_id rule: if <canvas user_id=NOT_SET> and user asks anything except settings → open_window(kind="settings") and reply "let's get you set up — enter your user id."
 
@@ -175,6 +244,7 @@ not every utterance needs a tool call. read the intent:
 - never describe tool calls. never claim what you didn't do.
 - if backend.surreal=DOWN or composio=DOWN, prefix reply with "degraded · ".
 - emit reply text in the SAME generation as tool calls. snappy.
+- NEVER write tool calls as text. do NOT type 'open_window(kind=...)' or any function-call syntax in your reply. always invoke tools through the structured tool-call channel; the reply text is for the human only.
 - use window-specific tools when inside that window (e.g., graph_zoom_fit in graph, chat_search in chat).
 - use window management tools (winman_*) for positioning, pinning, arranging, and layout operations.`;
 
@@ -183,54 +253,105 @@ export interface OrchestrateInput {
   query: string;
 }
 
-/** Get the currently focused window kind from the snapshot.
- * Returns null if no window is focused. */
-function getFocusedWindowKind(ctx: AgentToolCtx): WindowKind | null {
+/* Map WindowKind → tool factory. Declared at module scope so it's
+ * shared by the centre-stage selector and (importantly) so the
+ * Record<WindowKind, ...> type forces compile-time exhaustiveness:
+ * adding a new window kind without a tool bag fails the build. */
+const WINDOW_TOOL_FACTORIES: Record<
+  WindowKind,
+  (ctx: AgentToolCtx) => Record<string, unknown>
+> = {
+  graph: graphWindowTools,
+  chat: chatWindowTools,
+  ask_user: askUserWindowTools,
+  settings: settingsWindowTools,
+  profile: profileWindowTools,
+  integrations: integrationsWindowTools,
+  integration_detail: integrationDetailWindowTools,
+  entities: entitiesWindowTools,
+  entity_detail: entityDetailWindowTools,
+  memories: memoriesWindowTools,
+  skills: skillsWindowTools,
+  workflows: workflowsWindowTools,
+  wiki: wikiWindowTools,
+  chats_summary: chatsSummaryWindowTools,
+  // composio_connect reuses the integrations tool bag (OAuth-centric tools)
+  composio_connect: integrationsWindowTools,
+};
+
+/** Pick the kind whose tools should be exposed to the LLM this turn.
+ *
+ * "Centre stage" — the dominant visual window — is what we want, NOT
+ * just "highest z-index". They diverge when the user clicks a sideline
+ * (focus shifts) but the centre keeps showing the previous window. We
+ * use `computeStageLayout` (the same engine the renderer uses) so the
+ * LLM's tool surface matches what the user sees.
+ *
+ * Selection order:
+ *   1. The first centre-stage window (centreIds[0]).
+ *   2. Fallback: the focused window (top-z).
+ *   3. Fallback: null (no window-specific tools — only globals).
+ *
+ * Returns the kind plus the source for logging. */
+function getCentreStageWindowKind(
+  ctx: AgentToolCtx,
+): { kind: WindowKind | null; source: "centre" | "focused" | "none" } {
+  const wins = ctx.snapshot.windows.map((w) => ({
+    id: w.id,
+    kind: w.kind,
+    zIndex: w.zIndex,
+    pinned: w.pinned,
+    openedAt: w.openedAt,
+  }));
+  const layout = computeStageLayout(wins, ctx.snapshot.focusedId);
+  const centreId = layout.centreIds[0];
+  if (centreId) {
+    const centre = ctx.snapshot.windows.find((w) => w.id === centreId);
+    if (centre) return { kind: centre.kind as WindowKind, source: "centre" };
+  }
   const focused = ctx.snapshot.windows.find((w) => w.focused);
-  return focused ? (focused.kind as WindowKind) : null;
+  if (focused) return { kind: focused.kind as WindowKind, source: "focused" };
+  return { kind: null, source: "none" };
 }
 
-/** Get window-specific tools for the currently focused window.
- * Returns empty object if no window is focused. */
+/** Resolve the tool bag for the centre-stage window. Returns an empty
+ *  bag (and a console warning) if a kind is selected but no factory is
+ *  registered — that should be impossible thanks to the
+ *  Record<WindowKind, ...> type, but we log defensively in case a new
+ *  kind sneaks in via a casted value. */
 function getWindowSpecificTools(ctx: AgentToolCtx): Record<string, unknown> {
-  const focusedKind = getFocusedWindowKind(ctx);
-
-  if (!focusedKind) {
+  const { kind, source } = getCentreStageWindowKind(ctx);
+  if (!kind) {
+    // eslint-disable-next-line no-console
+    console.log("[orchestrator] no centre window — globals only");
     return {};
   }
-
-  // Map WindowKind to window-specific tool factory
-  const toolFactories: Record<WindowKind, (ctx: AgentToolCtx) => Record<string, unknown>> = {
-    graph: graphWindowTools,
-    chat: chatWindowTools,
-    ask_user: askUserWindowTools,
-    settings: settingsWindowTools,
-    profile: profileWindowTools,
-    integrations: integrationsWindowTools,
-    integration_detail: integrationDetailWindowTools,
-    entities: entitiesWindowTools,
-    entity_detail: entityDetailWindowTools,
-    memories: memoriesWindowTools,
-    skills: skillsWindowTools,
-    workflows: workflowsWindowTools,
-    wiki: wikiWindowTools,
-    chats_summary: chatsSummaryWindowTools,
-    // composio_connect reuses the integrations tool bag (OAuth-centric tools)
-    composio_connect: integrationsWindowTools,
-  };
-
-  const factory = toolFactories[focusedKind];
-  return factory ? factory(ctx) : {};
+  const factory = WINDOW_TOOL_FACTORIES[kind];
+  if (!factory) {
+    // eslint-disable-next-line no-console
+    console.warn(`[orchestrator] no tool factory for kind=${kind}`);
+    return {};
+  }
+  const bag = factory(ctx);
+  // eslint-disable-next-line no-console
+  console.log(
+    `[orchestrator] centre=${kind} (via ${source}) · ${Object.keys(bag).length} tools loaded`,
+  );
+  return bag;
 }
 
 /** Returns a Vercel AI SDK `streamText` result whose `textStream` is
- *  the orchestrator's user-facing reply. The caller is responsible for
- *  iterating that stream and emitting `reply.chunk` events. Tool side
- *  effects flow through `ctx.emit` as they fire. */
+ *  the orchestrator's user-facing reply, alongside diagnostics about
+ *  which centre window was selected and how many tools were loaded.
+ *  The caller is responsible for iterating that stream and emitting
+ *  `reply.chunk` events. Tool side effects flow through `ctx.emit` as
+ *  they fire. */
 export function runOrchestrator({ ctx, query }: OrchestrateInput) {
   // Always include meta tools (window management), work tools (writes), and graph tools
-  // Plus window-specific tools for the currently focused window
-  const windowTools = getWindowSpecificTools(ctx);
+  // Plus window-specific tools for the centre-stage window
+  const centre = getCentreStageWindowKind(ctx);
+  const windowTools = centre.kind ? WINDOW_TOOL_FACTORIES[centre.kind](ctx) : {};
+  const windowToolNames = Object.keys(windowTools);
 
   const tools = {
     ...metaTools(ctx),
@@ -240,6 +361,10 @@ export function runOrchestrator({ ctx, query }: OrchestrateInput) {
     ...windowManagementTools(ctx),
     ...windowTools,
   };
+  // eslint-disable-next-line no-console
+  console.log(
+    `[orchestrator] centre=${centre.kind ?? "none"} (${centre.source}) · ${windowToolNames.length} window tools · ${Object.keys(tools).length} total`,
+  );
 
   // Retrieve relevant skills for this turn (≤ 2, ~400 tokens max)
   const skills = retrieveSkills(query, Object.keys(tools));
@@ -250,7 +375,7 @@ export function runOrchestrator({ ctx, query }: OrchestrateInput) {
 ${skills.join("\n---\n")}`
     : "";
 
-  return streamText({
+  const stream = streamText({
     model: chatModel(),
     system: ORCH_SYSTEM + skillBlock,
     prompt: `${snapshotToPrompt(ctx.snapshot, { includeGrid: false, includeRecentActions: false })}
@@ -259,5 +384,16 @@ user said: ${query}`,
     tools,
     stopWhen: stepCountIs(1),
     temperature: 0.2,
+  });
+  // Attach diagnostics to the returned object so the route can surface
+  // them to the browser as agent.status events. Read-only info; doesn't
+  // alter the SDK's textStream / toolCalls behaviour.
+  return Object.assign(stream, {
+    diagnostics: {
+      centreKind: centre.kind,
+      centreSource: centre.source,
+      windowToolNames,
+      totalToolCount: Object.keys(tools).length,
+    },
   });
 }

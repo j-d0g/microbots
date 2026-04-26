@@ -21,6 +21,8 @@ dependencies = [
     "portalocker>=2.8",
     "pyngrok>=7.0",
     "click>=8.1",
+    "fastapi>=0.136.1",
+    "uvicorn>=0.46.0",
 ]
 
 [tool.pytest.ini_options]
