@@ -1,0 +1,1444 @@
+{
+  "raw": [
+    {
+      "t": 1777184748898,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/health",
+      "method": "GET",
+      "kind": "health"
+    },
+    {
+      "t": 1777184748899,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health"
+    },
+    {
+      "t": 1777184748899,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/toolkits",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184748900,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/health",
+      "method": "GET",
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184748900,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184748900,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/toolkits",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184750949,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/health",
+      "method": "GET",
+      "kind": "health"
+    },
+    {
+      "t": 1777184750949,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health"
+    },
+    {
+      "t": 1777184750949,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/toolkits",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184750949,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/health",
+      "method": "GET",
+      "kind": "health"
+    },
+    {
+      "t": 1777184750949,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health"
+    },
+    {
+      "t": 1777184750949,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/toolkits",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184750951,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/health",
+      "method": "GET",
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184750951,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184750951,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/toolkits",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184750951,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/health",
+      "method": "GET",
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184750951,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184750952,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/toolkits",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184752544,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184752545,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184753600,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health"
+    },
+    {
+      "t": 1777184753601,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756158,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756158,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756160,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756161,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756161,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756161,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756161,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184756162,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756162,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756162,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756162,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756163,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756164,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184756164,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184756167,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756167,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756170,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756171,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184756171,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759633,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759634,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759635,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759635,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759635,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759636,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759636,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184759636,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759636,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759636,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759636,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759637,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759637,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "method": "GET",
+      "kind": "kg"
+    },
+    {
+      "t": 1777184759637,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "method": "GET",
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184759641,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184760149,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184760150,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184760150,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184760150,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184762263,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/composio/connect",
+      "method": "POST",
+      "kind": "composio"
+    },
+    {
+      "t": 1777184762278,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/composio/connect",
+      "method": "POST",
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "t": 1777184765687,
+      "phase": "request",
+      "url": "http://localhost:3001/api/agent/orchestrate",
+      "method": "POST",
+      "kind": "agent"
+    },
+    {
+      "t": 1777184766560,
+      "phase": "response",
+      "url": "http://localhost:3001/api/agent/orchestrate",
+      "status": 200,
+      "kind": "agent",
+      "snippet": "data: {\"type\":\"dock\",\"state\":\"thinking\"}\n\ndata: {\"type\":\"agent.status\",\"status\":\"google/gemini-2.5-flash-lite Â· thinkingâ€¦\"}\n\ndata: {\"type\":\"agent.tool.start\",\"name\":\"focus_window\",\"args\":{\"kind\":\"g"
+    },
+    {
+      "t": 1777184773114,
+      "phase": "request",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health"
+    },
+    {
+      "t": 1777184773116,
+      "phase": "requestfailed",
+      "url": "https://app-bf31.onrender.com/api/health",
+      "method": "GET",
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    }
+  ],
+  "backendInventory": [
+    {
+      "phase": "request",
+      "url": "/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/toolkits",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/toolkits",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "request",
+      "url": "/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/toolkits",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/toolkits",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/toolkits",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/toolkits",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "request",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": null
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/user",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/integrations",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/entities",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/workflows",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/user",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/integrations",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/entities",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/workflows",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/user",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/integrations",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/entities",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/workflows",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/user",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/integrations",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/entities",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/workflows",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/user",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/integrations",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/entities",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/workflows",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/user",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/integrations",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/entities",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/kg/workflows",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/user",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/integrations",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/entities",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/workflows",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/user",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/integrations",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/entities",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/memories?by=confidence&limit=30",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/skills?min_strength=1",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/kg/workflows",
+      "method": "GET",
+      "status": null,
+      "kind": "kg",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/connections?user_id=test_e2e_d",
+      "method": "GET",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "request",
+      "url": "/api/composio/connect",
+      "method": "POST",
+      "status": null,
+      "kind": "composio",
+      "errorText": null
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/composio/connect",
+      "method": "POST",
+      "status": null,
+      "kind": "composio",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "phase": "request",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": null
+    },
+    {
+      "phase": "requestfailed",
+      "url": "/api/health",
+      "method": "GET",
+      "status": null,
+      "kind": "health",
+      "errorText": "net::ERR_CONNECTION_REFUSED"
+    }
+  ],
+  "perEndpoint": [
+    {
+      "endpoint": "GET /health",
+      "kind": "health",
+      "attempts": 3,
+      "failures": 3,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "GET /api/health",
+      "kind": "health",
+      "attempts": 5,
+      "failures": 5,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "GET /api/composio/toolkits",
+      "kind": "composio",
+      "attempts": 3,
+      "failures": 3,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "GET /api/composio/connections",
+      "kind": "composio",
+      "attempts": 7,
+      "failures": 7,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "GET /api/kg/user",
+      "kind": "kg",
+      "attempts": 4,
+      "failures": 4,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "GET /api/kg/integrations",
+      "kind": "kg",
+      "attempts": 4,
+      "failures": 4,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "GET /api/kg/entities",
+      "kind": "kg",
+      "attempts": 4,
+      "failures": 4,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "GET /api/kg/memories",
+      "kind": "kg",
+      "attempts": 4,
+      "failures": 4,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "GET /api/kg/skills",
+      "kind": "kg",
+      "attempts": 4,
+      "failures": 4,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "GET /api/kg/workflows",
+      "kind": "kg",
+      "attempts": 4,
+      "failures": 4,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "endpoint": "POST /api/composio/connect",
+      "kind": "composio",
+      "attempts": 1,
+      "failures": 1,
+      "responses": 0,
+      "sampleError": "net::ERR_CONNECTION_REFUSED"
+    }
+  ]
+}

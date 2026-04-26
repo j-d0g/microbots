@@ -1,0 +1,128 @@
+[
+  {
+    "query": "morning brief",
+    "elapsedMs": 8165,
+    "settle": {
+      "left": true,
+      "end": "thinking",
+      "elapsed": 8131
+    },
+    "opened": [],
+    "closed": [],
+    "newCards": [],
+    "newActions": [],
+    "agentReply": "briefs are not available in windowed mode."
+  },
+  {
+    "query": "show me the graph",
+    "elapsedMs": 1243,
+    "settle": {
+      "left": true,
+      "end": "idle",
+      "elapsed": 1219
+    },
+    "opened": [],
+    "closed": [],
+    "newCards": [],
+    "newActions": [],
+    "agentReply": "open_window(kind=\"graph\")\n"
+  },
+  {
+    "query": "open the bug triage workflow",
+    "elapsedMs": 4520,
+    "settle": {
+      "left": true,
+      "end": "idle",
+      "elapsed": 4491
+    },
+    "opened": [],
+    "closed": [],
+    "newCards": [],
+    "newActions": [],
+    "agentReply": "i can't open workflows in windowed mode."
+  },
+  {
+    "query": "list services",
+    "elapsedMs": 8028,
+    "settle": {
+      "left": true,
+      "end": "thinking",
+      "elapsed": 8013
+    },
+    "opened": [],
+    "closed": [],
+    "newCards": [],
+    "newActions": [],
+    "agentReply": "i can't open workflows in windowed mode."
+  },
+  {
+    "query": "what's broken in my stack",
+    "elapsedMs": 13922,
+    "settle": {
+      "left": true,
+      "end": "thinking",
+      "elapsed": 8126
+    },
+    "opened": [
+      "integration",
+      "integration",
+      "integration",
+      "integration",
+      "integration",
+      "integration"
+    ],
+    "closed": [],
+    "newCards": [],
+    "newActions": [
+      {
+        "tool": "open_window",
+        "args": {
+          "kind": "integration",
+          "mount": "full",
+          "slug": "linear"
+        },
+        "ok": true
+      },
+      {
+        "tool": "open_window",
+        "args": {
+          "kind": "integration"
+        },
+        "ok": true
+      },
+      {
+        "tool": "open_window",
+        "args": {
+          "kind": "integration",
+          "mount": "full",
+          "slug": "notion"
+        },
+        "ok": true
+      },
+      {
+        "tool": "open_window",
+        "args": {
+          "kind": "integration"
+        },
+        "ok": true
+      },
+      {
+        "tool": "open_window",
+        "args": {
+          "kind": "integration",
+          "mount": "full",
+          "slug": "perplexityai"
+        },
+        "ok": true
+      },
+      {
+        "tool": "open_window",
+        "args": {
+          "kind": "integration"
+        },
+        "ok": true
+      }
+    ],
+    "agentReply": "i can't open workflows in windowed mode."
+  }
+]

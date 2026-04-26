@@ -1,0 +1,169 @@
+{
+  "finalHistory": [
+    {
+      "i": 0,
+      "role": "you",
+      "text": "good morning",
+      "status": "done"
+    },
+    {
+      "i": 1,
+      "role": "agent",
+      "text": "good morning to you too!",
+      "status": "done"
+    },
+    {
+      "i": 2,
+      "role": "you",
+      "text": "show me what's broken",
+      "status": "done"
+    },
+    {
+      "i": 3,
+      "role": "you",
+      "text": "open the workflow for triaging bugs",
+      "status": "done"
+    },
+    {
+      "i": 4,
+      "role": "you",
+      "text": "compare slack and gmail",
+      "status": "done"
+    },
+    {
+      "i": 5,
+      "role": "you",
+      "text": "i'm anxious about friday",
+      "status": "done"
+    },
+    {
+      "i": 6,
+      "role": "agent",
+      "text": "open_window(kind='brief')",
+      "status": "done"
+    }
+  ],
+  "finalRoom": {
+    "label": "window · graph",
+    "which": "embedded-room-graph"
+  },
+  "windowsAfterToggle": {
+    "uiMode": "windowed",
+    "chatRoom": "graph",
+    "windows": [
+      {
+        "id": "win-2",
+        "kind": "graph",
+        "minimized": false,
+        "rect": {
+          "x": 36,
+          "y": 21,
+          "w": 1368,
+          "h": 778
+        }
+      }
+    ]
+  },
+  "focusedRoomBefore": "graph",
+  "briefIsEmbedded": {
+    "chatRoom": "brief",
+    "label": "window · brief"
+  },
+  "emptyNoOp": true,
+  "sendDisabledMidFlight": {
+    "sendDisabled": true,
+    "textareaDisabled": true
+  },
+  "typedDuringBusy": false,
+  "perQuery": [
+    {
+      "i": 1,
+      "query": "good morning",
+      "replyLength": 24,
+      "reply": "good morning to you too!",
+      "replyStatus": "done",
+      "embeddedRoomLabel": "window · brief",
+      "embeddedRoomKind": "embedded-room-brief",
+      "toolCallsRecent": [],
+      "historyLength": 2,
+      "settleResult": {
+        "sawBusy": true,
+        "timedOut": false
+      }
+    },
+    {
+      "i": 2,
+      "query": "show me what's broken",
+      "replyLength": 0,
+      "reply": "",
+      "embeddedRoomLabel": "window · graph",
+      "embeddedRoomKind": "embedded-room-graph",
+      "toolCallsRecent": [
+        {
+          "t": 1777184873848,
+          "tool": "delegate_content",
+          "args": {
+            "intent": "show me what's broken"
+          },
+          "ok": true
+        },
+        {
+          "t": 1777184874689,
+          "tool": "graph_search",
+          "args": {
+            "query": "broken"
+          },
+          "ok": true
+        }
+      ],
+      "historyLength": 3,
+      "settleResult": {
+        "sawBusy": true,
+        "timedOut": false
+      }
+    },
+    {
+      "i": 3,
+      "query": "open the workflow for triaging bugs",
+      "replyLength": 0,
+      "reply": "",
+      "embeddedRoomLabel": "window · graph",
+      "embeddedRoomKind": "embedded-room-graph",
+      "toolCallsRecent": [],
+      "historyLength": 4,
+      "settleResult": {
+        "sawBusy": true,
+        "timedOut": false
+      }
+    },
+    {
+      "i": 4,
+      "query": "compare slack and gmail",
+      "replyLength": 0,
+      "reply": "",
+      "embeddedRoomLabel": "window · graph",
+      "embeddedRoomKind": "embedded-room-graph",
+      "toolCallsRecent": [],
+      "historyLength": 5,
+      "settleResult": {
+        "sawBusy": true,
+        "timedOut": false
+      }
+    },
+    {
+      "i": 5,
+      "query": "i'm anxious about friday",
+      "replyLength": 25,
+      "reply": "open_window(kind='brief')",
+      "replyStatus": "done",
+      "embeddedRoomLabel": "window · graph",
+      "embeddedRoomKind": "embedded-room-graph",
+      "toolCallsRecent": [],
+      "historyLength": 7,
+      "settleResult": {
+        "sawBusy": true,
+        "timedOut": false
+      }
+    }
+  ]
+}

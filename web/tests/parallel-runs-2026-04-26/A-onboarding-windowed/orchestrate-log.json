@@ -1,0 +1,705 @@
+[
+  {
+    "phase": "request",
+    "ts": 1777185128227,
+    "body": {
+      "query": "morning brief",
+      "snapshot": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "grid": "· · · · · · · · · · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·",
+        "focusedId": "win-1",
+        "windows": [
+          {
+            "id": "win-1",
+            "kind": "settings",
+            "mount": "freeform",
+            "rect": {
+              "x": 25,
+              "y": 16.5,
+              "w": 50,
+              "h": 76.8
+            },
+            "zIndex": 3,
+            "focused": true,
+            "openedAt": 0,
+            "summary": "user_id=test_e2e_a · 0/? integrations active"
+          }
+        ],
+        "recentActions": [
+          {
+            "t": 2196,
+            "tool": "open_window",
+            "args": {
+              "kind": "settings"
+            },
+            "ok": true
+          }
+        ],
+        "user": {
+          "query": "morning brief",
+          "userId": "test_e2e_a"
+        },
+        "ui": {
+          "mode": "windowed"
+        },
+        "integrations": [],
+        "backend": {
+          "surrealOk": true,
+          "composioOk": true
+        }
+      }
+    }
+  },
+  {
+    "phase": "response",
+    "ts": 1777185128248,
+    "status": 200,
+    "headers": {
+      "transfer-encoding": "chunked",
+      "x-agent-model": "google/gemini-2.5-flash-lite",
+      "cache-control": "no-cache, no-transform",
+      "date": "Sun, 26 Apr 2026 06:32:08 GMT",
+      "content-type": "text/event-stream",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+      "connection": "keep-alive"
+    }
+  },
+  {
+    "phase": "request",
+    "ts": 1777185137813,
+    "body": {
+      "query": "show me the graph",
+      "snapshot": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "grid": "· · · · · · · · · · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·",
+        "focusedId": "win-1",
+        "windows": [
+          {
+            "id": "win-1",
+            "kind": "settings",
+            "mount": "freeform",
+            "rect": {
+              "x": 25,
+              "y": 16.5,
+              "w": 50,
+              "h": 76.8
+            },
+            "zIndex": 3,
+            "focused": true,
+            "openedAt": 0,
+            "summary": "user_id=test_e2e_a · 0/? integrations active"
+          }
+        ],
+        "recentActions": [
+          {
+            "t": 11784,
+            "tool": "open_window",
+            "args": {
+              "kind": "settings"
+            },
+            "ok": true
+          }
+        ],
+        "user": {
+          "query": "show me the graph",
+          "lastQuery": "morning brief",
+          "userId": "test_e2e_a"
+        },
+        "ui": {
+          "mode": "windowed"
+        },
+        "integrations": [],
+        "backend": {
+          "surrealOk": true,
+          "composioOk": true
+        }
+      }
+    }
+  },
+  {
+    "phase": "response",
+    "ts": 1777185137836,
+    "status": 200,
+    "headers": {
+      "transfer-encoding": "chunked",
+      "x-agent-model": "google/gemini-2.5-flash-lite",
+      "cache-control": "no-cache, no-transform",
+      "date": "Sun, 26 Apr 2026 06:32:17 GMT",
+      "content-type": "text/event-stream",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+      "connection": "keep-alive"
+    }
+  },
+  {
+    "phase": "request",
+    "ts": 1777185140440,
+    "body": {
+      "query": "open the bug triage workflow",
+      "snapshot": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "grid": "· · · · · · · · · · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·",
+        "focusedId": "win-1",
+        "windows": [
+          {
+            "id": "win-1",
+            "kind": "settings",
+            "mount": "freeform",
+            "rect": {
+              "x": 25,
+              "y": 16.5,
+              "w": 50,
+              "h": 76.8
+            },
+            "zIndex": 3,
+            "focused": true,
+            "openedAt": 0,
+            "summary": "user_id=test_e2e_a · 0/? integrations active"
+          }
+        ],
+        "recentActions": [
+          {
+            "t": 14409,
+            "tool": "open_window",
+            "args": {
+              "kind": "settings"
+            },
+            "ok": true
+          }
+        ],
+        "user": {
+          "query": "open the bug triage workflow",
+          "lastQuery": "show me the graph",
+          "userId": "test_e2e_a"
+        },
+        "ui": {
+          "mode": "windowed"
+        },
+        "integrations": [],
+        "backend": {
+          "surrealOk": true,
+          "composioOk": true
+        }
+      }
+    }
+  },
+  {
+    "phase": "response",
+    "ts": 1777185140453,
+    "status": 200,
+    "headers": {
+      "transfer-encoding": "chunked",
+      "x-agent-model": "google/gemini-2.5-flash-lite",
+      "cache-control": "no-cache, no-transform",
+      "date": "Sun, 26 Apr 2026 06:32:20 GMT",
+      "content-type": "text/event-stream",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+      "connection": "keep-alive"
+    }
+  },
+  {
+    "phase": "request",
+    "ts": 1777185146317,
+    "body": {
+      "query": "list services",
+      "snapshot": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "grid": "· · · · · · · · · · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·\n· · · A A A A A A · · ·",
+        "focusedId": "win-1",
+        "windows": [
+          {
+            "id": "win-1",
+            "kind": "settings",
+            "mount": "freeform",
+            "rect": {
+              "x": 25,
+              "y": 16.5,
+              "w": 50,
+              "h": 76.8
+            },
+            "zIndex": 3,
+            "focused": true,
+            "openedAt": 0,
+            "summary": "user_id=test_e2e_a · 0/? integrations active"
+          }
+        ],
+        "recentActions": [
+          {
+            "t": 20289,
+            "tool": "open_window",
+            "args": {
+              "kind": "settings"
+            },
+            "ok": true
+          }
+        ],
+        "user": {
+          "query": "list services",
+          "lastQuery": "open the bug triage workflow",
+          "userId": "test_e2e_a"
+        },
+        "ui": {
+          "mode": "windowed"
+        },
+        "integrations": [],
+        "backend": {
+          "surrealOk": true,
+          "composioOk": true
+        }
+      }
+    }
+  },
+  {
+    "phase": "response",
+    "ts": 1777185146342,
+    "status": 200,
+    "headers": {
+      "transfer-encoding": "chunked",
+      "x-agent-model": "google/gemini-2.5-flash-lite",
+      "cache-control": "no-cache, no-transform",
+      "date": "Sun, 26 Apr 2026 06:32:26 GMT",
+      "content-type": "text/event-stream",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+      "connection": "keep-alive"
+    }
+  },
+  {
+    "phase": "request",
+    "ts": 1777185161574,
+    "body": {
+      "query": "what's broken in my stack",
+      "snapshot": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "grid": "· · · · · · G G G G G G\n· · · a a a G G G G G G\n· · · a a a G G G G G G\n· · · a a a G G G G G G\n· · · a a a G G G G G G\n· · · a a a G G G G G G\n· · · a a a G G G G G G\n· · · a a a G G G G G G",
+        "focusedId": "win-7",
+        "windows": [
+          {
+            "id": "win-1",
+            "kind": "settings",
+            "mount": "freeform",
+            "rect": {
+              "x": 25,
+              "y": 16.5,
+              "w": 50,
+              "h": 76.8
+            },
+            "zIndex": 3,
+            "focused": false,
+            "openedAt": 0,
+            "summary": "user_id=test_e2e_a · 0/? integrations active"
+          },
+          {
+            "id": "win-2",
+            "kind": "integration",
+            "slug": "slack",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 4,
+            "focused": false,
+            "openedAt": 35507,
+            "summary": "integration slack · not-connected"
+          },
+          {
+            "id": "win-3",
+            "kind": "integration",
+            "slug": "github",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 5,
+            "focused": false,
+            "openedAt": 35517,
+            "summary": "integration github · not-connected"
+          },
+          {
+            "id": "win-4",
+            "kind": "integration",
+            "slug": "gmail",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 6,
+            "focused": false,
+            "openedAt": 35517,
+            "summary": "integration gmail · not-connected"
+          },
+          {
+            "id": "win-5",
+            "kind": "integration",
+            "slug": "linear",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 7,
+            "focused": false,
+            "openedAt": 35517,
+            "summary": "integration linear · not-connected"
+          },
+          {
+            "id": "win-6",
+            "kind": "integration",
+            "slug": "notion",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 8,
+            "focused": false,
+            "openedAt": 35517,
+            "summary": "integration notion · not-connected"
+          },
+          {
+            "id": "win-7",
+            "kind": "integration",
+            "slug": "perplexityai",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 9,
+            "focused": true,
+            "openedAt": 35518,
+            "summary": "integration perplexityai · not-connected"
+          }
+        ],
+        "recentActions": [
+          {
+            "t": 0,
+            "tool": "open_window",
+            "args": {
+              "kind": "integration",
+              "mount": "full",
+              "slug": "linear"
+            },
+            "ok": true
+          },
+          {
+            "t": 28,
+            "tool": "open_window",
+            "args": {
+              "kind": "integration"
+            },
+            "ok": true
+          },
+          {
+            "t": 0,
+            "tool": "open_window",
+            "args": {
+              "kind": "integration",
+              "mount": "full",
+              "slug": "notion"
+            },
+            "ok": true
+          },
+          {
+            "t": 28,
+            "tool": "open_window",
+            "args": {
+              "kind": "integration"
+            },
+            "ok": true
+          },
+          {
+            "t": 0,
+            "tool": "open_window",
+            "args": {
+              "kind": "integration",
+              "mount": "full",
+              "slug": "perplexityai"
+            },
+            "ok": true
+          },
+          {
+            "t": 28,
+            "tool": "open_window",
+            "args": {
+              "kind": "integration"
+            },
+            "ok": true
+          }
+        ],
+        "user": {
+          "query": "what's broken in my stack",
+          "lastQuery": "open the bug triage workflow",
+          "userId": "test_e2e_a"
+        },
+        "ui": {
+          "mode": "windowed"
+        },
+        "integrations": [],
+        "backend": {
+          "surrealOk": true,
+          "composioOk": true
+        }
+      }
+    }
+  },
+  {
+    "phase": "response",
+    "ts": 1777185161606,
+    "status": 200,
+    "headers": {
+      "transfer-encoding": "chunked",
+      "x-agent-model": "google/gemini-2.5-flash-lite",
+      "cache-control": "no-cache, no-transform",
+      "date": "Sun, 26 Apr 2026 06:32:41 GMT",
+      "content-type": "text/event-stream",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+      "connection": "keep-alive"
+    }
+  },
+  {
+    "phase": "request",
+    "ts": 1777185177828,
+    "body": {
+      "query": "give me a vibe check on the stack",
+      "snapshot": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "grid": "H H H H H H H H H H H H\nH H H H H H H H H H H H\nH H H H H H H H H H H H\nH H H H H H H H H H H H\nH H H H H H H H H H H H\nH H H H H H H H H H H H\nH H H H H H H H H H H H\nH H H H H H H H H H H H",
+        "focusedId": "win-8",
+        "windows": [
+          {
+            "id": "win-1",
+            "kind": "settings",
+            "mount": "freeform",
+            "rect": {
+              "x": 25,
+              "y": 16.5,
+              "w": 50,
+              "h": 76.8
+            },
+            "zIndex": 3,
+            "focused": false,
+            "openedAt": 0,
+            "summary": "user_id=test_e2e_a · 0/? integrations active"
+          },
+          {
+            "id": "win-2",
+            "kind": "integration",
+            "slug": "slack",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 4,
+            "focused": false,
+            "openedAt": 35507,
+            "summary": "integration slack · not-connected"
+          },
+          {
+            "id": "win-3",
+            "kind": "integration",
+            "slug": "github",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 5,
+            "focused": false,
+            "openedAt": 35517,
+            "summary": "integration github · not-connected"
+          },
+          {
+            "id": "win-4",
+            "kind": "integration",
+            "slug": "gmail",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 6,
+            "focused": false,
+            "openedAt": 35517,
+            "summary": "integration gmail · not-connected"
+          },
+          {
+            "id": "win-5",
+            "kind": "integration",
+            "slug": "linear",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 7,
+            "focused": false,
+            "openedAt": 35517,
+            "summary": "integration linear · not-connected"
+          },
+          {
+            "id": "win-6",
+            "kind": "integration",
+            "slug": "notion",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 8,
+            "focused": false,
+            "openedAt": 35517,
+            "summary": "integration notion · not-connected"
+          },
+          {
+            "id": "win-7",
+            "kind": "integration",
+            "slug": "perplexityai",
+            "mount": "right-half",
+            "rect": {
+              "x": 51.2,
+              "y": 2.6,
+              "w": 46.3,
+              "h": 94.9
+            },
+            "zIndex": 9,
+            "focused": false,
+            "openedAt": 35518,
+            "summary": "integration perplexityai · not-connected"
+          },
+          {
+            "id": "win-8",
+            "kind": "graph",
+            "mount": "full",
+            "rect": {
+              "x": 2.5,
+              "y": 2.6,
+              "w": 95,
+              "h": 94.9
+            },
+            "zIndex": 10,
+            "focused": true,
+            "openedAt": 51251,
+            "summary": "128 nodes · 157 edges · 6 integrations · 50 memories"
+          }
+        ],
+        "recentActions": [
+          {
+            "t": 16282,
+            "tool": "open_window",
+            "args": {
+              "kind": "integration"
+            },
+            "ok": true
+          },
+          {
+            "t": 0,
+            "tool": "delegate_content",
+            "args": {
+              "intent": "what's broken in my stack"
+            },
+            "ok": true
+          },
+          {
+            "t": 0,
+            "tool": "settings_refresh_health",
+            "args": {},
+            "ok": true
+          },
+          {
+            "t": 0,
+            "tool": "graph_clear",
+            "args": {},
+            "ok": true
+          },
+          {
+            "t": 548,
+            "tool": "open_window",
+            "args": {
+              "kind": "graph"
+            },
+            "ok": true
+          },
+          {
+            "t": 0,
+            "tool": "push_card",
+            "args": {
+              "kind": "toast",
+              "text": "Checking health of all integrations..."
+            },
+            "ok": true
+          }
+        ],
+        "user": {
+          "query": "give me a vibe check on the stack",
+          "lastQuery": "open the bug triage workflow",
+          "userId": "test_e2e_a"
+        },
+        "ui": {
+          "mode": "windowed"
+        },
+        "integrations": [],
+        "backend": {
+          "surrealOk": true,
+          "composioOk": true
+        }
+      }
+    }
+  },
+  {
+    "phase": "response",
+    "ts": 1777185177891,
+    "status": 200,
+    "headers": {
+      "transfer-encoding": "chunked",
+      "x-agent-model": "google/gemini-2.5-flash-lite",
+      "cache-control": "no-cache, no-transform",
+      "date": "Sun, 26 Apr 2026 06:32:57 GMT",
+      "content-type": "text/event-stream",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+      "connection": "keep-alive"
+    }
+  }
+]

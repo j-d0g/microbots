@@ -1,0 +1,42 @@
+{
+  "samples": [
+    {
+      "tick": 0,
+      "agentReply": "degraded · open_window(kind=\"graph\")",
+      "lastQuery": "show me the graph",
+      "commandOpen": true,
+      "windows": [],
+      "backendHealth": {
+        "surrealOk": false,
+        "composioOk": false,
+        "checkedAt": 1777184840696
+      },
+      "agentStatus": "google/gemini-2.5-flash-lite · thinking…"
+    }
+  ],
+  "final": {
+    "agentReply": "degraded · open_window(kind=\"graph\")",
+    "lastQuery": "show me the graph",
+    "windows": [],
+    "backendHealth": {
+      "surrealOk": false,
+      "composioOk": false,
+      "checkedAt": 1777184840696
+    },
+    "dockText": "degraded · open_window(kind=\"graph\")",
+    "cards": [
+      {
+        "kind": "toast",
+        "text": "user_id saved as test_e2e_d"
+      }
+    ]
+  },
+  "orchEvents": [
+    {
+      "url": "http://localhost:3001/api/agent/orchestrate",
+      "status": 200,
+      "bodyLen": 465,
+      "bodySnippet": "data: {\"type\":\"dock\",\"state\":\"thinking\"}\n\ndata: {\"type\":\"agent.status\",\"status\":\"google/gemini-2.5-flash-lite Â· thinkingâ€¦\"}\n\ndata: {\"type\":\"reply.start\",\"query\":\"show me the graph\"}\n\ndata: {\"type\":\"dock\",\"state\":\"speaking\"}\n\ndata: {\"type\":\"reply.chunk\",\"text\":\"de\"}\n\ndata: {\"type\":\"reply.chunk\",\"text\":\"graded Â· open_window(kind=\\\"graph\\\")\"}\n\ndata: {\"type\":\"reply.done\"}\n\ndata: {\"type\":\"dock\",\"state\":\"idle\"}\n\ndata: {\"type\":\"agent.status\",\"status\":\"\"}\n\n"
+    }
+  ]
+}

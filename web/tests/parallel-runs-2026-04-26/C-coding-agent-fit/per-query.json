@@ -1,0 +1,640 @@
+{
+  "baseline": {
+    "uiMode": "windowed",
+    "onboarded": true,
+    "userId": "test_e2e_c",
+    "chatRoom": "brief",
+    "windows": [
+      {
+        "id": "win-1",
+        "kind": "brief",
+        "slug": null,
+        "focused": false
+      }
+    ],
+    "recentActions": [
+      {
+        "tool": "open_window",
+        "args": {
+          "kind": "brief"
+        },
+        "ok": true,
+        "t": 189.90000009536743
+      }
+    ],
+    "agentReply": "",
+    "lastQuery": "",
+    "chatMessages": [],
+    "cards": [],
+    "dock": "idle",
+    "agentStatus": ""
+  },
+  "queries": [
+    {
+      "id": "01-maths",
+      "label": "Maths/compute",
+      "text": "compute the square of 7",
+      "mode": "windowed",
+      "sentAt": 1777184960743,
+      "durationMs": 4418,
+      "settled": true,
+      "uiMode": "windowed",
+      "windowsAfter": [],
+      "newActions": [
+        {
+          "tool": "open_window",
+          "args": {
+            "kind": "brief"
+          },
+          "ok": true,
+          "t": 189.90000009536743
+        },
+        {
+          "tool": "close_window",
+          "args": {
+            "kind": "brief",
+            "id": "win-1"
+          },
+          "ok": true,
+          "t": 1106.7999999523163
+        },
+        {
+          "tool": "delegate_content",
+          "args": {
+            "intent": "compute the square of 7"
+          },
+          "ok": true,
+          "t": 1777184961650
+        }
+      ],
+      "reply": "",
+      "peakReply": "",
+      "lastQuery": "",
+      "chatTail": [],
+      "peakChatTail": [],
+      "cardsAfter": [],
+      "peakCards": [],
+      "snapshotShot": "/Users/jordantran/Agemo/microbots/agent/.worktrees/jordan-merge-harness-with-frontend/web/tests/parallel-runs-2026-04-26/C-coding-agent-fit/screenshots/01-maths-snapshot.png",
+      "newConsoleSample": [],
+      "newNetworkSample": [
+        {
+          "url": "http://localhost:3001/api/agent/orchestrate",
+          "status": 200,
+          "method": "POST",
+          "ts": 1777184961064
+        }
+      ]
+    },
+    {
+      "id": "02-fetch-parse",
+      "label": "Fetch/parse (multi-step)",
+      "text": "fetch https://example.com and tell me how many words it has",
+      "mode": "chat",
+      "sentAt": 1777184965913,
+      "durationMs": 5773,
+      "settled": true,
+      "uiMode": "chat",
+      "windowsAfter": [],
+      "newActions": [
+        {
+          "tool": "open_window",
+          "args": {
+            "kind": "brief"
+          },
+          "ok": true,
+          "t": 189.90000009536743
+        },
+        {
+          "tool": "close_window",
+          "args": {
+            "kind": "brief",
+            "id": "win-1"
+          },
+          "ok": true,
+          "t": 1106.7999999523163
+        },
+        {
+          "tool": "delegate_content",
+          "args": {
+            "intent": "compute the square of 7"
+          },
+          "ok": true,
+          "t": 1777184961650
+        },
+        {
+          "tool": "delegate_content",
+          "args": {
+            "intent": "fetch https://example.com and count its words"
+          },
+          "ok": true,
+          "t": 1777184966869
+        },
+        {
+          "tool": "push_card",
+          "args": {
+            "kind": "toast",
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          },
+          "ok": true,
+          "t": 1777184969054
+        }
+      ],
+      "reply": "",
+      "peakReply": "",
+      "lastQuery": "",
+      "chatTail": [
+        {
+          "role": "user",
+          "text": "fetch https://example.com and tell me how many words it has",
+          "room": "brief",
+          "status": "done"
+        }
+      ],
+      "peakChatTail": [
+        {
+          "role": "user",
+          "text": "fetch https://example.com and tell me how many words it has",
+          "room": "brief",
+          "status": "done"
+        }
+      ],
+      "cardsAfter": [
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          }
+        }
+      ],
+      "peakCards": [
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          }
+        }
+      ],
+      "snapshotShot": null,
+      "newConsoleSample": [],
+      "newNetworkSample": [
+        {
+          "url": "http://localhost:3001/api/agent/orchestrate",
+          "status": 200,
+          "method": "POST",
+          "ts": 1777184966037
+        }
+      ]
+    },
+    {
+      "id": "03-analytical",
+      "label": "Analytical (logs)",
+      "text": "find the slowest service in my stack and show me its logs",
+      "mode": "windowed",
+      "sentAt": 1777184972433,
+      "durationMs": 5667,
+      "settled": true,
+      "uiMode": "windowed",
+      "windowsAfter": [
+        {
+          "id": "win-2",
+          "kind": "brief",
+          "slug": null,
+          "focused": false
+        },
+        {
+          "id": "win-3",
+          "kind": "graph",
+          "slug": null,
+          "focused": false
+        }
+      ],
+      "newActions": [
+        {
+          "tool": "push_card",
+          "args": {
+            "kind": "toast",
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          },
+          "ok": true,
+          "t": 1777184969054
+        },
+        {
+          "tool": "open_window",
+          "args": {
+            "kind": "brief"
+          },
+          "ok": true,
+          "t": 12920.5
+        },
+        {
+          "tool": "open_window",
+          "args": {
+            "kind": "graph",
+            "mount": "full"
+          },
+          "ok": true,
+          "t": 1777184973551
+        },
+        {
+          "tool": "open_window",
+          "args": {
+            "kind": "graph"
+          },
+          "ok": true,
+          "t": 14633.400000095367
+        },
+        {
+          "tool": "delegate_content",
+          "args": {
+            "intent": "find the slowest service in my stack and show me its logs"
+          },
+          "ok": true,
+          "t": 1777184973618
+        },
+        {
+          "tool": "push_card",
+          "args": {
+            "kind": "toast",
+            "text": "I can't determine the slowest service or access logs with the available tools."
+          },
+          "ok": true,
+          "t": 1777184975180
+        }
+      ],
+      "reply": "",
+      "peakReply": "",
+      "lastQuery": "",
+      "chatTail": [
+        {
+          "role": "user",
+          "text": "fetch https://example.com and tell me how many words it has",
+          "room": "brief",
+          "status": "done"
+        }
+      ],
+      "peakChatTail": [
+        {
+          "role": "user",
+          "text": "fetch https://example.com and tell me how many words it has",
+          "room": "brief",
+          "status": "done"
+        }
+      ],
+      "cardsAfter": [
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          }
+        },
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't determine the slowest service or access logs with the available tools."
+          }
+        }
+      ],
+      "peakCards": [
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          }
+        },
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't determine the slowest service or access logs with the available tools."
+          }
+        }
+      ],
+      "snapshotShot": "/Users/jordantran/Agemo/microbots/agent/.worktrees/jordan-merge-harness-with-frontend/web/tests/parallel-runs-2026-04-26/C-coding-agent-fit/screenshots/03-analytical-snapshot.png",
+      "newConsoleSample": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 422 ()",
+          "ts": 1777184973860,
+          "url": "https://app-bf31.onrender.com/api/kg/entities"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 422 ()",
+          "ts": 1777184973971,
+          "url": "https://app-bf31.onrender.com/api/kg/entities"
+        }
+      ],
+      "newNetworkSample": [
+        {
+          "url": "http://localhost:3001/api/agent/orchestrate",
+          "status": 200,
+          "method": "POST",
+          "ts": 1777184972718
+        }
+      ]
+    },
+    {
+      "id": "04-generative",
+      "label": "Generative (script + schedule)",
+      "text": "draft a python script that sends a slack message every morning at 9am",
+      "mode": "chat",
+      "sentAt": 1777184978849,
+      "durationMs": 4122,
+      "settled": true,
+      "uiMode": "chat",
+      "windowsAfter": [],
+      "newActions": [
+        {
+          "tool": "delegate_content",
+          "args": {
+            "intent": "find the slowest service in my stack and show me its logs"
+          },
+          "ok": true,
+          "t": 1777184973618
+        },
+        {
+          "tool": "push_card",
+          "args": {
+            "kind": "toast",
+            "text": "I can't determine the slowest service or access logs with the available tools."
+          },
+          "ok": true,
+          "t": 1777184975180
+        },
+        {
+          "tool": "close_window",
+          "args": {
+            "kind": "graph",
+            "id": "win-3"
+          },
+          "ok": true,
+          "t": 19172.799999952316
+        },
+        {
+          "tool": "close_window",
+          "args": {
+            "kind": "brief",
+            "id": "win-2"
+          },
+          "ok": true,
+          "t": 19183.60000014305
+        },
+        {
+          "tool": "delegate_content",
+          "args": {
+            "intent": "draft a python script to send a slack message every morning at 9am"
+          },
+          "ok": true,
+          "t": 1777184979972
+        },
+        {
+          "tool": "draft",
+          "args": {
+            "topic": "python script to send a slack message every morning at 9am"
+          },
+          "ok": true,
+          "t": 1777184980744
+        }
+      ],
+      "reply": "",
+      "peakReply": "",
+      "lastQuery": "",
+      "chatTail": [
+        {
+          "role": "user",
+          "text": "fetch https://example.com and tell me how many words it has",
+          "room": "brief",
+          "status": "done"
+        },
+        {
+          "role": "user",
+          "text": "draft a python script that sends a slack message every morning at 9am",
+          "room": "brief",
+          "status": "done"
+        }
+      ],
+      "peakChatTail": [
+        {
+          "role": "user",
+          "text": "fetch https://example.com and tell me how many words it has",
+          "room": "brief",
+          "status": "done"
+        },
+        {
+          "role": "user",
+          "text": "draft a python script that sends a slack message every morning at 9am",
+          "room": "brief",
+          "status": "done"
+        }
+      ],
+      "cardsAfter": [
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          }
+        },
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't determine the slowest service or access logs with the available tools."
+          }
+        },
+        {
+          "kind": "diff",
+          "data": {
+            "text": "Draft ready · python script to send a slack message every morning at 9am",
+            "confidence": 0.86
+          }
+        }
+      ],
+      "peakCards": [
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          }
+        },
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't determine the slowest service or access logs with the available tools."
+          }
+        },
+        {
+          "kind": "diff",
+          "data": {
+            "text": "Draft ready · python script to send a slack message every morning at 9am",
+            "confidence": 0.86
+          }
+        }
+      ],
+      "snapshotShot": null,
+      "newConsoleSample": [],
+      "newNetworkSample": [
+        {
+          "url": "http://localhost:3001/api/agent/orchestrate",
+          "status": 200,
+          "method": "POST",
+          "ts": 1777184978959
+        }
+      ]
+    },
+    {
+      "id": "05-action",
+      "label": "Action with confirmation",
+      "text": "post a slack message to #general saying 'hello team'",
+      "mode": "windowed",
+      "sentAt": 1777184983720,
+      "durationMs": 13304,
+      "settled": true,
+      "uiMode": "windowed",
+      "windowsAfter": [
+        {
+          "id": "win-4",
+          "kind": "brief",
+          "slug": null,
+          "focused": false
+        },
+        {
+          "id": "win-5",
+          "kind": "integration",
+          "slug": null,
+          "focused": false
+        }
+      ],
+      "newActions": [
+        {
+          "tool": "delegate_content",
+          "args": {
+            "intent": "draft a python script to send a slack message every morning at 9am"
+          },
+          "ok": true,
+          "t": 1777184979972
+        },
+        {
+          "tool": "draft",
+          "args": {
+            "topic": "python script to send a slack message every morning at 9am"
+          },
+          "ok": true,
+          "t": 1777184980744
+        },
+        {
+          "tool": "open_window",
+          "args": {
+            "kind": "brief"
+          },
+          "ok": true,
+          "t": 24204.900000095367
+        },
+        {
+          "tool": "delegate_content",
+          "args": {
+            "intent": "post a slack message to #general saying 'hello team'"
+          },
+          "ok": true,
+          "t": 1777184985150
+        },
+        {
+          "tool": "integration_connect",
+          "args": {
+            "slug": "slack"
+          },
+          "ok": true,
+          "t": 1777184993590
+        },
+        {
+          "tool": "open_window",
+          "args": {
+            "kind": "integration"
+          },
+          "ok": true,
+          "t": 34671.90000009537
+        }
+      ],
+      "reply": "",
+      "peakReply": "",
+      "lastQuery": "",
+      "chatTail": [
+        {
+          "role": "user",
+          "text": "fetch https://example.com and tell me how many words it has",
+          "room": "brief",
+          "status": "done"
+        },
+        {
+          "role": "user",
+          "text": "draft a python script that sends a slack message every morning at 9am",
+          "room": "brief",
+          "status": "done"
+        }
+      ],
+      "peakChatTail": [
+        {
+          "role": "user",
+          "text": "fetch https://example.com and tell me how many words it has",
+          "room": "brief",
+          "status": "done"
+        },
+        {
+          "role": "user",
+          "text": "draft a python script that sends a slack message every morning at 9am",
+          "room": "brief",
+          "status": "done"
+        }
+      ],
+      "cardsAfter": [
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          }
+        },
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't determine the slowest service or access logs with the available tools."
+          }
+        }
+      ],
+      "peakCards": [
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't fetch external URLs or count words. I can only work with the information you provide or tools I have access to."
+          }
+        },
+        {
+          "kind": "toast",
+          "data": {
+            "text": "I can't determine the slowest service or access logs with the available tools."
+          }
+        },
+        {
+          "kind": "diff",
+          "data": {
+            "text": "Draft ready · python script to send a slack message every morning at 9am",
+            "confidence": 0.86
+          }
+        }
+      ],
+      "snapshotShot": "/Users/jordantran/Agemo/microbots/agent/.worktrees/jordan-merge-harness-with-frontend/web/tests/parallel-runs-2026-04-26/C-coding-agent-fit/screenshots/05-action-snapshot.png",
+      "newConsoleSample": [
+        {
+          "type": "warning",
+          "text": "[room-tools] no tool 'connect' on room 'integration'",
+          "ts": 1777184993591,
+          "url": "http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js"
+        }
+      ],
+      "newNetworkSample": [
+        {
+          "url": "http://localhost:3001/api/agent/orchestrate",
+          "status": 200,
+          "method": "POST",
+          "ts": 1777184984022
+        }
+      ]
+    }
+  ]
+}
