@@ -1,0 +1,561 @@
+{
+  "meta": {
+    "date": "2026-04-26T08:00:46.102Z",
+    "sha": "7a27000",
+    "model": "google/gemini-2.5-flash-lite",
+    "quick": true,
+    "totalQueries": 12
+  },
+  "metrics": {
+    "total": 12,
+    "passed": 0,
+    "passRate": 0,
+    "toolCallCorrectness": 0.16666666666666666,
+    "ttfwP50": 0,
+    "fullTurnP50": 34.36462499999993,
+    "fullTurnP95": 301.31987499999997,
+    "meanToolCallsMultiStep": 0,
+    "marginalPassRate": 0,
+    "recoveryRate": 1,
+    "calmCanvasAvg": 4.416666666666667,
+    "layoutAestheticAvg": 5,
+    "perCategory": {
+      "layout": {
+        "total": 2,
+        "passed": 0,
+        "passRate": 0
+      },
+      "content": {
+        "total": 2,
+        "passed": 0,
+        "passRate": 0
+      },
+      "multi_step": {
+        "total": 2,
+        "passed": 0,
+        "passRate": 0
+      },
+      "marginal": {
+        "total": 2,
+        "passed": 0,
+        "passRate": 0
+      },
+      "failure_recovery": {
+        "total": 2,
+        "passed": 0,
+        "passRate": 0
+      },
+      "edge_case": {
+        "total": 2,
+        "passed": 0,
+        "passRate": 0
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "layout-01",
+      "category": "layout",
+      "query": "split the brief and the graph side by side",
+      "passed": false,
+      "durationMs": 301,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_layout"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=301ms full=301ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 3,
+          "rationale": "missing: brief,graph"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "layout-02",
+      "category": "layout",
+      "query": "focus the workflow",
+      "passed": false,
+      "durationMs": 79,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_layout"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=79ms full=79ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: workflow"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "content-01",
+      "category": "content",
+      "query": "highlight notion-scribe in the stack",
+      "passed": false,
+      "durationMs": 30,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_content"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=30ms full=30ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: stack"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "content-02",
+      "category": "content",
+      "query": "compare slack and gmail integrations",
+      "passed": false,
+      "durationMs": 111,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_content"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=111ms full=111ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "multi-01",
+      "category": "multi_step",
+      "query": "show me what's broken and explain why",
+      "passed": false,
+      "durationMs": 31,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_layout,delegate_content"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=31ms full=31ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: stack"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "multi-02",
+      "category": "multi_step",
+      "query": "open the bug triage workflow, scroll to step 3, and explain it",
+      "passed": false,
+      "durationMs": 36,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_layout,delegate_content"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=36ms full=36ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: workflow"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-01",
+      "category": "marginal",
+      "query": "i'm anxious about friday",
+      "passed": false,
+      "durationMs": 36,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_layout"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=36ms full=36ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "marginal-02",
+      "category": "marginal",
+      "query": "what should i worry about today?",
+      "passed": false,
+      "durationMs": 30,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_layout"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=30ms full=30ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "fail-01",
+      "category": "failure_recovery",
+      "query": "approve the slack thing",
+      "passed": false,
+      "durationMs": 30,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_content"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=30ms full=30ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "fail-02",
+      "category": "failure_recovery",
+      "query": "show me the customer-onboarding workflow",
+      "passed": false,
+      "durationMs": 36,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 0,
+          "rationale": "missing delegate_layout"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=36ms full=36ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 4,
+          "rationale": "missing: workflow"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "edge-01",
+      "category": "edge_case",
+      "query": "",
+      "passed": false,
+      "durationMs": 34,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=34ms full=34ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    },
+    {
+      "id": "edge-02",
+      "category": "edge_case",
+      "query": "do nothing",
+      "passed": false,
+      "durationMs": 31,
+      "ttfwMs": null,
+      "toolCalls": [],
+      "subAgentToolCalls": [],
+      "replyText": "",
+      "error": null,
+      "axes": {
+        "tool_call_correctness": {
+          "score": 5,
+          "rationale": "all required tools called, none forbidden"
+        },
+        "latency": {
+          "score": 5,
+          "rationale": "ttfw=31ms full=31ms"
+        },
+        "multi_step": {
+          "score": 0,
+          "rationale": "no sub-agent tool calls"
+        },
+        "coverage": {
+          "score": 0,
+          "rationale": "no delegation — agent did not act on this query"
+        },
+        "recovery": {
+          "score": 5,
+          "rationale": "no tool failures"
+        },
+        "calm_canvas": {
+          "score": 5,
+          "rationale": "no window expectations to check"
+        },
+        "layout_aesthetic": {
+          "score": 5,
+          "rationale": "single or no window — aesthetic n/a"
+        }
+      }
+    }
+  ]
+}

@@ -312,7 +312,84 @@
   category: failure_recovery
   query: "open the X window"
 
-# ─── edge_case (5) ──────────────────────────────────────────
+# ─── conversational (15) — voice-first casual/warm interactions ───
+
+- id: conv-01
+  category: conversational
+  query: "good morning"
+  notes: "pure greeting — agent should respond warmly and proactively open something useful"
+
+- id: conv-02
+  category: conversational
+  query: "hey"
+  notes: "minimal greeting"
+
+- id: conv-03
+  category: conversational
+  query: "what's up"
+  notes: "casual check-in, expects a brief update + relevant window"
+
+- id: conv-04
+  category: conversational
+  query: "hmm what was that thing we were looking at"
+  notes: "vague reference to prior context — agent should surface recent or graph"
+
+- id: conv-05
+  category: conversational
+  query: "thanks that's helpful"
+  notes: "acknowledgment — agent should respond warmly, no unnecessary action"
+
+- id: conv-06
+  category: conversational
+  query: "wait hold on"
+  notes: "interrupt — agent should pause/acknowledge"
+
+- id: conv-07
+  category: conversational
+  query: "never mind"
+  notes: "dismissal — agent should acknowledge and stand by"
+
+- id: conv-08
+  category: conversational
+  query: "ok cool"
+  notes: "low-signal affirmation — no action needed, just warmth"
+
+- id: conv-09
+  category: conversational
+  query: "i just got out of a meeting"
+  notes: "context signal — agent should infer they want a catch-up, open brief"
+
+- id: conv-10
+  category: conversational
+  query: "what should i do next"
+  notes: "guidance request — agent should surface brief or most actionable window"
+
+- id: conv-11
+  category: conversational
+  query: "show me that slack thing again"
+  notes: "vague reference to slack — should open integration/slack or search graph"
+
+- id: conv-12
+  category: conversational
+  query: "actually go back"
+  notes: "undo-like intent — agent should re-open or refocus the previous window"
+
+- id: conv-13
+  category: conversational
+  query: "can you explain what i'm looking at"
+  notes: "meta question about current canvas — delegate_content to explain focused window"
+
+- id: conv-14
+  category: conversational
+  query: "is notion working"
+  notes: "specific integration health check"
+
+- id: conv-15
+  category: conversational
+  query: "let me see the big picture"
+  notes: "overview request — should open graph or arrange in grid"
+
+# ─── edge_case (5) ───────────────────────────���──────────────
 
 - id: edge-01
   category: edge_case

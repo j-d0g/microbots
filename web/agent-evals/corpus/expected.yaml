@@ -10,63 +10,66 @@
 # ─── layout ─────────────────────────────────────────────────
 
 - id: layout-01
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [brief, graph]
   judge_tags: [correctness, calm]
 
 - id: layout-02
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [workflow]
   judge_tags: [correctness, calm]
 
 - id: layout-03
-  must_include_tools: [delegate_layout]
+  must_include_tools: [clear_canvas]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [correctness, calm]
+  notes: "'clean slate' → clear_canvas"
 
 - id: layout-04
-  must_include_tools: [delegate_layout]
+  must_include_tools: [arrange_windows]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [correctness, calm]
-  notes: "should arrange all open windows in grid"
+  notes: "'tile everything' → arrange_windows(grid)"
 
 - id: layout-05
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [stack, brief]
   judge_tags: [correctness, calm]
 
 - id: layout-06
-  must_include_tools: [delegate_layout]
+  must_include_tools: [close_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [correctness, calm]
-  notes: "should close settings if open"
+  notes: "'close the settings' → close_window(kind=settings)"
 
 - id: layout-07
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [graph]
   judge_tags: [correctness, calm]
+  notes: "'graph full screen' → open_window(graph) + arrange_windows(focus) or focus_window"
 
 - id: layout-08
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [playbooks, workflow]
   judge_tags: [correctness, calm]
 
 - id: layout-09
-  must_include_tools: [delegate_layout]
+  must_include_tools: [focus_window]
   must_not_include_tools: []
   expected_window_kinds_after: [brief]
   judge_tags: [correctness, calm]
+  notes: "'minimize everything except brief' → focus_window(kind=brief) or close others"
 
 - id: layout-10
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [workflow, stack]
   judge_tags: [correctness, calm]
@@ -136,42 +139,42 @@
 # ─── multi_step ──────────────────────────────────────────────
 
 - id: multi-01
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [stack]
   judge_tags: [correctness, performative, calm]
   min_tool_calls: 3
 
 - id: multi-02
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [workflow]
   judge_tags: [correctness, performative]
   min_tool_calls: 4
 
 - id: multi-03
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [brief]
   judge_tags: [correctness, performative]
   min_tool_calls: 4
 
 - id: multi-04
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [stack]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-05
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [graph, workflow]
   judge_tags: [correctness, performative, calm]
   min_tool_calls: 3
 
 - id: multi-06
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [brief, stack]
   judge_tags: [correctness, performative]
@@ -185,91 +188,91 @@
   min_tool_calls: 3
 
 - id: multi-08
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [brief, workflow]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-09
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [settings, graph]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-10
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [stack]
   judge_tags: [correctness, performative, calm]
   min_tool_calls: 4
 
 - id: multi-11
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [playbooks, workflow]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-12
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [brief, graph]
   judge_tags: [correctness, performative]
   min_tool_calls: 4
 
 - id: multi-13
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [stack]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-14
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [workflow]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-15
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [brief, stack, workflow]
   judge_tags: [correctness, performative, calm]
   min_tool_calls: 3
 
 - id: multi-16
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [graph]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-17
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [brief]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-18
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [graph]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-19
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [stack, settings]
   judge_tags: [correctness, performative]
   min_tool_calls: 3
 
 - id: multi-20
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [workflow]
   judge_tags: [correctness, performative]
@@ -279,157 +282,157 @@
 # Pass criteria: agent delegates at least ONE sub-agent (doesn't give up)
 
 - id: marginal-01
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-02
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-03
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-04
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-05
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-06
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-07
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [stack]
   judge_tags: [coverage, marginal]
   notes: "notion-scribe is in WARN — agent should surface stack"
 
 - id: marginal-08
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-09
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-10
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [stack]
   judge_tags: [coverage, marginal]
   notes: "system health → should open stack"
 
 - id: marginal-11
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-12
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-13
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-14
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-15
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [stack]
   judge_tags: [coverage, marginal]
   notes: "running smoothly → check stack health"
 
 - id: marginal-16
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-17
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-18
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-19
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [brief]
   judge_tags: [coverage, marginal]
   notes: "confidence → brief has confidence scores"
 
 - id: marginal-20
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-21
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [brief]
   judge_tags: [coverage, marginal]
 
 - id: marginal-22
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [brief]
   judge_tags: [coverage, marginal]
   notes: "short on time → show brief for quick scan"
 
 - id: marginal-23
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [stack]
   judge_tags: [coverage, marginal]
   notes: "on fire → check stack health"
 
 - id: marginal-24
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [coverage, marginal]
 
 - id: marginal-25
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [brief]
   judge_tags: [coverage, marginal]
@@ -445,14 +448,14 @@
   notes: "ambiguous 'slack thing' — agent should attempt but may fail to match"
 
 - id: fail-02
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: [workflow]
   judge_tags: [recovery]
   notes: "customer-onboarding doesn't exist — agent should open workflow and handle gracefully"
 
 - id: fail-03
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [recovery]
@@ -473,21 +476,21 @@
   notes: "no 'critical' health filter — agent should try 'warn' or 'down'"
 
 - id: fail-06
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [recovery]
   notes: "no 'calendar' window — should handle gracefully"
 
 - id: fail-07
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [recovery]
   notes: "no jenkins — agent should try stack or deny"
 
 - id: fail-08
-  must_include_tools: [delegate_layout, delegate_content]
+  must_include_tools: [open_window, delegate_content]
   must_not_include_tools: []
   expected_window_kinds_after: [workflow]
   judge_tags: [recovery]
@@ -501,11 +504,120 @@
   notes: "should try graph_focus_node or graph_search for slack"
 
 - id: fail-10
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [recovery]
   notes: "'X' is ambiguous — agent should ask or infer"
+
+# ─── conversational ─────────────────────────────────────────
+# Pass criteria: agent responds warmly and takes a reasonable action (or no action for low-signal)
+# The key test: reply text should NOT be robotic or describe tool calls
+
+- id: conv-01
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "greeting — should respond warmly. optionally open graph or brief. no mandatory tool."
+
+- id: conv-02
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "minimal greeting — warm ack, optional proactive action"
+
+- id: conv-03
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "casual check-in — should surface something useful"
+
+- id: conv-04
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "vague reference — agent should try graph or recent context"
+
+- id: conv-05
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "thanks — warm ack, no unnecessary action"
+
+- id: conv-06
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "interrupt — should pause/acknowledge"
+
+- id: conv-07
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "dismissal — acknowledge and stand by"
+
+- id: conv-08
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "affirmation — no action needed"
+
+- id: conv-09
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "context signal — should infer catch-up intent"
+
+- id: conv-10
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "guidance request — surface something actionable"
+
+- id: conv-11
+  must_include_tools: [open_window]
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "vague slack reference — should open integration/slack or graph"
+
+- id: conv-12
+  must_include_tools: []
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "undo-like — agent should try to refocus previous context"
+
+- id: conv-13
+  must_include_tools: [delegate_content]
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: []
+  judge_tags: [conversational, warmth]
+  notes: "meta question — should delegate to explain current canvas"
+
+- id: conv-14
+  must_include_tools: [open_window]
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: [integration]
+  judge_tags: [conversational, warmth]
+  notes: "integration health check — open notion integration window"
+
+- id: conv-15
+  must_include_tools: [open_window]
+  must_not_include_tools: [clear_canvas]
+  expected_window_kinds_after: [graph]
+  judge_tags: [conversational, warmth]
+  notes: "overview request — should open graph"
 
 # ─── edge_case ───────────────────────────────────────────────
 
@@ -524,7 +636,7 @@
   notes: "explicit no-op — should respect or open brief"
 
 - id: edge-03
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [edge, calm]
@@ -538,7 +650,7 @@
   notes: "emoji-only — should handle gracefully"
 
 - id: edge-05
-  must_include_tools: [delegate_layout]
+  must_include_tools: [open_window]
   must_not_include_tools: []
   expected_window_kinds_after: []
   judge_tags: [edge, calm]

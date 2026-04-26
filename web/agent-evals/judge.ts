@@ -36,6 +36,7 @@ export interface JudgeResult {
     recovery: AxisScore;
     calm_canvas: AxisScore;
     layout_aesthetic: AxisScore;
+    warmth: AxisScore;
   };
   passed: boolean;
   toolCallNames: string[];
@@ -155,6 +156,17 @@ function scoreMultiStep(
   return { score: 0, rationale: "no sub-agent tool calls" };
 }
 
+/** Direct layout tools that count as "agent acted on this query". */
+const DIRECT_ACTION_TOOLS = new Set([
+  "open_window",
+  "close_window",
+  "focus_window",
+  "arrange_windows",
+  "clear_canvas",
+  "move_window",
+  "set_window_rect",
+]);
+
 function scoreCoverage(
   result: InstrumentedResult,
   expected: QueryExpected,
@@ -163,29 +175,42 @@ function scoreCoverage(
     return { score: 0, rationale: "error" };
   }
   const names = extractToolNames(result);
-  const delegated = names.some(
-    (n) => n === "delegate_layout" || n === "delegate_content",
-  );
+  const delegatedContent = names.includes("delegate_content");
+  const usedDirectTool = names.some((n) => DIRECT_ACTION_TOOLS.has(n));
+  const acted = delegatedContent || usedDirectTool;
 
-  if (!delegated) {
+  // Conversational turns may legitimately have no tool calls (e.g. "thanks",
+  // "ok cool") — reply text alone counts as coverage.
+  if (expected.judge_tags.includes("conversational")) {
+    if (result.replyText.trim().length > 0) {
+      return {
+        score: acted ? 5 : 4,
+        rationale: acted
+          ? "replied and acted"
+          : "replied without tools (appropriate for conversational)",
+      };
+    }
+    return { score: 1, rationale: "no reply text for conversational turn" };
+  }
+
+  if (!acted) {
     return {
       score: 0,
-      rationale: "no delegation — agent did not act on this query",
+      rationale: "no tool calls — agent did not act on this query",
     };
   }
 
-  // For marginal queries, delegation alone is a pass
+  // For marginal queries, any action is a pass
   if (expected.judge_tags.includes("marginal")) {
-    const hasToolCalls = countSubAgentToolCalls(result) > 0;
     return {
-      score: hasToolCalls ? 5 : 3,
-      rationale: hasToolCalls
-        ? "delegated and sub-agent acted"
-        : "delegated but no sub-agent tool calls",
+      score: 5,
+      rationale: delegatedContent
+        ? "delegated content and acted"
+        : "used direct tools",
     };
   }
 
-  return { score: 5, rationale: "delegated" };
+  return { score: 5, rationale: acted ? "acted" : "delegated" };
 }
 
 function scoreRecovery(result: InstrumentedResult): AxisScore {
@@ -304,6 +329,84 @@ function scoreLayoutAesthetic(result: InstrumentedResult): AxisScore {
   return { score: s, rationale: issues.join("; ") };
 }
 
+/** Robotic anti-patterns the voice-first agent should avoid. */
+const ROBOTIC_PATTERNS = [
+  /i(?:'m| am) opening/i,
+  /i(?:'m| am) going to/i,
+  /i will now/i,
+  /let me open .+ for you/i,
+  /i(?:'ll| will) pull up/i,
+  /certainly[!.]?\s/i,
+  /absolutely[!.]?\s/i,
+  /of course[!.]?\s/i,
+  /here(?:'s| is) what i(?:'ll| will) do/i,
+  /i(?:'m| am) now/i,
+];
+
+function scoreWarmth(
+  result: InstrumentedResult,
+  expected: QueryExpected,
+): AxisScore {
+  // Only score warmth for conversational/marginal queries
+  if (
+    !expected.judge_tags.includes("conversational") &&
+    !expected.judge_tags.includes("warmth") &&
+    !expected.judge_tags.includes("marginal")
+  ) {
+    return { score: 5, rationale: "n/a — not a warmth-scored query" };
+  }
+
+  if (result.error) {
+    return { score: 0, rationale: "error" };
+  }
+
+  const text = result.replyText.trim();
+  if (!text) {
+    return { score: 0, rationale: "no reply text" };
+  }
+
+  let s = 5;
+  const issues: string[] = [];
+
+  // Check 1: not too long (voice-first = concise)
+  const sentences = text.split(/[.!?]+/).filter((t) => t.trim().length > 0);
+  if (sentences.length > 3) {
+    s -= 1;
+    issues.push(`${sentences.length} sentences (max 2-3)`);
+  }
+
+  // Check 2: no robotic patterns
+  const roboticHits = ROBOTIC_PATTERNS.filter((p) => p.test(text));
+  if (roboticHits.length > 0) {
+    s -= Math.min(2, roboticHits.length);
+    issues.push(`robotic: ${roboticHits.map((p) => p.source.slice(0, 20)).join(", ")}`);
+  }
+
+  // Check 3: no emojis (prompt says no emojis)
+  if (/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u.test(text)) {
+    s -= 1;
+    issues.push("contains emojis");
+  }
+
+  // Check 4: lowercase (prompt says lowercase)
+  const firstChar = text[0];
+  if (firstChar && firstChar === firstChar.toUpperCase() && firstChar !== firstChar.toLowerCase()) {
+    s -= 0.5;
+    issues.push("starts with uppercase");
+  }
+
+  // Check 5: doesn't describe its own tool calls
+  if (/i(?:'m| am) (?:calling|using|invoking)/i.test(text)) {
+    s -= 2;
+    issues.push("describes tool calls");
+  }
+
+  s = Math.max(0, Math.round(s));
+  if (issues.length === 0) issues.push("warm, concise, lowercase");
+
+  return { score: s, rationale: issues.join("; ") };
+}
+
 /** Judge a single query result against its expected spec. */
 export function judgeQuery(
   id: string,
@@ -319,11 +422,16 @@ export function judgeQuery(
     recovery: scoreRecovery(result),
     calm_canvas: scoreCalmCanvas(result, expected),
     layout_aesthetic: scoreLayoutAesthetic(result),
+    warmth: scoreWarmth(result, expected),
   };
 
   // A query passes if tool_call_correctness >= 3 AND coverage >= 3
+  // For conversational queries, warmth must also be >= 3
+  const isConversational = expected.judge_tags.includes("conversational");
   const passed =
-    axes.tool_call_correctness.score >= 3 && axes.coverage.score >= 3;
+    axes.tool_call_correctness.score >= 3 &&
+    axes.coverage.score >= 3 &&
+    (!isConversational || axes.warmth.score >= 3);
 
   return {
     id,

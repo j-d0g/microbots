@@ -166,6 +166,8 @@ interface AggregateMetrics {
   recoveryRate: number;
   calmCanvasAvg: number;
   layoutAestheticAvg: number;
+  warmthAvg: number;
+  conversationalPassRate: number;
   perCategory: Record<
     string,
     { total: number; passed: number; passRate: number }
@@ -248,6 +250,23 @@ function aggregate(results: QueryResult[]): AggregateMetrics {
   const layoutAestheticAvg =
     aestheticScores.reduce((a, b) => a + b, 0) / Math.max(aestheticScores.length, 1);
 
+  // Warmth average (conversational + marginal queries)
+  const warmthResults = results.filter(
+    (r) =>
+      r.query.category === "conversational" || r.query.category === "marginal",
+  );
+  const warmthScores = warmthResults.map((r) => r.judge.axes.warmth.score);
+  const warmthAvg =
+    warmthScores.reduce((a, b) => a + b, 0) / Math.max(warmthScores.length, 1);
+
+  // Conversational pass rate
+  const convResults = results.filter(
+    (r) => r.query.category === "conversational",
+  );
+  const convPassed = convResults.filter((r) => r.judge.passed).length;
+  const conversationalPassRate =
+    convPassed / Math.max(convResults.length, 1);
+
   // Per-category
   const perCategory: AggregateMetrics["perCategory"] = {};
   for (const r of results) {
@@ -273,6 +292,8 @@ function aggregate(results: QueryResult[]): AggregateMetrics {
     recoveryRate,
     calmCanvasAvg,
     layoutAestheticAvg,
+    warmthAvg,
+    conversationalPassRate,
     perCategory,
   };
 }
@@ -355,6 +376,8 @@ function printDeltaTable(metrics: AggregateMetrics): void {
   console.log(`| Recovery rate | ${pct(metrics.recoveryRate)} |`);
   console.log(`| Calm-canvas avg | ${(metrics.calmCanvasAvg).toFixed(1)} / 5 |`);
   console.log(`| Layout aesthetic avg | ${(metrics.layoutAestheticAvg).toFixed(1)} / 5 |`);
+  console.log(`| Warmth avg (conv+marginal) | ${(metrics.warmthAvg).toFixed(1)} / 5 |`);
+  console.log(`| Conversational pass-rate | ${pct(metrics.conversationalPassRate)} |`);
 
   console.log("\n### Per-category\n");
   console.log("| Category | Pass | Total | Rate |");
