@@ -39,16 +39,19 @@ If port 3000 is taken (common when running this alongside the harness frontend a
 npx next dev --port 3002   # any free port works; 3001 is also commonly taken
 ```
 
+Note: use `npx next dev --port …` rather than `npm run dev -- --port …`. The `dev` script in `package.json` hardcodes `--port 3000`, so the npm-script form silently ignores your override.
+
 **Parallel dev from the same `web/` dir**: Next.js 16 keeps a singleton lockfile at `.next/dev/lock`. If another `next dev` already owns this directory — a teammate's instance, a different worktree's instance, or a backgrounded one you've forgotten about — `next dev` will fail with `Another next dev server is already running` *no matter what `--port` you pass*. The error message includes the holding PID. Either:
 
-- `kill <pid>` the holder if you don't need it, or
-- Give your second instance its own dist dir + lock:
+- Give your second instance its own dist dir + lock (use this if you don't own the holding process):
 
   ```bash
   NEXT_DIST_DIR=.next-alt npx next dev --port 3002
   ```
 
-  `next.config.ts` already reads `NEXT_DIST_DIR` (defaults to `.next`), so any value gives you a fresh `<value>/lock`.
+  `next.config.ts` already reads `NEXT_DIST_DIR` (defaults to `.next`), so any value gives you a fresh `<value>/lock`. **Heads-up:** Next will auto-rewrite `tsconfig.json` (appends `.next-alt/types/**`) and `next-env.d.ts` (replaces the `./.next/dev/types/routes.d.ts` import) when you do this. Both are auto-managed — revert the diffs before committing, or just leave them; the next default-`.next` run will rewrite them back.
+
+- Or, if you own the holding process, `kill <pid>` it.
 
 ### Smoke test
 
