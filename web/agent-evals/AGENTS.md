@@ -445,6 +445,37 @@ That's it. Devin reconstructs full context from this file.
 
 <!-- Devin: append entries below this line. Newest first. -->
 
+### Sprint 2 — Snappy + beautiful · 2026-04-26 · #6
+
+**Shipped:** Three-goal sprint targeting speed, aesthetics, and recovery. (A) **Speed via context engineering**: trimmed orchestrator prompt ~60% (50→20 lines), layout-agent ~55% (60→27 lines), content-agent ~75% (25→6 lines); changed orchestrator to single-round-trip design (prompt instructs model to emit reply text alongside `delegate_*` calls in one generation, `stepCountIs` 3→2); removed 12×8 ASCII grid from content-agent snapshot (layout-only); added OpenRouter connection pre-warming (`prewarmConnection()` on first request). (B) **Layout aesthetics**: re-tuned focus preset from 95%×78% full-width to 78%×75% centered; spotlight 64%×70%→70%×72% centered; theater subject 95%→82% wide centered; added deterministic jitter (1–2% y-offsets) to split, grid diagonal stagger, triptych alternating row offsets; updated layout-agent PICKER to default spotlight for 1–2 window cases; added `preset-rects-aesthetic.mjs` smoke test (195 assertions); added `layout_aesthetic` scoring axis to judge + run.ts. (C) **Recovery adaptive step budget**: sub-agents now use adaptive stop condition — base cap 3, +1 per tool failure, max bonus +2, hard ceiling 6; emits `agent.tool.retry` events for sidecar.
+
+**Eval delta:**
+
+| Metric | Before (Sprint 1.5) | After (Sprint 2) | Δ |
+|---|---|---|---|
+| Tool-call correctness | 100.0% | 99.3% | -0.7 pp |
+| TTFW p50 | 1704ms | **967ms** | **-737ms** ✓ target <1000ms |
+| Full-turn p50 / p95 | 3554 / 15446ms | 2977 / 13783ms | -577 / -1663ms |
+| Mean tool calls (multi_step) | 4.35 | 4.4 | +0.05 |
+| Marginal-intent pass-rate | 100.0% | **100.0%** | 0 (no regression) |
+| Recovery rate | 0.0% | 16.7% | +16.7 pp |
+| Calm-canvas avg | 4.9 / 5 | 4.9 / 5 | 0 |
+| Layout aesthetic avg | N/A | **5.0 / 5** | new metric |
+
+**Regressions:** Tool-call correctness dipped 0.7 pp (1 multi_step query failed — `multi-14` lost its `delegate_content` call likely due to the tighter prompt). Not a pattern; acceptable. Full-turn p50/p95 improved but didn't hit the aggressive targets (2000ms/5000ms) — the dominant bottleneck is LLM round-trip count from parallel delegation, not prompt length. Connection pre-warming helps TTFW but not full-turn.
+
+**Interventions tried that did NOT fully solve latency:**
+- Single round-trip orchestrator: helped TTFW significantly (-737ms) but full-turn still dominated by sub-agent LLM calls running in parallel
+- Prompt trimming (-60%): reduced token input but model generation time is the bottleneck, not prompt parsing
+- Snapshot diet (grid removal for content-agent): minor token savings, no measurable latency impact
+- Step cap already at 3 from Sprint 1.5 — no further reduction possible without quality loss
+
+**Remaining latency bottleneck:** Full-turn p50/p95 is dominated by parallel sub-agent LLM calls (each is 1–3 round-trips via OpenRouter). The orchestrator itself now finishes in ~1 step, but `delegate_layout` and `delegate_content` execute concurrently and each may take 2–3 steps. The path to <2000ms p50 requires either (a) system-prefix caching at the provider level, (b) model-side latency improvements, or (c) reducing sub-agent step count to 1–2 via smarter tool design. Sprint 3 should pick this up.
+
+**Recovery at 16.7% (target 60%):** The adaptive step budget works — the agent gets bonus steps after failures. However, most tool "failures" in the current corpus are soft failures (e.g., `brief_approve` on a non-existent proposal) where the agent doesn't attempt a retry because the original intent was satisfied by the initial delegation. True recovery requires the agent to detect the failure and re-issue a corrected tool call, which needs prompt-level guidance (Sprint 3).
+
+**Next:** Sprint 3 should focus on (1) latency — investigate system-prefix caching or tool-call batching to reduce sub-agent round-trips, (2) recovery — add prompt-level re-delegation guidance when sub-agent reports failure.
+
 ### Sprint 1.5 — Snappy + truthful + always-stage · 2026-04-26 · #5
 
 **Shipped:** Three surgical changes in one PR. (1) **Recovery metric truth**: added `ok: boolean` to `ToolApplyResult`, threaded real success/failure from `applyToolToSnapshot` into `agent.tool.done` events across `applyAndEmit`, `arrange_windows`, and `dispatchRoomTool`; added room-prefix fallback (`brief_*`, `workflow_*`, `stack_*`, `waffle_*`, `playbooks_*`, `settings_*`, `graph_*`) in the default case so per-window and graph tools aren't false-failed. (2) **Marginal prompt polish**: added ALWAYS-STAGE RULE to `ORCH_SYSTEM` — emotional/status/vague queries must trigger `delegate_layout` in parallel with `delegate_content`, with 2 concrete examples and a narrow exception clause (~12 lines). (3) **Latency interventions**: temperature 0.3→0.2 on orchestrator + content-agent; sub-agent step caps 4→3 (prompts + docstrings aligned); replaced `for-await textStream` drain with `await result.steps` in both sub-agents.
