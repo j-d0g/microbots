@@ -1,6 +1,6 @@
 """MCP server for the microbot harness.
 
-Exposes 11 tools to the chat agent:
+Exposes 12 tools to the chat agent:
   - run_code                       — execute Python via Render Workflows run_user_code task
   - find_examples                  — substring search over templates/index.json
   - save_workflow                  — write code to saved/<name>.py, return URL
@@ -11,6 +11,7 @@ Exposes 11 tools to the chat agent:
   - inspect_traces                 — SQL over the agent's own Logfire history
   - find_recent_failures           — canned aggregation: failure_mode events grouped by label
   - find_doc_failure_attribution   — canned join: which docs correlate with which failures
+  - get_self_improvement_digest    — synthesised markdown report across all 3 tag layers
   - ask_user                       — schema-only; resolved by the frontend (client-side tool)
 
 Observability:
@@ -589,6 +590,53 @@ def find_doc_failure_attribution(age_hours: int = 24) -> dict:
     except Exception as exc:  # noqa: BLE001
         return {"error": f"{type(exc).__name__}: {exc}", "rows": [], "count": 0}
     return {"rows": rows, "count": len(rows), "age_hours": age}
+
+
+@mcp.tool()
+def get_self_improvement_digest(age_minutes: int = 60, format: str = "markdown") -> dict:
+    """Generate a self-improvement digest from the agent's recent traces.
+
+    Combines the three observability layers (auto-tags, rule-based
+    classifier, LLM semantic tagger) into one structured report:
+
+      * What's been going wrong (failure_mode breakdown)
+      * Which docs correlate with failures (doc-attribution heatmap)
+      * What the LLM tagger inferred (top semantic chips + rationales)
+      * Where the agent's happy paths run (success patterns)
+
+    Use when the user asks "what's been going wrong this week?",
+    "which docs need updating?", or "give me a state-of-the-agent
+    report". Returns markdown by default — agent should pass-through
+    or summarise rather than re-format.
+
+    Args:
+        age_minutes: Window to analyse, capped at 7 days. Default 60.
+        format: ``"markdown"`` (human-readable) or ``"json"`` (raw
+                dict for further LLM processing). Default markdown.
+
+    Returns:
+        ``{report: str, age_minutes: int, format: str}`` on success;
+        ``{error: str}`` on failure (typically missing read token).
+    """
+    from microbots.digest import collect_digest, render_markdown
+    import json as _json
+
+    age = max(1, min(int(age_minutes or 60), 7 * 24 * 60))
+    fmt = format if format in ("markdown", "json") else "markdown"
+
+    try:
+        d = collect_digest(age_minutes=age)
+    except RuntimeError as exc:
+        return {"error": str(exc)}
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+    if fmt == "json":
+        report = _json.dumps(d, default=str)
+    else:
+        report = render_markdown(d)
+
+    return {"report": report, "age_minutes": age, "format": fmt}
 
 
 @mcp.tool()

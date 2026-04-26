@@ -45,6 +45,46 @@ def _ensure_configured() -> None:
 # ----- doc-attribution spans ----------------------------------------------
 
 
+def _retrieval_tags(source_kind: str, **attrs: Any) -> list[str]:
+    """Derive the chip set rendered in the Logfire UI for a retrieval.
+
+    Visual density matters in the Live tab — sparse tags look weak,
+    rich tags read as "we know what's going on". So every retrieval
+    gets ~3-5 tags pulled out of the structured attrs:
+
+      * a kind tag (``kind:template``, ``kind:memory``, …)
+      * a tool tag (``tool:find_examples``, …) if known
+      * a score band (``relevance:high|medium|low``) if a numeric
+        ``score`` was passed
+      * a flat ``retrieval`` tag for the cross-cutting filter
+    """
+    tags: list[str] = ["retrieval", f"kind:{source_kind}"]
+    tool = attrs.get("tool")
+    if tool:
+        tags.append(f"tool:{tool}")
+    score = attrs.get("score")
+    if isinstance(score, (int, float)):
+        if score >= 0.8:
+            band = "high"
+        elif score >= 0.5:
+            band = "medium"
+        else:
+            band = "low"
+        tags.append(f"relevance:{band}")
+    return tags
+
+
+def _failure_tags(label: str, severity: str, **attrs: Any) -> list[str]:
+    """Chip set for a failure_mode event."""
+    tags: list[str] = ["failure", f"label:{label}", f"severity:{severity}"]
+    tool = attrs.get("tool")
+    if tool:
+        tags.append(f"tool:{tool}")
+    if label not in KNOWN_FAILURE_MODES:
+        tags.append("novel-mode")
+    return tags
+
+
 @contextmanager
 def traced_retrieval(
     *,
@@ -85,6 +125,7 @@ def traced_retrieval(
     _ensure_configured()
     with logfire.span(
         "retrieved_doc",
+        _tags=_retrieval_tags(source_kind, **attrs),
         source_doc_id=source_doc_id,
         source_kind=source_kind,
         **attrs,
@@ -109,6 +150,7 @@ def record_retrieval(
     _ensure_configured()
     logfire.info(
         "retrieved_doc",
+        _tags=_retrieval_tags(source_kind, **attrs),
         source_doc_id=source_doc_id,
         source_kind=source_kind,
         **attrs,
@@ -168,6 +210,7 @@ def emit_failure_mode(
         attrs.setdefault("label_is_novel", True)
     logfire.info(
         "failure_mode label={label} severity={severity}",
+        _tags=_failure_tags(label, severity, **attrs),
         label=label,
         severity=severity,
         **attrs,
@@ -286,8 +329,17 @@ def query_logfire(sql: str, *, limit: int = 500) -> list[dict[str, Any]]:
     )
     resp.raise_for_status()
     body = resp.json()
-    # Query API returns row-oriented JSON: {"columns": [...], "rows": [[...]]}
-    # OR column-oriented depending on Accept; we requested row-oriented.
+    # Logfire's Query API returns column-oriented JSON, not row-oriented:
+    #   {"columns": [{"name": ..., "datatype": ..., "values": [...]}, ...]}
+    # Transpose into row dicts so callers can iterate naturally.
     columns = body.get("columns") or []
-    rows = body.get("rows") or []
-    return [dict(zip(columns, r)) for r in rows]
+    if not columns:
+        return []
+    names = [c["name"] for c in columns]
+    value_arrays = [c.get("values") or [] for c in columns]
+    n_rows = max((len(v) for v in value_arrays), default=0)
+    return [
+        {names[i]: value_arrays[i][r] if r < len(value_arrays[i]) else None
+         for i in range(len(names))}
+        for r in range(n_rows)
+    ]

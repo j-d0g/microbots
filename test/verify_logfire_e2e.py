@@ -88,12 +88,12 @@ def main() -> int:
 
     _step("step 4: query retrieved_doc back by nonce")
     sql_retrieval = (
-        "SELECT timestamp, attributes->>'source_doc_id' AS doc, "
+        "SELECT start_timestamp, attributes->>'source_doc_id' AS doc, "
         "attributes->>'source_kind' AS kind "
         "FROM records "
         f"WHERE attributes->>'verifier_nonce' = '{nonce}' "
         "AND span_name = 'retrieved_doc' "
-        "ORDER BY timestamp DESC"
+        "ORDER BY start_timestamp DESC"
     )
     try:
         rows = query_logfire(sql_retrieval, limit=10)
@@ -113,12 +113,12 @@ def main() -> int:
 
     _step("step 5: query failure_mode back by nonce")
     sql_failure = (
-        "SELECT timestamp, attributes->>'label' AS label, "
+        "SELECT start_timestamp, attributes->>'label' AS label, "
         "attributes->>'severity' AS severity "
         "FROM records "
         f"WHERE attributes->>'verifier_nonce' = '{nonce}' "
         "AND span_name = 'failure_mode label={label} severity={severity}' "
-        "ORDER BY timestamp DESC"
+        "ORDER BY start_timestamp DESC"
     )
     try:
         rows = query_logfire(sql_failure, limit=10)
