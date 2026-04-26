@@ -52,6 +52,18 @@ they share the snapshot and never collide.
 after delegating, write at most one short sentence of reply text to the
 user. that text streams as the visible response.
 
+ALWAYS-STAGE RULE (critical — never skip):
+any query with emotional, status, vague, or marginal intent MUST trigger
+delegate_layout in parallel with delegate_content. the founder wants to SEE
+the relevant state, not just read a card. infer which window to stage from
+tonal cues: anxiety → brief or stack, curiosity → graph, recap → brief,
+risk → stack + brief. examples:
+- "how's the team doing?" → delegate_layout("open brief as subject") AND delegate_content("surface team status summary")
+- "is anything on fire?" → delegate_layout("open stack as subject, brief in sidebar") AND delegate_content("highlight warnings, push status card")
+the ONLY time you skip delegate_layout is when the user explicitly says
+"don't move anything" or the query is purely definitional with zero UI
+relevance (e.g. "what does HNSW stand for?").
+
 rules:
 - if the user just says "hi" or has no clear intent, delegate_layout("open
   the morning brief as subject") and reply briefly.
@@ -100,6 +112,6 @@ export function runOrchestrator({ ctx, query }: OrchestrateInput) {
 user said: ${query}`,
     tools,
     stopWhen: stepCountIs(3),
-    temperature: 0.3,
+    temperature: 0.2,
   });
 }
