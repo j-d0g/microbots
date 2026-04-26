@@ -99,7 +99,10 @@ export function computeStageLayout(
   // Pinned windows stay in place, not demoted
   const pinned = new Set(windows.filter((w) => w.pinned).map((w) => w.id));
 
-  // Determine centre windows
+  // Determine centre windows. Default "solo" — a single focal window
+  // in centre stage. Multi-window arrangements (split / grid) are
+  // explicit opt-in by the agent or future user UI; everything else
+  // sidelines.
   const centreSlots = centreArrangement === "solo" ? 1
     : centreArrangement === "split-2" ? 2
     : centreArrangement === "split-3" ? 3
@@ -127,6 +130,9 @@ export function computeStageLayout(
 
   for (const w of byRecency) {
     if (centreIds.length >= centreSlots) break;
+    // Pinned windows live on the left sideline by user intent —
+    // never auto-fill them into the centre stack.
+    if (pinned.has(w.id)) continue;
     centreIds.push(w.id);
   }
 
@@ -172,10 +178,7 @@ export function computeStageLayout(
     .map((w) => w.id);
 
   return {
-    centreArrangement: centreIds.length <= 1 ? "solo"
-      : centreIds.length === 2 ? "split-2"
-      : centreIds.length === 3 ? "split-3"
-      : "grid-4",
+    centreArrangement,
     centreIds,
     leftSidelineIds,
     rightSidelineIds,
@@ -255,9 +258,24 @@ export function stageLayoutToRects(
   switch (layout.centreArrangement) {
     case "solo": {
       if (layout.centreIds.length > 0) {
-        // ~70% width, centred within the centre zone
-        const soloW = Math.round(centreW * 0.7);
-        const soloX = centreX + Math.round((centreW - soloW) / 2);
+        const hasLeft = layout.leftSidelineIds.length > 0;
+        const hasRight = layout.rightSidelineIds.length > 0;
+        let soloX: number;
+        let soloW: number;
+        if (hasLeft && hasRight) {
+          // Both sidelines flanking: extend the centre rightward over
+          // the right sideline (~55% of its width) so the focal window
+          // gets a wider, more cinematic aspect ratio. The centre's
+          // z is already above the sideline so the overlay reads
+          // cleanly as "centre is on top of the sideline".
+          soloX = centreX + Math.round(centreW * 0.06);
+          const rightEdge = vw - INSET - Math.round(SIDELINE_W * 0.45);
+          soloW = rightEdge - soloX;
+        } else {
+          // Single sideline or none: classic ~70% centred. No overlap.
+          soloW = Math.round(centreW * 0.7);
+          soloX = centreX + Math.round((centreW - soloW) / 2);
+        }
         rects.set(layout.centreIds[0], {
           x: soloX,
           y: centreY,

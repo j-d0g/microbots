@@ -163,7 +163,9 @@ export function StageDesktop() {
           );
         })}
 
-        {/* Centre stage: 1–4 windows in the focal slot */}
+        {/* Centre stage: a single focal window (or split / grid when
+           the agent explicitly arranges it). Extra windows live on
+           the right sideline and ride the swap rotation. */}
         {layout.centreIds.map((id) => {
           const win = winById.get(id);
           const r = rects.get(id);
@@ -174,20 +176,27 @@ export function StageDesktop() {
             <motion.div
               key={id}
               data-testid={`stage-slot-${win.kind}`}
+              /* `layout` does the FLIP magic: when left/top/width/
+                 height change between renders, framer-motion measures
+                 the previous box, applies a transform that reverses
+                 the layout shift, then animates that transform to 0.
+                 The visual result: each window moves smoothly from
+                 its current position to its target, past its peers.
+                 Entry / exit fades stay on opacity + scale so a new
+                 window doesn't animate "from" a fake origin. */
               layout
-              initial={{ opacity: 0, scale: 0.94, y: 12 }}
-              animate={{
-                opacity: r.opacity,
-                scale: 1,
-                y: 0,
-                x: r.x,
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: r.opacity, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={SPRING}
+              style={{
+                position: "absolute",
+                left: r.x,
                 top: r.y,
                 width: r.w,
                 height: r.h,
+                zIndex: r.zIndex,
               }}
-              exit={{ opacity: 0, scale: 0.94, y: 8 }}
-              transition={SPRING}
-              style={{ position: "absolute", left: 0, zIndex: r.zIndex }}
             >
               <CentreFrame win={win} isFocused={isFocused}>
                 <Room payload={win.payload} />
@@ -207,11 +216,19 @@ export function StageDesktop() {
               <motion.div
                 key={layout.modalId}
                 data-testid="stage-modal"
+                layout
                 initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0, x: r.x, top: r.y, width: r.w, height: r.h }}
+                animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}
                 transition={SPRING}
-                style={{ position: "absolute", left: 0, zIndex: r.zIndex }}
+                style={{
+                  position: "absolute",
+                  left: r.x,
+                  top: r.y,
+                  width: r.w,
+                  height: r.h,
+                  zIndex: r.zIndex,
+                }}
               >
                 <CentreFrame win={win} isFocused>
                   <Room payload={win.payload} />
@@ -237,20 +254,28 @@ function SidelineSlot({
   rect: StageRect;
   side: "left" | "right";
 }) {
+  /* Sidelines: same FLIP-via-style approach as the centre. Position
+   * lives on `style.left/top/width/height` so React diffs the box on
+   * every render and the `layout` prop animates the transition with
+   * a transform (not a position fight). The entrance slides in from
+   * the appropriate edge; subsequent rearrangements (sideline
+   * swapping slots, sideline being promoted to centre) animate from
+   * the actual previous position. */
   return (
     <motion.div
       layout
       initial={{ opacity: 0, x: side === "left" ? -16 : 16 }}
-      animate={{
-        opacity: rect.opacity,
-        x: rect.x,
+      animate={{ opacity: rect.opacity, x: 0 }}
+      exit={{ opacity: 0, x: side === "left" ? -16 : 16 }}
+      transition={SPRING}
+      style={{
+        position: "absolute",
+        left: rect.x,
         top: rect.y,
         width: rect.w,
         height: rect.h,
+        zIndex: rect.zIndex,
       }}
-      exit={{ opacity: 0, x: side === "left" ? -16 : 16 }}
-      transition={SPRING}
-      style={{ position: "absolute", left: 0, zIndex: rect.zIndex }}
     >
       <SidelinePanel win={win} side={side} />
     </motion.div>
