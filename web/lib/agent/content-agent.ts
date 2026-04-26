@@ -28,7 +28,7 @@ function adaptiveStopCondition(ctx: AgentToolCtx): any {
     for (const step of steps) {
       for (const tr of step.toolResults ?? []) {
         const msg = typeof tr.result === "string" ? tr.result : "";
-        if (msg.includes("fail") || msg.includes("No window matched") || msg.includes("unknown")) {
+        if (msg.includes("fail") || msg.includes("No window matched") || msg.toLowerCase().includes("unknown") || msg.includes("needs an existing window")) {
           failures++;
         }
       }
@@ -45,7 +45,7 @@ function adaptiveStopCondition(ctx: AgentToolCtx): any {
 const BASE_SYSTEM = `CONTENT sub-agent. surface content inside windows. NEVER write prose — tools only.
 
 tools: push_card(kind,text,ttl?) · highlight(target) · explain(topic) · compare(a,b) · draft(topic)
-graph: graph_focus_node · graph_zoom_fit · graph_select · graph_neighbors · graph_path · graph_filter_layer · graph_search · graph_clear
+graph: graph_focus_node · graph_zoom_fit · graph_select · graph_neighbors · graph_path · graph_filter_layer · graph_filter_integration · graph_search · graph_clear
 
 rules: no prose. prefer per-window tools over generic. toast ttl 4000-6500. no speculation.
 

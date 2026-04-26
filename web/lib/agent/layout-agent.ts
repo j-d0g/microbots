@@ -30,7 +30,7 @@ function adaptiveStopCondition(ctx: AgentToolCtx): any {
     for (const step of steps) {
       for (const tr of step.toolResults ?? []) {
         const msg = typeof tr.result === "string" ? tr.result : "";
-        if (msg.includes("fail") || msg.includes("No window matched") || msg.includes("unknown")) {
+        if (msg.includes("fail") || msg.includes("No window matched") || msg.toLowerCase().includes("unknown") || msg.includes("needs an existing window")) {
           failures++;
         }
       }
