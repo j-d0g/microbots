@@ -6,6 +6,15 @@ Public re-exports for the centralized observability layer:
 
     log = get_logger(__name__)
     log.info("hello {user}", user="alice")
+
+Self-improvement primitives (see microbots/observability.py):
+
+    from microbots import (
+        traced_retrieval,
+        emit_failure_mode,
+        instrument_pydantic_ai,
+        query_logfire,
+    )
 """
 
 from microbots.log import (
@@ -16,12 +25,30 @@ from microbots.log import (
     setup_logging,
     span,
 )
+from microbots.observability import (
+    KNOWN_FAILURE_MODES,
+    emit_failure_mode,
+    instrument_fastapi,
+    instrument_httpx,
+    instrument_pydantic_ai,
+    query_logfire,
+    record_retrieval,
+    traced_retrieval,
+)
 
 __all__ = [
     "CORRELATION_ID",
+    "KNOWN_FAILURE_MODES",
+    "emit_failure_mode",
     "get_correlation_id",
     "get_logger",
     "instrument",
+    "instrument_fastapi",
+    "instrument_httpx",
+    "instrument_pydantic_ai",
+    "query_logfire",
+    "record_retrieval",
     "setup_logging",
     "span",
+    "traced_retrieval",
 ]
