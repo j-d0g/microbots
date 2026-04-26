@@ -338,7 +338,7 @@ function HealthRow({ label, ok }: { label: string; ok: boolean | null }) {
       <span className="font-mono text-[12px] text-ink-90">{label}</span>
       <Chip
         tone={
-          tone === "high" ? "high" : tone === "low" ? "neutral" : "neutral"
+          tone === "high" ? "high" : tone === "low" ? "low" : "neutral"
         }
       >
         {text}

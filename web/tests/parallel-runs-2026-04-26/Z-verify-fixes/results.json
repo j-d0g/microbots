@@ -1,0 +1,194 @@
+{
+  "results": [
+    {
+      "id": "O8",
+      "name": "SettingsRoom down chip uses tone=low (rust)",
+      "passed": true,
+      "detail": "surreal text=\"surrealdbdown\" classes=true; composio text=\"composiodown\" classes=true"
+    },
+    {
+      "id": "O7",
+      "name": "GraphRoom: all-rejected fetches surface retry overlay",
+      "passed": true,
+      "detail": "load-failed=true retry-button=true stale-empty-state=false"
+    },
+    {
+      "id": "O4",
+      "name": "defaultMount-resolved windows fan out (3 integrations at 3 distinct rects)",
+      "passed": true,
+      "detail": "count=3 unique-positions=3 rects=[\"slack@(738,21)\",\"github@(802,53)\",\"gmail@(866,85)\"]"
+    },
+    {
+      "id": "O1.windowed",
+      "name": "agentReply cleared between turns (no stale dock text)",
+      "passed": true,
+      "detail": "before-injected=\"STALE_REPLY_FROM_PRIOR_TURN_xy\" after-query=\"degraded · please specify what you would like to s\""
+    },
+    {
+      "id": "O1.chat",
+      "name": "tools-only turn does not push an empty agent bubble",
+      "passed": true,
+      "detail": "chatMessages-before-start=0 after-start=0 (should be equal)"
+    }
+  ],
+  "consoleErrors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    }
+  ],
+  "rects": [
+    {
+      "id": "win-3",
+      "slug": "slack",
+      "rect": {
+        "x": 738,
+        "y": 21,
+        "w": 666,
+        "h": 778
+      }
+    },
+    {
+      "id": "win-4",
+      "slug": "github",
+      "rect": {
+        "x": 802,
+        "y": 53,
+        "w": 433,
+        "h": 622
+      }
+    },
+    {
+      "id": "win-5",
+      "slug": "gmail",
+      "rect": {
+        "x": 866,
+        "y": 85,
+        "w": 433,
+        "h": 622
+      }
+    }
+  ],
+  "o1": {
+    "beforeReply": "STALE_REPLY_FROM_PRIOR_TURN_xyz123",
+    "afterReply": "degraded · please specify what you would like to see in the graph.",
+    "chatBefore": 0,
+    "chatAfterStart": 0
+  }
+}
