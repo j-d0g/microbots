@@ -15,13 +15,13 @@ services:
     name: surreal
     runtime: image
     image:
-      url: docker.io/surrealdb/surrealdb:latest
+      url: docker.io/surrealdb/surrealdb:v2.1.4   # pinned: avoids :latest upgrade surprises
     plan: starter        # disks require a paid plan
     region: oregon
     autoDeploy: false    # never auto-restart the DB on a code push
-    # Surreal listens on 8000 by default; reachable from other services on
-    # this team at: ws://surreal:8000/rpc
-    dockerCommand: start --user root --pass root --bind 0.0.0.0:8000 surrealkv:///data/db
+    # ENTRYPOINT in the image is ["/surreal"] with no CMD; dockerCommand provides args only.
+    # Reachable from other services in this team at: ws://surreal:8000/rpc
+    dockerCommand: start --log info --user root --pass root --bind 0.0.0.0:8000 rocksdb:/data/surreal.db
     disk:
       name: surreal-data
       mountPath: /data
@@ -33,7 +33,6 @@ services:
     runtime: python
     plan: starter
     repo: https://github.com/j-d0g/microbots
-    rootDir: .
     buildCommand: pip install -r app/requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
@@ -52,10 +51,6 @@ services:
       - key: COMPOSIO_API_KEY
         sync: false       # set in dashboard
       - key: COMPOSIO_USER_ID
-        sync: false       # set in dashboard
-      - key: OPENAI_API_KEY
-        sync: false       # set in dashboard (used by enrichment / wiki agents if invoked)
-      - key: ANTHROPIC_API_KEY
         sync: false       # set in dashboard
 
   # ---------- MCP server (Python, FastMCP, SSE) for the harness agent ----------
