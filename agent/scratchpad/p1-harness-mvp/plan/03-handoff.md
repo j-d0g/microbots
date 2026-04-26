@@ -4,6 +4,22 @@ For the next agent, no prior context.
 
 ---
 
+## ⚠️ v0 / v1 are DONE — start here
+
+**Active source of truth:** `../notes/02-v0-v1-contract.md` (Done criteria, what's built, how to verify).
+
+**Status (2026-04-26):** v0 + v1 complete. 5 Playwright tests + adversarial sub-agent (5/5 pass) verify the chat loop end-to-end. Implementation at `agent/harness/frontend/`. Reverse path:
+
+```
+1. cd agent/harness/frontend && npm install && npm run dev
+2. cd agent/scratchpad/p1-harness-mvp/tests && npx playwright test
+3. Open http://localhost:3000 — chat with the agent
+```
+
+**For v2 work** (Render Workflows fan-out / swarm demo): see `../sponsors/`-style docs at `agent/scratchpad/pitch/render.md` + `agent/scratchpad/pitch/microbots-fractal.md`. The original spec/handoff below is the v2+ aspirational design.
+
+---
+
 ## Where you are
 
 - Repo: `microbots`

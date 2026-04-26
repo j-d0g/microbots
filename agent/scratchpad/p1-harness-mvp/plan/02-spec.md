@@ -4,6 +4,24 @@ What to build, opinionated only where research informs the choice. Standard engi
 
 ---
 
+## ⚠️ v0 / v1 implemented — read `notes/02-v0-v1-contract.md` first
+
+As of 2026-04-26, v0 + v1 are built and Playwright-verified. The implementation **deviates** from the original spec below in two important ways:
+
+1. **`run_code` runs inline in the Next.js `/api/chat` route via `subprocess.spawn("python3", ...)`** — NOT via Render Workflows. Workflows cold-start latency (~5s per call, see `notes/00-render-workflows-cold-start.md`) made it wrong as the chat hot path. Workflows is preserved for the v2 fan-out / swarm angle (see `agent/scratchpad/pitch/render.md`).
+2. **Tool surface narrowed from 5 to 4** per the lean pitch cut (`agent/scratchpad/pitch/agent-loop-diagrams.md`):
+   - `run_code(code)` ✅
+   - `find_examples(query)` ✅ (replaces `consult_docs` + `search_templates`)
+   - `save_workflow(name, code)` ✅ (new — writes to disk + returns mock URL; real Render deploy deferred to v2)
+   - `ask_user(question, options?)` ✅ (was `Ask_User_A_Question`)
+   - `Set_Behavior_Mode` — dropped, single mode in v0/v1
+
+Code lives at `agent/harness/frontend/`. Tests at `agent/scratchpad/p1-harness-mvp/tests/playwright/`.
+
+The original spec below is preserved as reference for v2+ design (MCP server, Workflows fan-out, Postgres persistence, Composio integrations). For active v0/v1 build/verify gates, see the contract.
+
+---
+
 ## What we're shipping
 
 A chat-driven coding agent. User asks for something in natural language, the LLM decomposes into steps, generates Python, runs it via a Render Workflows scratch-task, observes output, continues until done. ChatGPT-Code-Interpreter shape, but with Composio tool reach (Slack/Gmail/Linear/etc.) and Render Workflows as the substrate.
