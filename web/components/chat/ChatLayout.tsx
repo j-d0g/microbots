@@ -23,7 +23,7 @@ export function ChatLayout() {
       className="fixed inset-0 flex flex-col bg-paper-0 md:flex-row"
       data-testid="chat-layout"
     >
-      <div className="h-1/2 w-full shrink-0 md:h-full md:w-[clamp(360px,32vw,460px)]">
+      <div className="h-1/2 w-full shrink-0 md:h-full md:w-[max(360px,35vw)]">
         <ChatPanel />
       </div>
       <div className="min-h-0 min-w-0 flex-1">

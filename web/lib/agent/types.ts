@@ -85,7 +85,17 @@ export interface CanvasSnapshot {
   focusedId: string | null;
   windows: WindowSnapshot[];
   recentActions: ToolCallRecord[];
-  user: { query: string; lastQuery?: string };
+  user: { query: string; lastQuery?: string; userId?: string | null };
+  /** Active UI mode. Tools and prompts gate behaviour off this. In
+   *  `windowed` only `graph | settings | integration` may be opened;
+   *  in `chat` the legacy seven kinds are reachable. */
+  ui?: { mode: "windowed" | "chat" };
+  /** Live composio connection status mirror — agent can check whether
+   *  a toolkit is connected without burning a tool call. */
+  integrations?: { slug: string; status: string }[];
+  /** Most recent /api/health probe — agent can mention degraded
+   *  mode in its reply rather than failing silently. */
+  backend?: { surrealOk: boolean; composioOk: boolean };
 }
 
 /** Result returned by every layout-tool's `execute()` so the next

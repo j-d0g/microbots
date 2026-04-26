@@ -337,10 +337,9 @@ export interface ToolApplyResult {
   snapshot: CanvasSnapshot;
   /** Brief, human-readable for the agent's tool-result message. */
   message: string;
-  /** Whether the tool succeeded — mirrors the `ok` recorded in
-   *  `recentActions`. Consumers (e.g. `applyAndEmit`) forward this
-   *  into `agent.tool.done` so the recovery metric is truthful. */
-  ok: boolean;
+  /** Whether the tool ran successfully. Optional for legacy callers
+   *  that don't explicitly set it; consumers should default to `true`. */
+  ok?: boolean;
 }
 
 /** Top-level dispatcher. Each branch returns a fresh snapshot reflecting
@@ -362,8 +361,34 @@ export function applyToolToSnapshot(
     case "open_window": {
       const kind = args.kind as RoomKind;
       const mount = (args.mount as MountPoint | undefined) ?? "full";
-      // Already open and not minimized? bring to front.
-      const existing = snap.windows.find((w) => w.kind === kind);
+      const slug = (args.slug as string | undefined) || undefined;
+
+      // Windowed-mode hard gate. Defense-in-depth so a runaway agent
+      // can't open hidden kinds. Chat mode allows everything.
+      if (
+        snap.ui?.mode === "windowed" &&
+        kind !== "graph" &&
+        kind !== "settings" &&
+        kind !== "integration"
+      ) {
+        return {
+          snapshot: {
+            ...snap,
+            recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
+          },
+          message: `windowed mode allows only graph, settings, or integration windows; '${kind}' refused.`,
+        };
+      }
+
+      // Integration windows are slug-keyed: dedupe by (kind, slug).
+      // Other kinds dedupe by kind alone — same behaviour as before.
+      const existing = snap.windows.find((w) => {
+        if (w.kind !== kind) return false;
+        if (kind === "integration") {
+          return ((w as WindowSnapshot & { slug?: string }).slug ?? null) === (slug ?? null);
+        }
+        return true;
+      });
       if (existing) {
         const z = nextZ(snap);
         const next: CanvasSnapshot = {
@@ -375,13 +400,12 @@ export function applyToolToSnapshot(
         };
         return {
           snapshot: withFocus(next),
-          message: `Brought existing ${kind} to front at ${mount}.`,
-          ok: true,
+          message: `Brought existing ${kind}${slug ? ` (${slug})` : ""} to front at ${mount}.`,
         };
       }
       const id = nextServerId();
       const z = nextZ(snap);
-      const win: WindowSnapshot = {
+      const win: WindowSnapshot & { slug?: string } = {
         id,
         kind,
         mount,
@@ -389,7 +413,11 @@ export function applyToolToSnapshot(
         zIndex: z,
         focused: true,
         openedAt: now,
-        summary: "",
+        summary:
+          kind === "integration" && slug
+            ? `integration ${slug}`
+            : kind,
+        ...(slug ? { slug } : {}),
       };
       const next: CanvasSnapshot = {
         ...snap,
@@ -398,8 +426,7 @@ export function applyToolToSnapshot(
       };
       return {
         snapshot: withFocus(next),
-        message: `Opened ${kind} at ${mount}.`,
-        ok: true,
+        message: `Opened ${kind}${slug ? ` (${slug})` : ""} at ${mount}.`,
       };
     }
 
@@ -415,7 +442,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "No window matched the close request.",
-          ok: false,
         };
       }
       const next: CanvasSnapshot = {
@@ -426,7 +452,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Closed ${target.kind}.`,
-        ok: true,
       };
     }
 
@@ -443,7 +468,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "move_window needs an existing window and a mount.",
-          ok: false,
         };
       }
       const next: CanvasSnapshot = {
@@ -456,7 +480,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Moved ${target.kind} to ${mount}.`,
-        ok: true,
       };
     }
 
@@ -472,7 +495,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "No window matched the focus request.",
-          ok: false,
         };
       }
       const z = nextZ(snap);
@@ -486,7 +508,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Focused ${target.kind}.`,
-        ok: true,
       };
     }
 
@@ -500,7 +521,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: `arrange_windows: unknown preset or empty canvas.`,
-          ok: false,
         };
       }
       const rects = builder(snap.windows.length);
@@ -524,7 +544,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Arranged ${snap.windows.length} windows as ${layout} (gutter ${GUTTER}%, outer ${OUTER}%).`,
-        ok: true,
       };
     }
 
@@ -535,7 +554,7 @@ export function applyToolToSnapshot(
         focusedId: null,
         recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
       };
-      return { snapshot: next, message: "Canvas cleared.", ok: true };
+      return { snapshot: next, message: "Canvas cleared." };
     }
 
     case "set_window_rect": {
@@ -553,7 +572,6 @@ export function applyToolToSnapshot(
             recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
           },
           message: "set_window_rect needs an existing window and a rect.",
-          ok: false,
         };
       }
       const next: CanvasSnapshot = {
@@ -568,7 +586,6 @@ export function applyToolToSnapshot(
       return {
         snapshot: withFocus(next),
         message: `Resized ${target.kind} to ${rectPct.w.toFixed(0)}×${rectPct.h.toFixed(0)} at (${rectPct.x.toFixed(0)},${rectPct.y.toFixed(0)}).`,
-        ok: true,
       };
     }
 
@@ -595,34 +612,16 @@ export function applyToolToSnapshot(
           recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
         },
         message: `${tool} dispatched.`,
-        ok: true,
       };
 
-    default: {
-      // Per-window tools (brief_*, workflow_*, stack_*, waffle_*,
-      // playbooks_*, settings_*) are client-side dispatches the
-      // simulator doesn't model — record success so the recovery
-      // metric and snapshotToPrompt stay truthful.
-      const roomPrefixes = ["brief_", "workflow_", "stack_", "waffle_", "playbooks_", "settings_", "graph_"];
-      if (roomPrefixes.some((p) => tool.startsWith(p))) {
-        return {
-          snapshot: {
-            ...snap,
-            recentActions: recordIntoRing(snap.recentActions, recordTool(true)),
-          },
-          message: `${tool} dispatched.`,
-          ok: true,
-        };
-      }
+    default:
       return {
         snapshot: {
           ...snap,
           recentActions: recordIntoRing(snap.recentActions, recordTool(false)),
         },
         message: `Unknown tool ${tool}.`,
-        ok: false,
       };
-    }
   }
 }
 
@@ -632,7 +631,24 @@ export function applyToolToSnapshot(
  *  on real state instead of hallucinating layout. */
 export function snapshotToPrompt(snap: CanvasSnapshot): string {
   const lines: string[] = [];
-  lines.push(`<canvas viewport=${snap.viewport.w}x${snap.viewport.h}>`);
+  const mode = snap.ui?.mode ?? "windowed";
+  const userId = snap.user?.userId ?? null;
+  lines.push(
+    `<canvas viewport=${snap.viewport.w}x${snap.viewport.h} mode=${mode} user_id=${userId ?? "NOT_SET"}>`,
+  );
+
+  // Backend health (degraded mode awareness).
+  if (snap.backend) {
+    lines.push(
+      `backend: surreal=${snap.backend.surrealOk ? "ok" : "DOWN"} composio=${snap.backend.composioOk ? "ok" : "DOWN"}`,
+    );
+  }
+  // Integration connection statuses.
+  if (snap.integrations && snap.integrations.length > 0) {
+    const parts = snap.integrations.map((i) => `${i.slug}=${i.status}`);
+    lines.push(`integrations: ${parts.join(" ")}`);
+  }
+
   lines.push("");
   lines.push("grid (12 cols × 8 rows, uppercase=focused, lowercase=open, ·=empty):");
   lines.push(snap.grid);
@@ -642,8 +658,9 @@ export function snapshotToPrompt(snap: CanvasSnapshot): string {
   } else {
     lines.push("windows:");
     for (const w of snap.windows) {
+      const slug = (w as WindowSnapshot & { slug?: string }).slug;
       lines.push(
-        `  - id=${w.id} kind=${w.kind} mount=${w.mount} z=${w.zIndex} focused=${w.focused}` +
+        `  - id=${w.id} kind=${w.kind}${slug ? ` slug=${slug}` : ""} mount=${w.mount} z=${w.zIndex} focused=${w.focused}` +
           (w.summary ? ` summary="${w.summary}"` : ""),
       );
     }

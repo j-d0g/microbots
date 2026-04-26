@@ -1,154 +1,177 @@
 "use client";
 
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { seed } from "@/lib/seed/ontology";
+/**
+ * SettingsRoom — minimal scope for the live windowed UI.
+ *
+ *   1. user_id     — single source of truth for the Composio namespace
+ *                    + X-User-Id header. Persisted to localStorage by
+ *                    StoreBridge. Required before integrations or graph
+ *                    can do anything useful.
+ *   2. backend     — read-only health row (surreal + composio status,
+ *                    last-checked timestamp + manual refresh).
+ *
+ * Agent tools registered via `registerTools("settings", ...)`:
+ *   - set_user_id({ user_id })
+ *   - clear_user_id()
+ *   - refresh_health()
+ *
+ * Everything else from the previous dummy-data SettingsRoom (members,
+ * org, schedule, voice, memory, danger zone) was scoped out — the agent
+ * doesn't surface those rooms in windowed mode and the seed data was
+ * misleading.
+ */
+
+import { useCallback, useEffect, useState } from "react";
 import { Hairline } from "@/components/primitives/Hairline";
 import { Chip } from "@/components/primitives/Chip";
 import { RoomStateOverlay } from "@/components/rooms/RoomStateOverlay";
 import { useAgentStore } from "@/lib/store";
 import { registerTools } from "@/lib/room-tools";
+import * as backend from "@/lib/api/backend";
 import { cn } from "@/lib/cn";
 
-type SectionKey =
-  | "integrations"
-  | "members"
-  | "org"
-  | "schedule"
-  | "voice"
-  | "memory"
-  | "danger";
-
-const SECTION_LABEL: Record<SectionKey, string> = {
-  integrations: "integrations",
-  members: "members and roles",
-  org: "org profile",
-  schedule: "overnight schedule",
-  voice: "voice",
-  memory: "memory",
-  danger: "danger zone",
-};
-
-const SECTION_ALIASES: Record<string, SectionKey> = {
-  integrations: "integrations",
-  integration: "integrations",
-  members: "members",
-  team: "members",
-  roles: "members",
-  org: "org",
-  organisation: "org",
-  organization: "org",
-  schedule: "schedule",
-  cron: "schedule",
-  threshold: "schedule",
-  voice: "voice",
-  memory: "memory",
-  graph: "memory",
-  danger: "danger",
-  wipe: "danger",
-};
+const USER_ID_RE = /^[a-zA-Z0-9_-]+$/;
+const STORAGE_KEY = "microbots:userId";
 
 export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
   const roomState = useAgentStore((s) => s.roomStates.settings);
+  const userId = useAgentStore((s) => s.userId);
+  const setUserId = useAgentStore((s) => s.setUserId);
+  const backendHealth = useAgentStore((s) => s.backendHealth);
+  const setBackendHealth = useAgentStore((s) => s.setBackendHealth);
   const pushCard = useAgentStore((s) => s.pushCard);
 
-  const [integrationFilter, setIntegrationFilter] = useState<
-    "all" | "connected" | "disconnected"
-  >("all");
-  const [highlight, setHighlight] = useState<SectionKey | null>(null);
+  const [draft, setDraft] = useState(userId ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [healthLoading, setHealthLoading] = useState(false);
 
-  const sectionRefs = useRef<Record<SectionKey, HTMLElement | null>>({
-    integrations: null,
-    members: null,
-    org: null,
-    schedule: null,
-    voice: null,
-    memory: null,
-    danger: null,
-  });
+  // Sync draft if userId changes from elsewhere (e.g. agent set it).
+  useEffect(() => {
+    setDraft(userId ?? "");
+  }, [userId]);
 
-  const filteredIntegrations = useMemo(() => {
-    if (integrationFilter === "all") return seed.integrations;
-    return seed.integrations.filter((i) => i.status === integrationFilter);
-  }, [integrationFilter]);
+  const persistUserId = useCallback(
+    (next: string | null) => {
+      setUserId(next);
+      try {
+        if (next) localStorage.setItem(STORAGE_KEY, next);
+        else localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        /* ignore — private browsing etc. */
+      }
+    },
+    [setUserId],
+  );
 
-  const scrollToSection = useCallback((section: SectionKey) => {
-    const el = sectionRefs.current[section];
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setHighlight(section);
-    window.setTimeout(() => setHighlight(null), 1500);
-  }, []);
+  const refreshHealth = useCallback(async () => {
+    setHealthLoading(true);
+    try {
+      const h = await backend.getHealth();
+      setBackendHealth({
+        surrealOk: !!h.surreal?.ok,
+        composioOk: !!h.composio?.ok,
+        checkedAt: Date.now(),
+      });
+    } catch {
+      setBackendHealth({
+        surrealOk: false,
+        composioOk: false,
+        checkedAt: Date.now(),
+      });
+    } finally {
+      setHealthLoading(false);
+    }
+  }, [setBackendHealth]);
+
+  const handleSave = useCallback(() => {
+    const trimmed = draft.trim();
+    if (trimmed.length === 0) {
+      setError("user_id can't be empty");
+      return;
+    }
+    if (trimmed.length < 3 || trimmed.length > 64) {
+      setError("user_id must be 3–64 characters");
+      return;
+    }
+    if (!USER_ID_RE.test(trimmed)) {
+      setError("only letters, digits, _ and - allowed");
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    persistUserId(trimmed);
+    pushCard({
+      id: `toast-userid-${Date.now()}`,
+      kind: "toast",
+      data: { text: `user_id saved as ${trimmed}` },
+      ttl: 4500,
+    });
+    window.setTimeout(() => setSaving(false), 250);
+  }, [draft, persistUserId, pushCard]);
+
+  const handleClear = useCallback(() => {
+    persistUserId(null);
+    setDraft("");
+    setError(null);
+  }, [persistUserId]);
 
   /* ---- agent tools ---- */
-
   useEffect(() => {
     return registerTools("settings", [
       {
-        name: "scroll_to",
+        name: "set_user_id",
         description:
-          "Scroll to a settings section: integrations|members|org|schedule|voice|memory|danger.",
-        args: { section: "section name" },
+          "Persist the Composio namespace key + X-User-Id header for every backend call.",
+        args: { user_id: "3–64 chars [a-zA-Z0-9_-]" },
         run: (args) => {
-          const raw = String(args.section ?? "").toLowerCase();
-          const mapped = SECTION_ALIASES[raw] ?? (raw as SectionKey);
-          if (mapped in sectionRefs.current) scrollToSection(mapped);
-        },
-      },
-      {
-        name: "highlight",
-        description: "Briefly flash a settings section.",
-        args: { section: "section name" },
-        run: (args) => {
-          const raw = String(args.section ?? "").toLowerCase();
-          const mapped = SECTION_ALIASES[raw] ?? (raw as SectionKey);
-          if (mapped in sectionRefs.current) scrollToSection(mapped);
-        },
-      },
-      {
-        name: "filter",
-        description:
-          "Filter integrations list by status (all|connected|disconnected).",
-        args: { integrations: "all|connected|disconnected" },
-        run: (args) => {
-          const v = args.integrations as
-            | "all"
-            | "connected"
-            | "disconnected"
-            | undefined;
-          if (v === "all" || v === "connected" || v === "disconnected") {
-            setIntegrationFilter(v);
-          }
-        },
-      },
-      {
-        name: "clear_filters",
-        description: "Reset filters.",
-        run: () => setIntegrationFilter("all"),
-      },
-      {
-        name: "wipe_graph",
-        description: "Stage memory wipe (drops a destructive toast). No real wipe yet.",
-        run: () => {
+          const next = String(args.user_id ?? "").trim();
+          if (!next) return;
+          if (next.length < 3 || next.length > 64) return;
+          if (!USER_ID_RE.test(next)) return;
+          persistUserId(next);
           pushCard({
-            id: `toast-wipe-${Date.now()}`,
+            id: `toast-userid-${Date.now()}`,
             kind: "toast",
-            data: { text: "wipe_graph requires explicit voice confirmation." },
-            ttl: 5000,
+            data: { text: `user_id saved as ${next}` },
+            ttl: 4500,
           });
         },
       },
+      {
+        name: "clear_user_id",
+        description: "Wipe the persisted user_id.",
+        run: () => {
+          persistUserId(null);
+        },
+      },
+      {
+        name: "refresh_health",
+        description: "Force-refresh /api/health and update the live status row.",
+        run: () => {
+          void refreshHealth();
+        },
+      },
     ]);
-  }, [pushCard, scrollToSection]);
+  }, [persistUserId, pushCard, refreshHealth]);
+
+  /* ---- first-load health probe ---- */
+  useEffect(() => {
+    if (backendHealth) return;
+    void refreshHealth();
+    // intentionally one-shot; the StoreBridge polls in the background.
+  }, [backendHealth, refreshHealth]);
+
+  const dirty = draft.trim() !== (userId ?? "");
+  const checkedLabel = backendHealth
+    ? formatRelative(Date.now() - backendHealth.checkedAt)
+    : "checking…";
+  const surrealOk = backendHealth?.surrealOk ?? null;
+  const composioOk = backendHealth?.composioOk ?? null;
 
   return (
     <RoomStateOverlay room="settings" state={roomState}>
-      <div className="@container/settings mx-auto w-full max-w-[760px]">
+      <div className="@container/settings mx-auto w-full max-w-[640px]">
         <header className="mb-8 @[640px]/settings:mb-12">
           <p className="font-mono text-[11px] uppercase tracking-wider text-ink-35">
             settings
@@ -157,282 +180,176 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
             className="mt-2 font-medium leading-[1.05] tracking-tight text-ink-90"
             style={{ fontSize: "clamp(24px, 5.6cqw, 40px)" }}
           >
-            defaults.
+            identity.
           </h1>
+          <p className="mt-2 max-w-[52ch] text-[13px] leading-relaxed text-ink-60">
+            set your user_id once. it’s the namespace key for composio and
+            the <span className="font-mono text-[12px]">X-User-Id</span> header
+            on every backend call. integrations and the graph need it.
+          </p>
         </header>
 
-        <SectionNav
-          onJump={scrollToSection}
-          integrationFilter={integrationFilter}
-          setIntegrationFilter={setIntegrationFilter}
-        />
-
-        <Section
-          ref={(el) => { sectionRefs.current.integrations = el; }}
-          title={SECTION_LABEL.integrations}
-          flashing={highlight === "integrations"}
-          aside={
-            <span className="font-mono text-[11px] tabular-nums text-ink-35">
-              {filteredIntegrations.length} / {seed.integrations.length}
-            </span>
-          }
+        {/* --- user_id --- */}
+        <section
+          data-testid="settings-section-user-id"
+          className="rounded-md border border-rule bg-paper-1/40 px-5 py-5"
         >
-          <ul className="divide-y divide-rule border-y border-rule">
-            {filteredIntegrations.map((i) => (
-              <li
-                key={i.slug}
-                className="flex items-center justify-between gap-4 py-3"
-              >
-                <span className="font-mono text-[13px] text-ink-90">
-                  {i.slug}
-                </span>
-                <Chip tone={i.status === "connected" ? "high" : "neutral"}>
-                  {i.status}
-                </Chip>
-              </li>
-            ))}
-            {filteredIntegrations.length === 0 && (
-              <li className="py-6 text-center font-mono text-[11px] uppercase tracking-wider text-ink-35">
-                none
-              </li>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-mono text-[11px] uppercase tracking-wider text-ink-35">
+              user_id
+            </h2>
+            {userId ? (
+              <Chip tone="high">saved</Chip>
+            ) : (
+              <Chip tone="neutral">unset</Chip>
             )}
-          </ul>
-        </Section>
+          </div>
 
-        <Section
-          ref={(el) => { sectionRefs.current.members = el; }}
-          title={SECTION_LABEL.members}
-          flashing={highlight === "members"}
-        >
-          <ul className="divide-y divide-rule border-y border-rule">
-            {seed.members.map((m) => (
-              <li
-                key={m.email}
-                className="flex items-center justify-between gap-4 py-3"
+          <div className="flex flex-col gap-3 @[480px]/settings:flex-row @[480px]/settings:items-center">
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                if (error) setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSave();
+                }
+              }}
+              placeholder="e.g. user_42"
+              data-testid="settings-user-id-input"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className={cn(
+                "min-w-0 flex-1 rounded-sm border bg-paper-0 px-3 py-2",
+                "font-mono text-[13px] text-ink-90 outline-none",
+                "transition-colors",
+                error
+                  ? "border-confidence-low/60 focus:border-confidence-low"
+                  : "border-rule focus:border-ink-90",
+              )}
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!dirty || saving}
+                data-testid="settings-user-id-save"
+                className={cn(
+                  "shrink-0 rounded-sm border px-3 py-2 font-mono text-[11px] uppercase tracking-wider",
+                  "transition-colors duration-150",
+                  dirty
+                    ? "border-ink-90 bg-ink-90 text-paper-0 hover:bg-accent-indigo"
+                    : "border-rule text-ink-35",
+                  "disabled:opacity-40 disabled:pointer-events-none",
+                )}
               >
-                <div className="min-w-0">
-                  <p className="truncate text-[14px] text-ink-90">{m.name}</p>
-                  <p className="truncate font-mono text-[11px] text-ink-35">
-                    {m.email}
-                  </p>
-                </div>
-                <Chip tone={m.role === "owner" ? "accent" : "neutral"}>
-                  {m.role}
-                </Chip>
-              </li>
-            ))}
+                {saving ? "saving…" : "save"}
+              </button>
+              {userId && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  data-testid="settings-user-id-clear"
+                  className={cn(
+                    "shrink-0 rounded-sm border border-rule px-3 py-2",
+                    "font-mono text-[11px] uppercase tracking-wider text-ink-60",
+                    "hover:border-confidence-low/40 hover:text-confidence-low",
+                    "transition-colors duration-150",
+                  )}
+                >
+                  clear
+                </button>
+              )}
+            </div>
+          </div>
+          {error && (
+            <p
+              data-testid="settings-user-id-error"
+              className="mt-2 font-mono text-[11px] text-confidence-low"
+            >
+              {error}
+            </p>
+          )}
+          <p className="mt-3 font-mono text-[10px] leading-relaxed text-ink-35">
+            stored locally · used as namespace for{" "}
+            <span className="text-ink-60">/api/composio/*</span> + as{" "}
+            <span className="text-ink-60">X-User-Id</span> on every request.
+          </p>
+        </section>
+
+        <Hairline className="my-10" />
+
+        {/* --- backend health --- */}
+        <section
+          data-testid="settings-section-backend"
+          className="rounded-md border border-rule bg-paper-1/40 px-5 py-5"
+        >
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-mono text-[11px] uppercase tracking-wider text-ink-35">
+              backend
+            </h2>
+            <button
+              type="button"
+              onClick={refreshHealth}
+              disabled={healthLoading}
+              data-testid="settings-health-refresh"
+              className={cn(
+                "rounded-sm border border-rule px-2 py-0.5",
+                "font-mono text-[10px] uppercase tracking-wider text-ink-60",
+                "transition-colors duration-150 hover:border-ink-90 hover:text-ink-90",
+                "disabled:opacity-40 disabled:pointer-events-none",
+              )}
+            >
+              {healthLoading ? "…" : "refresh"}
+            </button>
+          </div>
+
+          <ul className="grid grid-cols-2 gap-3">
+            <HealthRow label="surrealdb" ok={surrealOk} />
+            <HealthRow label="composio" ok={composioOk} />
           </ul>
-        </Section>
 
-        <Section
-          ref={(el) => { sectionRefs.current.org = el; }}
-          title={SECTION_LABEL.org}
-          flashing={highlight === "org"}
-        >
-          <div className="space-y-2 text-[14px] text-ink-60">
-            <p>
-              <span className="text-ink-90">{seed.persona.company}</span>{" "}
-              <span className="text-ink-35">·</span>{" "}
-              {seed.persona.companyDescription}
-            </p>
-            <p>{seed.persona.teamSize} team members</p>
-          </div>
-        </Section>
-
-        <Section
-          ref={(el) => { sectionRefs.current.schedule = el; }}
-          title={SECTION_LABEL.schedule}
-          flashing={highlight === "schedule"}
-        >
-          <p className="text-[14px] leading-relaxed text-ink-60">
-            proposer runs at 03:00 local. above threshold goes to morning brief.
+          <p className="mt-4 font-mono text-[10px] leading-relaxed text-ink-35">
+            checked {checkedLabel} · base{" "}
+            <span className="text-ink-60">{backend.BASE_URL}</span>
           </p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Chip tone="accent">
-              threshold · {seed.confidenceThreshold.toFixed(2)}
-            </Chip>
-            <span className="font-mono text-[11px] text-ink-35">
-              say &ldquo;raise my threshold to 0.9&rdquo;
-            </span>
-          </div>
-        </Section>
-
-        <Section
-          ref={(el) => { sectionRefs.current.voice = el; }}
-          title={SECTION_LABEL.voice}
-          flashing={highlight === "voice"}
-        >
-          <p className="text-[14px] leading-relaxed text-ink-60">
-            web speech api · browser-native · no external keys.
-          </p>
-        </Section>
-
-        <Section
-          ref={(el) => { sectionRefs.current.memory = el; }}
-          title={SECTION_LABEL.memory}
-          flashing={highlight === "memory"}
-        >
-          <div className="space-y-2 text-[14px] leading-relaxed text-ink-60">
-            <p>
-              {seed.nodes.length} nodes · {seed.edges.length} edges in the
-              ontology.
-            </p>
-            <p>
-              export, scope-delete, retention. nothing leaves the device until
-              you say so.
-            </p>
-          </div>
-        </Section>
-
-        <DangerSection
-          ref={(el) => { sectionRefs.current.danger = el; }}
-          flashing={highlight === "danger"}
-        />
+        </section>
       </div>
     </RoomStateOverlay>
   );
 }
 
-function SectionNav({
-  onJump,
-  integrationFilter,
-  setIntegrationFilter,
-}: {
-  onJump: (s: SectionKey) => void;
-  integrationFilter: "all" | "connected" | "disconnected";
-  setIntegrationFilter: (v: "all" | "connected" | "disconnected") => void;
-}) {
-  const SECTIONS: SectionKey[] = [
-    "integrations",
-    "members",
-    "org",
-    "schedule",
-    "voice",
-    "memory",
-    "danger",
-  ];
-  const FILTERS: Array<"all" | "connected" | "disconnected"> = [
-    "all",
-    "connected",
-    "disconnected",
-  ];
+function HealthRow({ label, ok }: { label: string; ok: boolean | null }) {
+  const tone = ok === null ? "neutral" : ok ? "high" : "low";
+  const text = ok === null ? "checking…" : ok ? "ok" : "down";
   return (
-    <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-rule bg-paper-0 px-4 py-3">
-      <div className="flex flex-col gap-2 @[640px]/settings:flex-row @[640px]/settings:items-center @[640px]/settings:gap-x-4">
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-          <span className="w-[5.5rem] shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-35 @[640px]/settings:w-auto">
-            jump to
-          </span>
-          <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-            {SECTIONS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onJump(s)}
-                className={cn(
-                  "rounded-sm border px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider",
-                  "transition-colors duration-150",
-                  s === "danger"
-                    ? "border-confidence-low/40 text-confidence-low hover:bg-confidence-low/10"
-                    : "border-rule text-ink-60 hover:border-ink-90 hover:text-ink-90",
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-          <span className="w-[5.5rem] shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-35 @[640px]/settings:w-auto">
-            integrations
-          </span>
-          <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setIntegrationFilter(f)}
-                data-active={integrationFilter === f}
-                className={cn(
-                  "rounded-sm border px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider",
-                  "transition-colors duration-150",
-                  integrationFilter === f
-                    ? "border-ink-90 bg-ink-90 text-paper-0"
-                    : "border-rule text-ink-60 hover:bg-paper-1",
-                )}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface SectionProps {
-  title: string;
-  flashing?: boolean;
-  aside?: React.ReactNode;
-  children: React.ReactNode;
-}
-
-const Section = forwardRef<HTMLElement, SectionProps>(function Section(
-  { title, flashing, aside, children },
-  ref,
-) {
-  return (
-    <section
-      ref={ref}
-      data-testid={`settings-section-${title.replace(/\s+/g, "-")}`}
+    <li
+      data-testid={`settings-health-${label}`}
       className={cn(
-        "scroll-mt-24 rounded-md transition-colors duration-300",
-        flashing && "bg-accent-indigo-soft/60 ring-1 ring-accent-indigo/30 px-3 py-2 -mx-3",
+        "flex items-center justify-between gap-3 rounded-sm border px-3 py-2",
+        "border-rule bg-paper-0",
       )}
     >
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="font-mono text-[11px] uppercase tracking-wider text-ink-35">
-          {title}
-        </h2>
-        {aside}
-      </div>
-      {children}
-      <Hairline className="my-10" />
-    </section>
-  );
-});
-
-const DangerSection = forwardRef<HTMLElement, { flashing?: boolean }>(
-  function DangerSection({ flashing }, ref) {
-    return (
-      <section
-        ref={ref}
-        data-testid="settings-section-danger-zone"
-        className={cn(
-          "scroll-mt-24 rounded-md transition-colors duration-300",
-          flashing &&
-            "bg-confidence-low/10 ring-1 ring-confidence-low/30 px-3 py-2 -mx-3",
-        )}
+      <span className="font-mono text-[12px] text-ink-90">{label}</span>
+      <Chip
+        tone={
+          tone === "high" ? "high" : tone === "low" ? "neutral" : "neutral"
+        }
       >
-        <h2 className="mb-4 font-mono text-[11px] uppercase tracking-wider text-confidence-low">
-          danger zone
-        </h2>
-        <p className="text-[14px] leading-relaxed text-ink-60">
-          wipe the entire memory graph. this cannot be undone.
-        </p>
-        <button
-          type="button"
-          className={cn(
-            "mt-4 inline-flex items-center rounded-sm border px-3 py-1.5",
-            "font-mono text-[11px] uppercase tracking-wider",
-            "border-confidence-low/40 text-confidence-low",
-            "transition-colors duration-150 hover:bg-confidence-low/10",
-          )}
-        >
-          wipe graph
-        </button>
-      </section>
-    );
-  },
-);
+        {text}
+      </Chip>
+    </li>
+  );
+}
+
+function formatRelative(deltaMs: number): string {
+  if (deltaMs < 5_000) return "just now";
+  if (deltaMs < 60_000) return `${Math.floor(deltaMs / 1000)}s ago`;
+  if (deltaMs < 3_600_000) return `${Math.floor(deltaMs / 60_000)}m ago`;
+  return `${Math.floor(deltaMs / 3_600_000)}h ago`;
+}

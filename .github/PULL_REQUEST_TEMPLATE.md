@@ -25,6 +25,7 @@ Sprint: `<N — name>` · plan: [`web/agent-evals/AGENTS.md`](../web/agent-evals
 | Marginal-intent pass-rate | | | |
 | Recovery rate | | | |
 | Calm-canvas (judge avg) | | | |
+| Layout aesthetic (judge avg) | | | |
 
 Baseline report: `web/agent-evals/reports/<file>.json`
 This PR's report: `web/agent-evals/reports/<file>.json`

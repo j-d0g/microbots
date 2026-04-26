@@ -48,8 +48,9 @@ Strategy is locked:
 
 ## North-star criteria
 
-Every PR must report these six metrics. The eval harness in this
-folder produces them deterministically.
+Every PR must report these seven metrics. The eval harness in this
+folder produces six of them deterministically; the seventh (layout
+aesthetic) is judged from Playwright screenshots.
 
 | Axis | Metric | Scoring | Target |
 |---|---|---|---|
@@ -59,15 +60,43 @@ folder produces them deterministically.
 | **Coverage / generality** | pass-rate on *marginal-intent* subset (the headline metric) | rules + Devin's judgement on the transcript | ≥ 70% |
 | **Recovery** | fraction of failed tool calls followed by a successful retry | counted from `agent.tool.retry` events | ≥ 60% |
 | **Calm canvas** | post-turn windows match relevance, no stray opens | Devin's judgement on the transcript | ≥ 4 / 5 |
+| **Layout aesthetic** | post-turn screenshot honors the principles below | Devin's judgement of `reports/screenshots/` | ≥ 4 / 5 |
 
-5 of 6 metrics are purely deterministic (rules + timers + counters)
-and require no LLM at eval time — the runner produces them with no
-API beyond the actual UI-agent run. The two judgement axes (coverage
-nuance + calm-canvas) are scored by Devin reading the committed
-transcripts during the sprint, with scores written into the report
-alongside a one-line rationale per query. This means the eval costs
-**only the OpenRouter calls to flash-lite for the actual UI-agent
-runs** — nothing else.
+6 of 7 metrics are purely deterministic or counted; the two judgement
+axes (calm canvas + layout aesthetic) and the nuance-pass on coverage
+are scored by Devin reading the committed transcripts and screenshots
+during the sprint, with scores written into the report alongside a
+one-line rationale per query. This means the eval costs **only the
+OpenRouter calls to flash-lite for the actual UI-agent runs** —
+nothing else.
+
+### Layout aesthetic principles
+
+The agent should arrange windows the way a designer would, not the
+way a tiling window manager does. Devin scores screenshots against
+these principles (any violation drops the score):
+
+- **Negative space is sacred.** Outer margins and inter-window
+  gutters carry meaning; never sacrifice them for size.
+- **Never full-screen unless explicitly asked.** Even with one
+  window, leave breathing room — `~80% × 80%` centered is the right
+  default, not `~95% × 95%`.
+- **Never minimum-size unless necessary.** If a window matters
+  enough to be open, it should be readable.
+- **Edges should not align across windows.** Slight intentional
+  offsets (1–3% of canvas) along at least one axis. Aligned edges
+  feel rigid; offset edges feel organic.
+- **Focused window is centered and largest.** "Center" can be
+  off-center on either axis to break up symmetry; "largest" must be
+  visibly larger than every demoted window.
+- **Demoted windows orbit the focus.** Pip stacks at edges/corners,
+  never crowding the focused window.
+
+Concretely: the existing `focus` preset is too aggressive (subject
+fills 95% × 78%). It should behave more like `spotlight` (subject
+~66% × 75% centered with breathing room). Multi-window presets need
+intentional jitter so column edges and row edges don't perfectly
+line up.
 
 A PR that regresses any metric without written justification cannot
 merge. **`marginal-intent` pass-rate is the headline.** Other metrics

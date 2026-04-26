@@ -53,7 +53,9 @@ function snapshotWindow(
   const mod = WINDOW_REGISTRY[win.kind];
   let summary = "";
   try {
-    summary = mod?.summary(state) ?? "";
+    // Pass the live window so per-instance summaries (e.g. integration
+    // windows keyed by payload.slug) can specialise.
+    summary = mod?.summary(state, win) ?? "";
   } catch {
     // a buggy summary should never crash the agent loop
     summary = "";
@@ -120,7 +122,19 @@ export function buildSnapshot(opts?: {
     user: {
       query: opts?.query ?? "",
       lastQuery: state.lastQuery || undefined,
+      userId: state.userId ?? null,
     },
+    ui: { mode: state.uiMode ?? "windowed" },
+    integrations: state.connections.map((c) => ({
+      slug: c.slug,
+      status: c.status,
+    })),
+    backend: state.backendHealth
+      ? {
+          surrealOk: state.backendHealth.surrealOk,
+          composioOk: state.backendHealth.composioOk,
+        }
+      : undefined,
   };
 }
 

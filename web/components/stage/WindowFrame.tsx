@@ -25,6 +25,7 @@ const ROOM_LABELS: Record<string, string> = {
   waffle: "waffle",
   playbooks: "playbooks",
   settings: "settings",
+  integration: "integration",
 };
 
 export function WindowFrame({
@@ -191,7 +192,11 @@ export function WindowFrame({
         )}
       >
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-35">
-          {ROOM_LABELS[win.kind] ?? win.kind}
+          {/* For integration windows show the slug after the kind so
+              two slack/github windows are distinguishable in the chrome. */}
+          {win.kind === "integration"
+            ? `integration · ${(win.payload?.slug as string | undefined) ?? "?"}`
+            : (ROOM_LABELS[win.kind] ?? win.kind)}
         </span>
         <div className="flex items-center gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
           <button
