@@ -9,7 +9,7 @@
   {
     "id": "fetch-and-count-words",
     "title": "Fetch a URL and count words",
-    "description": "Fetches a webpage with httpx and returns the word count of its visible text.",
+    "description": "Fetches a webpage with urllib (stdlib) and returns the word count of its visible text.",
     "tags": ["http", "scrape", "text", "fetch", "url", "count"],
     "code": "from urllib.request import urlopen\nfrom html.parser import HTMLParser\n\nclass _Strip(HTMLParser):\n    def __init__(self):\n        super().__init__(); self.parts = []\n    def handle_data(self, data):\n        self.parts.append(data)\n\nbody = urlopen('https://example.com', timeout=20).read().decode('utf-8', errors='replace')\nstripper = _Strip(); stripper.feed(body)\ntext = ' '.join(p.strip() for p in stripper.parts if p.strip())\nprint(len(text.split()))"
   },
