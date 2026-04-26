@@ -21,7 +21,7 @@ export function CommandKey() {
       )}
     >
       <span className="text-[12px]">/</span>
-      <span>type</span>
+      <span className="whitespace-nowrap">type</span>
     </button>
   );
 }

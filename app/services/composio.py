@@ -33,6 +33,8 @@ class Toolkit:
     slug: str
     name: str
     auth_config_id: str
+    auth_scheme: str  # "OAUTH2" | "API_KEY" | …
+    expected_input_fields: list[dict[str, Any]]  # fields the user must fill
 
 
 @dataclass
@@ -93,10 +95,18 @@ class ComposioService:
                 continue
             if slug in seen:
                 continue
+            # Extract auth_scheme and expected_input_fields
+            raw_fields = d.get("expected_input_fields") or []
+            fields: list[dict[str, Any]] = []
+            for f in raw_fields:
+                fd = f.model_dump() if hasattr(f, "model_dump") else (f if isinstance(f, dict) else {})
+                fields.append(fd)
             seen[slug] = Toolkit(
                 slug=slug,
                 name=tk.get("name") or slug.title() if isinstance(tk, dict) else slug.title(),
                 auth_config_id=d.get("id"),
+                auth_scheme=str(d.get("auth_scheme", "UNKNOWN")),
+                expected_input_fields=fields,
             )
         self._toolkits_cache = sorted(seen.values(), key=lambda t: t.slug)
         return self._toolkits_cache
@@ -106,6 +116,13 @@ class ComposioService:
         for t in toolkits:
             if t.slug == toolkit_slug.lower():
                 return t.auth_config_id
+        raise KeyError(toolkit_slug)
+
+    async def _resolve_toolkit(self, toolkit_slug: str) -> Toolkit:
+        toolkits = await self.list_toolkits()
+        for t in toolkits:
+            if t.slug == toolkit_slug.lower():
+                return t
         raise KeyError(toolkit_slug)
 
     # ── OAuth flow ────────────────────────────────────────────────────────
@@ -136,6 +153,45 @@ class ComposioService:
             redirect_url=getattr(req, "redirect_url", "") or "",
             connection_id=getattr(req, "id", "") or "",
             status=str(getattr(req, "status", "INITIATED") or "INITIATED"),
+        )
+
+    # ── API-key flow ──────────────────────────────────────────────────────
+
+    async def connect_with_key(
+        self,
+        *,
+        user_id: str,
+        toolkit: str,
+        field_values: dict[str, str],
+    ) -> InitiateResult:
+        """Create a connected account for an API-key toolkit.
+
+        Uses ``initiate()`` with ``AuthScheme.APIKey(**field_values)``.
+        Field names (api_key, base_url, etc) come from expected_input_fields
+        and must match exactly what Composio expects for the toolkit.
+        """
+        tk = await self._resolve_toolkit(toolkit)
+
+        # Try to use AuthScheme if available in the SDK, otherwise fall back to dict
+        try:
+            from composio import AuthScheme  # type: ignore
+            auth_scheme = AuthScheme.APIKey(**field_values)
+        except (ImportError, TypeError, AttributeError):
+            # Fall back to plain dict config
+            auth_scheme = {"auth_scheme": "API_KEY", "val": field_values}
+
+        def _initiate() -> Any:
+            return self._composio.connected_accounts.initiate(
+                user_id=user_id,
+                auth_config_id=tk.auth_config_id,
+                config=auth_scheme,
+            )
+
+        req = await asyncio.to_thread(_initiate)
+        return InitiateResult(
+            redirect_url="",
+            connection_id=getattr(req, "id", "") or "",
+            status=str(getattr(req, "status", "ACTIVE") or "ACTIVE"),
         )
 
     # ── Per-user status ──────────────────────────────────────────────────

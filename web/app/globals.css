@@ -98,3 +98,50 @@ body {
 .calm-scroll {
   scrollbar-width: none;
 }
+
+/* Thin elegant scrollbar for windows */
+.muji-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.muji-scroll:hover {
+  scrollbar-color: rgba(156, 154, 147, 0.18) transparent;
+}
+.muji-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.muji-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.muji-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background 200ms;
+}
+.muji-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(156, 154, 147, 0.18);
+}
+.muji-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 154, 147, 0.3);
+}
+
+/* Smooth window transitions */
+.window-frame {
+  will-change: transform;
+  transition: box-shadow 200ms var(--ease-muji);
+}
+
+/* Marquee animation for dock text */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* For text that needs to scroll in the thin dock */
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
