@@ -56,8 +56,14 @@ interface WindowInput {
   openedAt: number;
 }
 
-const MAX_WINDOWS = 10;
-const MAX_SIDELINE_PER_SIDE = 3;
+/** Pinned-only sideline. Two slots; pin button refuses past this. */
+export const MAX_LEFT_SIDELINE = 2;
+/** Recency stack — the swap rotation. Three slots; oldest evicted. */
+export const MAX_RIGHT_SIDELINE = 3;
+const MAX_WINDOWS = 1 + MAX_LEFT_SIDELINE + MAX_RIGHT_SIDELINE + 1; // centre + sidelines + graph backdrop
+/** Backwards-compat re-export for callers that still use the old
+ *  symmetric cap; resolves to the larger of the two side caps. */
+const MAX_SIDELINE_PER_SIDE = Math.max(MAX_LEFT_SIDELINE, MAX_RIGHT_SIDELINE);
 
 /**
  * Compute the stage layout from the current window set.
@@ -96,9 +102,6 @@ export function computeStageLayout(
     (w) => w.kind !== "graph" && w.kind !== "ask_user",
   );
 
-  // Pinned windows stay in place, not demoted
-  const pinned = new Set(windows.filter((w) => w.pinned).map((w) => w.id));
-
   // Determine centre windows. Default "solo" — a single focal window
   // in centre stage. Multi-window arrangements (split / grid) are
   // explicit opt-in by the agent or future user UI; everything else
@@ -108,74 +111,57 @@ export function computeStageLayout(
     : centreArrangement === "split-3" ? 3
     : 4;
 
-  // Start with the active window in centre
   const centreIds: string[] = [];
-  const sidelineCandidates: WindowInput[] = [];
 
-  // If graph is active, it takes centre
+  // Active graph takes centre.
   if (isGraphActive && graphWin) {
     centreIds.push(graphWin.id);
   }
 
-  // Active non-graph window
+  // Active non-graph window joins centre.
   const activeWin = others.find((w) => w.id === activeId);
   if (activeWin && !centreIds.includes(activeWin.id)) {
     centreIds.push(activeWin.id);
   }
 
-  // Fill remaining centre slots with most recent windows
-  const byRecency = [...others]
-    .filter((w) => !centreIds.includes(w.id))
+  // For non-solo arrangements (split/grid), pad centre with the most
+  // recent unpinned windows so the agent's split layout is honoured.
+  if (centreSlots > 1) {
+    const padding = [...others]
+      .filter((w) => !centreIds.includes(w.id) && !w.pinned)
+      .sort((a, b) => b.zIndex - a.zIndex);
+    for (const w of padding) {
+      if (centreIds.length >= centreSlots) break;
+      centreIds.push(w.id);
+    }
+  }
+
+  /* Sideline routing.
+   *   left  = pinned, capped at MAX_LEFT_SIDELINE (2)
+   *   right = unpinned, capped at MAX_RIGHT_SIDELINE (3)
+   * Both sorted newest-first by zIndex. Anything past the cap is
+   * evicted — the pin button is disabled when left would overflow,
+   * so the only realistic source of left overflow is agent-driven
+   * mass-pinning. */
+  const sidelineCandidates = others.filter((w) => !centreIds.includes(w.id));
+  const leftCandidates = sidelineCandidates
+    .filter((w) => w.pinned)
+    .sort((a, b) => b.zIndex - a.zIndex);
+  const rightCandidates = sidelineCandidates
+    .filter((w) => !w.pinned)
     .sort((a, b) => b.zIndex - a.zIndex);
 
-  for (const w of byRecency) {
-    if (centreIds.length >= centreSlots) break;
-    // Pinned windows live on the left sideline by user intent —
-    // never auto-fill them into the centre stack.
-    if (pinned.has(w.id)) continue;
-    centreIds.push(w.id);
-  }
-
-  // Everything else → sideline candidates
-  for (const w of others) {
-    if (!centreIds.includes(w.id)) {
-      sidelineCandidates.push(w);
-    }
-  }
-  // Graph goes to sideline if not active and not already in centre
-  if (graphWin && !isGraphActive && !centreIds.includes(graphWin.id)) {
-    // Graph becomes backdrop, not a sideline
-  }
-
-  // Sort sideline candidates by recency (newest first)
-  sidelineCandidates.sort((a, b) => b.zIndex - a.zIndex);
-
-  // Assign sidelines: right = history stack, left = user-pinned
-  const rightSidelineIds: string[] = [];
-  const leftSidelineIds: string[] = [];
-
-  for (const w of sidelineCandidates) {
-    if (pinned.has(w.id) && leftSidelineIds.length < MAX_SIDELINE_PER_SIDE) {
-      leftSidelineIds.push(w.id);
-    } else if (rightSidelineIds.length < MAX_SIDELINE_PER_SIDE) {
-      rightSidelineIds.push(w.id);
-    } else if (leftSidelineIds.length < MAX_SIDELINE_PER_SIDE) {
-      leftSidelineIds.push(w.id);
-    }
-    // else: overflow, will be evicted
-  }
-
-  // Evict overflow
-  const allPlaced = new Set([
-    ...centreIds,
-    ...leftSidelineIds,
-    ...rightSidelineIds,
-    ...(graphWin && !isGraphActive ? [graphWin.id] : []),
-    ...(modalId ? [modalId] : []),
-  ]);
-  const evictedIds = windows
-    .filter((w) => !allPlaced.has(w.id) && w.kind !== "ask_user")
+  const leftSidelineIds = leftCandidates
+    .slice(0, MAX_LEFT_SIDELINE)
     .map((w) => w.id);
+  const rightSidelineIds = rightCandidates
+    .slice(0, MAX_RIGHT_SIDELINE)
+    .map((w) => w.id);
+
+  const evictedIds = [
+    ...leftCandidates.slice(MAX_LEFT_SIDELINE),
+    ...rightCandidates.slice(MAX_RIGHT_SIDELINE),
+  ].map((w) => w.id);
 
   return {
     centreArrangement,
@@ -208,39 +194,77 @@ export function stageLayoutToRects(
 
   let baseZ = 10;
 
-  // --- Left sidelines ---
-  for (let i = 0; i < layout.leftSidelineIds.length; i++) {
-    const id = layout.leftSidelineIds[i];
-    const slotH = Math.round(
-      (usableH - INSET * 2 - (layout.leftSidelineIds.length - 1) * GAP) /
-        layout.leftSidelineIds.length,
-    );
-    rects.set(id, {
-      x: INSET,
-      y: INSET + i * (slotH + GAP),
-      w: SIDELINE_W,
-      h: slotH,
-      opacity: 0.85,
-      zIndex: baseZ + i,
-    });
-  }
+  /* Sideline rect builder. Three layouts depending on count:
+   *   1 → full height column
+   *   2 → 50/50 vertical split
+   *   3 → fanned cascade with peeks distributed *down* the column —
+   *       back card peeks at the top, mid in the middle, front at the
+   *       bottom. Each behind card shows a substantial slice (~25% of
+   *       column), the front card occupies the bottom ~50%.
+   * Front card == ids[0] (most recent / focal in this side). */
+  const writeSidelineRects = (ids: string[], xLeft: number) => {
+    if (ids.length === 0) return;
+    const columnH = usableH - INSET * 2;
+    if (ids.length === 1) {
+      rects.set(ids[0], {
+        x: xLeft,
+        y: INSET,
+        w: SIDELINE_W,
+        h: columnH,
+        opacity: 0.9,
+        zIndex: baseZ,
+      });
+      return;
+    }
+    if (ids.length === 2) {
+      const slotH = Math.round((columnH - GAP) / 2);
+      for (let i = 0; i < 2; i++) {
+        rects.set(ids[i], {
+          x: xLeft,
+          y: INSET + i * (slotH + GAP),
+          w: SIDELINE_W,
+          h: slotH,
+          opacity: 0.9,
+          zIndex: baseZ + (1 - i),
+        });
+      }
+      return;
+    }
+    /* N ≥ 3 cards: even cascade. We want each behind card to peek a
+     * meaningful strip (not 14px clustered at the top). Solve:
+     *   cardH       = columnH - (N − 1) * offset
+     *   peek/behind = offset
+     *   front shows = cardH (≥ peek so the focal card stays dominant)
+     * Setting cardH = 2 * offset gives:
+     *   2*offset + (N − 1)*offset = columnH
+     *   offset = columnH / (N + 1)   cardH = 2 * columnH / (N + 1)
+     * For N=3: offset = column/4, cardH = column/2 — back / mid each
+     * show 25%, front shows 50%. The peeks read as evenly spaced down
+     * the column rather than bunched at the top. */
+    const N = ids.length;
+    const offset = Math.round(columnH / (N + 1));
+    const cardH = columnH - (N - 1) * offset;
+    for (let i = 0; i < N; i++) {
+      // i = 0  → front (bottom of column, highest z)
+      // i = N-1 → back (top of column, lowest z)
+      const depthFromFront = i;
+      const fromBack = N - 1 - depthFromFront; // 0 = back, N-1 = front
+      rects.set(ids[i], {
+        x: xLeft,
+        y: INSET + fromBack * offset,
+        w: SIDELINE_W,
+        h: cardH,
+        opacity:
+          depthFromFront === 0
+            ? 0.9
+            : Math.max(0.55, 0.9 - 0.15 * depthFromFront),
+        zIndex: baseZ + (N - depthFromFront),
+      });
+    }
+  };
 
-  // --- Right sidelines ---
-  for (let i = 0; i < layout.rightSidelineIds.length; i++) {
-    const id = layout.rightSidelineIds[i];
-    const slotH = Math.round(
-      (usableH - INSET * 2 - (layout.rightSidelineIds.length - 1) * GAP) /
-        layout.rightSidelineIds.length,
-    );
-    rects.set(id, {
-      x: vw - INSET - SIDELINE_W,
-      y: INSET + i * (slotH + GAP),
-      w: SIDELINE_W,
-      h: slotH,
-      opacity: 0.85,
-      zIndex: baseZ + i,
-    });
-  }
+  writeSidelineRects(layout.leftSidelineIds, INSET);
+  writeSidelineRects(layout.rightSidelineIds, vw - INSET - SIDELINE_W);
 
   // --- Centre stage ---
   const leftOffset = layout.leftSidelineIds.length > 0
@@ -258,24 +282,34 @@ export function stageLayoutToRects(
   switch (layout.centreArrangement) {
     case "solo": {
       if (layout.centreIds.length > 0) {
+        /* Solo centre layout. We use a single fixed GUTTER for the
+         * gap on every "open" edge — between the centre and a
+         * neighbouring sideline, or between the centre and the
+         * viewport edge when no sideline is present. That keeps the
+         * spacing consistent regardless of which sidelines are
+         * populated, and gives the focal window more real estate
+         * than the old 15%-each-side inset.
+         *
+         * Special case: when BOTH sidelines are populated, we keep
+         * the GUTTER from the left sideline (so the centre's left
+         * edge doesn't shift when a right sideline appears) but the
+         * right edge extends *over* the right sideline (~55% overlay)
+         * so the centre's aspect ratio doesn't collapse. The centre's
+         * z already sits above sidelines so the overlay reads as
+         * "centre stacked on top of right pane". */
+        const GUTTER = Math.round(vw * 0.04);
         const hasLeft = layout.leftSidelineIds.length > 0;
         const hasRight = layout.rightSidelineIds.length > 0;
-        let soloX: number;
-        let soloW: number;
-        if (hasLeft && hasRight) {
-          // Both sidelines flanking: extend the centre rightward over
-          // the right sideline (~55% of its width) so the focal window
-          // gets a wider, more cinematic aspect ratio. The centre's
-          // z is already above the sideline so the overlay reads
-          // cleanly as "centre is on top of the sideline".
-          soloX = centreX + Math.round(centreW * 0.06);
-          const rightEdge = vw - INSET - Math.round(SIDELINE_W * 0.45);
-          soloW = rightEdge - soloX;
-        } else {
-          // Single sideline or none: classic ~70% centred. No overlap.
-          soloW = Math.round(centreW * 0.7);
-          soloX = centreX + Math.round((centreW - soloW) / 2);
-        }
+        const soloX = hasLeft
+          ? INSET + SIDELINE_W + GUTTER
+          : INSET + GUTTER;
+        const soloRightEdge =
+          hasLeft && hasRight
+            ? vw - INSET - Math.round(SIDELINE_W * 0.45)
+            : hasRight
+              ? vw - INSET - SIDELINE_W - GUTTER
+              : vw - INSET - GUTTER;
+        const soloW = soloRightEdge - soloX;
         rects.set(layout.centreIds[0], {
           x: soloX,
           y: centreY,

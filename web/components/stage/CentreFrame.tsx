@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { useAgentStore, type WindowState } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { WINDOW_LABEL } from "./window-labels";
+import { ShapeButton } from "./ShapeButton";
+import { MAX_LEFT_SIDELINE } from "@/lib/stage-manager";
 
 /**
  * Frame for a window in the centre stage slot.
@@ -61,6 +63,14 @@ export function CentreFrame({
     () => pickSwapCandidate(windows, win.id),
     [windows, win.id],
   );
+  /* Pin button is refused when the left sideline is already full of
+   * OTHER pinned windows. If self is currently pinned, the button
+   * acts as "unpin" and is always enabled. */
+  const otherPinnedCount = useMemo(
+    () => windows.filter((w) => w.pinned && w.id !== win.id).length,
+    [windows, win.id],
+  );
+  const pinDisabled = !pinned && otherPinnedCount >= MAX_LEFT_SIDELINE;
 
   const [pressing, setPressing] = useState<"pin" | "swap" | "close" | null>(null);
   const swapPendingRef = useRef(false);
@@ -88,6 +98,7 @@ export function CentreFrame({
       unpinWindow(win.id);
       return;
     }
+    if (pinDisabled) return;
     /* Pinning the centre window: pin first, then promote a swap
      * candidate so the layout engine routes this (now pinned) window
      * into the left sideline — pinned windows live on the left, by
@@ -98,7 +109,7 @@ export function CentreFrame({
       // Defer the focus change one frame so the pin state lands first.
       requestAnimationFrame(() => bringToFront(swapCandidate));
     }
-  }, [pinned, pinWindow, unpinWindow, win.id, swapCandidate, bringToFront]);
+  }, [pinned, pinDisabled, pinWindow, unpinWindow, win.id, swapCandidate, bringToFront]);
 
   return (
     <motion.div
@@ -113,7 +124,7 @@ export function CentreFrame({
     >
       <div
         className={cn(
-          "flex h-9 shrink-0 select-none items-center justify-between px-4",
+          "flex h-9 shrink-0 select-none items-center justify-between px-3",
           "border-b border-rule",
         )}
       >
@@ -142,7 +153,14 @@ export function CentreFrame({
         >
           <ShapeButton
             kind="triangle"
-            label={pinned ? "unpin (let go)" : "pin (keep this in stage)"}
+            label={
+              pinned
+                ? "unpin (let go)"
+                : pinDisabled
+                  ? "left sideline full"
+                  : "pin (move to left sideline)"
+            }
+            disabled={pinDisabled}
             pressing={pressing === "pin"}
             active={pinned}
             onPressStart={() => setPressing("pin")}
@@ -174,116 +192,6 @@ export function CentreFrame({
 
       <div className="relative min-h-0 flex-1">{children}</div>
     </motion.div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Shape control                                                      */
-/* ------------------------------------------------------------------ */
-
-function ShapeButton({
-  kind,
-  label,
-  disabled = false,
-  pressing,
-  active = false,
-  onPressStart,
-  onPressEnd,
-  onClick,
-  testId,
-}: {
-  kind: "oval" | "circle" | "triangle";
-  label: string;
-  disabled?: boolean;
-  pressing: boolean;
-  /** Toggle on-state (used by the triangle pin button). */
-  active?: boolean;
-  onPressStart: () => void;
-  onPressEnd: () => void;
-  onClick: () => void;
-  testId: string;
-}) {
-  /* Hit target is a 24px square so the visible 10px shape has a
-     forgiving click area. The shape itself is an inner span we
-     animate independently of the button — taps shouldn't shift the
-     hit target. */
-  return (
-    <button
-      type="button"
-      onClick={disabled ? undefined : onClick}
-      onPointerDown={disabled ? undefined : onPressStart}
-      onPointerUp={onPressEnd}
-      onPointerLeave={onPressEnd}
-      onPointerCancel={onPressEnd}
-      aria-label={label}
-      aria-disabled={disabled || undefined}
-      title={label}
-      data-testid={testId}
-      data-disabled={disabled || undefined}
-      tabIndex={disabled ? -1 : 0}
-      className={cn(
-        "group relative flex h-6 w-6 items-center justify-center",
-        "rounded-sm outline-none",
-        "focus-visible:ring-2 focus-visible:ring-ink-90/30",
-        disabled
-          ? "cursor-default pointer-events-none"
-          : "cursor-pointer",
-      )}
-    >
-      {kind === "triangle" ? (
-        /* Triangle is drawn as an SVG so we can toggle fill/stroke
-           cleanly between active (pinned) and inactive states. */
-        <motion.svg
-          aria-hidden="true"
-          initial={false}
-          animate={{ scale: pressing && !disabled ? 0.85 : 1 }}
-          transition={{ type: "spring", stiffness: 500, damping: 28 }}
-          width="11"
-          height="10"
-          viewBox="0 0 11 10"
-          className={cn(
-            "transition-colors duration-150",
-            disabled
-              ? "text-ink-35/30"
-              : active
-                ? "text-accent-indigo"
-                : "text-ink-35/70 group-hover:text-accent-indigo",
-          )}
-          fill={active ? "currentColor" : "none"}
-          stroke="currentColor"
-          strokeWidth={1.4}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          {/* Inverted triangle (apex down). */}
-          <path d="M5.5 8.8 L10 1.4 L1 1.4 Z" />
-        </motion.svg>
-      ) : (
-        <motion.span
-          aria-hidden
-          initial={false}
-          animate={{ scale: pressing && !disabled ? 0.85 : 1 }}
-          transition={{ type: "spring", stiffness: 500, damping: 28 }}
-          className={cn(
-            "block transition-colors duration-150",
-            // Geometry — straight-edged oval (pill) vs. true circle.
-            kind === "oval"
-              ? "h-[10px] w-[18px] rounded-full"
-              : "h-[10px] w-[10px] rounded-full",
-            // Calm grey at rest, ink-90 on hover for a subtle "press me",
-            // disabled is even more muted.
-            disabled
-              ? "bg-ink-35/30"
-              : "bg-ink-35/60 group-hover:bg-ink-90",
-            // Per-shape hover accent on enabled buttons:
-            //  oval → indigo (centre stage swap = primary action)
-            //  circle → confidence-low (red) (close = caution)
-            !disabled && kind === "oval" && "group-hover:bg-accent-indigo",
-            !disabled && kind === "circle" && "group-hover:bg-confidence-low",
-          )}
-        />
-      )}
-    </button>
   );
 }
 

@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { resolveMount, DOCK_PX_H } from "./agent/mount-points";
 import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
 
-/** V1 window kinds — the 8 harness tools + graph + settings. */
+/** V1 window kinds — the 8 harness tools + graph + settings + chat. */
 export type WindowKind =
   | "run_code"
   | "save_workflow"
@@ -15,7 +15,8 @@ export type WindowKind =
   | "search_memory"
   | "ask_user"
   | "graph"
-  | "settings";
+  | "settings"
+  | "chat";
 
 /** Backward-compat alias — consumers migrating to WindowKind. */
 export type RoomKind = WindowKind;
@@ -92,6 +93,7 @@ const MIN_SIZES: Record<WindowKind, { w: number; h: number }> = {
   ask_user: { w: 360, h: 200 },
   graph: { w: 480, h: 400 },
   settings: { w: 480, h: 400 },
+  chat: { w: 380, h: 480 },
 };
 
 export function getMinSize(kind: RoomKind) { return MIN_SIZES[kind]; }

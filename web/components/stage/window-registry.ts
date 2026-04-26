@@ -143,10 +143,24 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
       const userId = state.userId ?? null;
       const orgId = state.orgId ?? null;
       const conn = state.connections.filter((c) => c.status === "ACTIVE").length;
-      if (!userId) return truncate(`user_id NOT SET \u00b7 enter one to use the app`);
+      if (!userId) return truncate(`user_id NOT SET · enter one to use the app`);
       return truncate(
-        `user_id=${userId}${orgId ? ` \u00b7 org=${orgId}` : ""} \u00b7 ${conn} integrations active`,
+        `user_id=${userId}${orgId ? ` · org=${orgId}` : ""} · ${conn} integrations active`,
       );
+    },
+  },
+
+  chat: {
+    title: "chat",
+    windowType: "context",
+    pinnable: true,
+    defaultMount: "right-half",
+    summary: (state) => {
+      const n = state.chatMessages.length;
+      if (n === 0) return truncate(`chat · no history yet`);
+      const last = state.chatMessages[n - 1];
+      const role = last.role === "user" ? "you" : "agent";
+      return truncate(`chat · ${n} msgs · last: ${role} · ${last.text.slice(0, 40)}`);
     },
   },
 };

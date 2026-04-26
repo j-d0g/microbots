@@ -68,6 +68,7 @@ export const WINDOW_KIND = z.enum([
   "ask_user",
   "graph",
   "settings",
+  "chat",
 ]);
 
 export const MOUNT_POINT = z.enum([
@@ -110,7 +111,7 @@ export function metaTools(ctx: AgentToolCtx) {
   return {
     open_window: tool({
       description:
-        "Open a window of a given kind. If already open, brings it forward. Primarily for graph and settings; V1 work tools (run_code, etc.) open their own windows automatically.",
+        "Open a window of a given kind. If already open, brings it forward. Primarily for graph, settings, and chat (the rolling transcript window); V1 work tools (run_code, etc.) open their own windows automatically.",
       inputSchema: z.object({
         kind: WINDOW_KIND,
         mount: MOUNT_POINT.optional().default("full"),

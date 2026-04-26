@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Sunrise,
@@ -17,20 +17,29 @@ import {
 import { useAgentStore, type WindowState, type WindowKind } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import { WINDOW_LABEL, WINDOW_SIDELINE_HINT } from "./window-labels";
+import { ShapeButton } from "./ShapeButton";
+import { MAX_LEFT_SIDELINE } from "@/lib/stage-manager";
 
 /**
  * A window currently sitting on the sideline.
  *
- * MUJI-minimal card: icon, label, summary line, "in stage" footer.
- * Click anywhere to bring it to centre stage. We intentionally don't
- * render the room's actual content here — at thumbnail size that ends
- * up unreadable and noisy, and force-graphs / inputs / scroll regions
- * don't survive a 50% scale gracefully. A calm card is more on-brand
- * for the paper aesthetic than a busy live preview.
+ * Layout: a slim title strip at the top hosts the same shape controls
+ * the centre frame uses (pin, oval, close), and the rest of the card
+ * is a click-to-promote button (clicking the body brings the window
+ * to centre stage). The room's live content is intentionally NOT
+ * rendered at sideline size — at thumbnail scale that ends up
+ * unreadable, and force-graphs / inputs / scroll regions don't
+ * survive 50% scale gracefully. A calm card is more on-brand for the
+ * paper aesthetic than a busy live preview.
  *
- * Hover treatment is gentle: the icon dot warms to indigo, the
- * "in stage" caption swaps to a "click to focus →" prompt, and the
- * card lifts 1px.
+ * Per the layout spec:
+ *   • pin   — visible on every sideline window. Left side: shows as
+ *           active (filled triangle) and click = unpin + bringToFront.
+ *           Right side: click = pin (move to left sideline). Disabled
+ *           on the right when the left sideline is already full.
+ *   • oval  — visible only on the RIGHT sideline. Click swaps that
+ *           window with the current centre (bringToFront).
+ *   • close — visible on every sideline window. Removes from the UI.
  */
 export function SidelinePanel({
   win,
@@ -40,25 +49,72 @@ export function SidelinePanel({
   side: "left" | "right";
 }) {
   const bringToFront = useAgentStore((s) => s.bringToFront);
+  const closeWindow = useAgentStore((s) => s.closeWindow);
+  const pinWindow = useAgentStore((s) => s.pinWindow);
+  const unpinWindow = useAgentStore((s) => s.unpinWindow);
+  const windows = useAgentStore((s) => s.windows);
+  const pinned = win.pinned === true;
+
+  const otherPinnedCount = useMemo(
+    () => windows.filter((w) => w.pinned && w.id !== win.id).length,
+    [windows, win.id],
+  );
+  /* Pin button refused only when self isn't already pinned AND
+   * adding self would push the left sideline past its cap. An already
+   * pinned card is always toggleable (the click means "unpin"). */
+  const pinDisabled = !pinned && otherPinnedCount >= MAX_LEFT_SIDELINE;
+
   const [hovering, setHovering] = useState(false);
+  const [pressing, setPressing] = useState<"pin" | "swap" | "close" | null>(
+    null,
+  );
+
+  const onPin = useCallback(() => {
+    if (pinned) {
+      // Unpin from left sideline, then bringToFront so the user sees
+      // what they just released — it lands as the new centre.
+      unpinWindow(win.id);
+      requestAnimationFrame(() => bringToFront(win.id));
+      return;
+    }
+    if (pinDisabled) return;
+    pinWindow(win.id);
+  }, [pinned, pinDisabled, pinWindow, unpinWindow, bringToFront, win.id]);
+
+  const onSwap = useCallback(() => {
+    bringToFront(win.id);
+  }, [bringToFront, win.id]);
+
+  const onClose = useCallback(() => {
+    closeWindow(win.id);
+  }, [closeWindow, win.id]);
+
+  const onBodyActivate = useCallback(() => {
+    /* Promoting a left-sideline (pinned) window to centre via the
+     * body click implicitly releases the pin. Otherwise the layout
+     * engine would yank it back to the left sideline on the next
+     * shuffle, fighting the user's "I want to use this now" intent.
+     * The pin button itself remains the way to keep something pinned
+     * while still bringing it forward (since the pin button click
+     * here already unpins + bringsToFront on the left side). */
+    if (pinned) unpinWindow(win.id);
+    bringToFront(win.id);
+  }, [bringToFront, unpinWindow, pinned, win.id]);
 
   const Icon = ICONS[win.kind] ?? Sparkles;
 
   return (
-    <motion.button
-      type="button"
+    <motion.div
       data-testid={`sideline-${win.kind}`}
       data-window-id={win.id}
       data-side={side}
-      onClick={() => bringToFront(win.id)}
+      data-pinned={pinned ? "true" : "false"}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
       whileHover={{ y: -1 }}
-      whileTap={{ scale: 0.99 }}
       transition={{ type: "spring", stiffness: 320, damping: 30 }}
-      aria-label={`bring ${WINDOW_LABEL[win.kind]} to centre stage`}
       className={cn(
-        "group absolute block h-full w-full overflow-hidden text-left",
+        "group absolute flex h-full w-full flex-col overflow-hidden",
         "rounded-xl border border-rule",
         "bg-paper-1/85 backdrop-blur-sm",
         "shadow-[0_1px_2px_rgba(0,0,0,0.02),0_8px_24px_-12px_rgba(0,0,0,0.18)]",
@@ -66,8 +122,17 @@ export function SidelinePanel({
         "transition-colors duration-200",
       )}
     >
-      <div className="flex h-full flex-col p-4">
-        <div className="flex items-center gap-2">
+      {/* Title strip: status dot, label, controls. Mirrors the centre
+          frame so muscle memory transfers between roles. The control
+          group stops propagation so clicks don't fall through to the
+          body's bringToFront handler. */}
+      <div
+        className={cn(
+          "flex h-9 shrink-0 select-none items-center justify-between px-3",
+          "border-b border-rule",
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-2">
           <span
             aria-hidden
             className={cn(
@@ -75,34 +140,83 @@ export function SidelinePanel({
               hovering ? "bg-accent-indigo" : "bg-ink-35",
             )}
           />
-          <Icon size={12} strokeWidth={1.5} className="text-ink-60" />
-          <span className="font-mono text-[10px] uppercase tracking-[0.10em] text-ink-60">
+          <Icon size={11} strokeWidth={1.5} className="text-ink-60 shrink-0" />
+          <span className="truncate font-mono text-[10px] uppercase tracking-[0.10em] text-ink-60">
             {WINDOW_LABEL[win.kind] ?? win.kind}
           </span>
         </div>
-        <p
-          className={cn(
-            "mt-2 text-[13px] leading-snug",
-            "text-ink-90",
-          )}
+        <div
+          className="flex items-center gap-1.5"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
-          {summary(win)}
-        </p>
-        {win.openedBy === "agent" && (
-          <span className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-35">
-            opened by agent
-          </span>
-        )}
-        <span
-          className={cn(
-            "mt-auto font-mono text-[9px] uppercase tracking-wider transition-colors",
-            hovering ? "text-accent-indigo" : "text-ink-35",
+          <ShapeButton
+            kind="triangle"
+            label={
+              pinned
+                ? "unpin (let go)"
+                : pinDisabled
+                  ? "left sideline full"
+                  : "pin (move to left sideline)"
+            }
+            disabled={pinDisabled}
+            pressing={pressing === "pin"}
+            active={pinned}
+            onPressStart={() => setPressing("pin")}
+            onPressEnd={() => setPressing(null)}
+            onClick={onPin}
+            testId={`sideline-pin-${side}`}
+          />
+          {side === "right" && (
+            <ShapeButton
+              kind="oval"
+              label="swap with centre stage"
+              pressing={pressing === "swap"}
+              onPressStart={() => setPressing("swap")}
+              onPressEnd={() => setPressing(null)}
+              onClick={onSwap}
+              testId="sideline-swap"
+            />
           )}
-        >
-          {hovering ? "click to focus →" : "in stage"}
-        </span>
+          <ShapeButton
+            kind="circle"
+            label="close window"
+            pressing={pressing === "close"}
+            onPressStart={() => setPressing("close")}
+            onPressEnd={() => setPressing(null)}
+            onClick={onClose}
+            testId={`sideline-close-${side}`}
+          />
+        </div>
       </div>
-    </motion.button>
+
+      {/* Body: click anywhere here to promote the window to centre. */}
+      <button
+        type="button"
+        onClick={onBodyActivate}
+        aria-label={`bring ${WINDOW_LABEL[win.kind]} to centre stage`}
+        className="min-h-0 flex-1 cursor-pointer text-left"
+      >
+        <div className="flex h-full flex-col p-3">
+          <p className="text-[13px] leading-snug text-ink-90">
+            {summary(win)}
+          </p>
+          {win.openedBy === "agent" && (
+            <span className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-35">
+              opened by agent
+            </span>
+          )}
+          <span
+            className={cn(
+              "mt-auto font-mono text-[9px] uppercase tracking-wider transition-colors",
+              hovering ? "text-accent-indigo" : "text-ink-35",
+            )}
+          >
+            {hovering ? "click to focus →" : "in stage"}
+          </span>
+        </div>
+      </button>
+    </motion.div>
   );
 }
 

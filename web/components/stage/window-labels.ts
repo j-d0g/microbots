@@ -12,6 +12,7 @@ export const WINDOW_LABEL: Record<WindowKind, string> = {
   ask_user: "ask",
   graph: "graph",
   settings: "settings",
+  chat: "chat",
 };
 
 /** Single-line summary used on sideline thumbnails — kept tiny on
@@ -28,4 +29,5 @@ export const WINDOW_SIDELINE_HINT: Record<WindowKind, string> = {
   ask_user: "agent question",
   graph: "ontology",
   settings: "preferences",
+  chat: "transcript",
 };
