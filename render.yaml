@@ -1,9 +1,10 @@
 # Render Blueprint for microbots.
 #
 # Services:
-#   1. microbots-app         — public FastAPI: /mcp, /mcp/devin, /api/kg/*, /api/composio/*
-#   2. microbot-harness-mcp  — public FastMCP harness server (SSE for the demo agent UI)
-#   3. microbot-harness-frontend — minimal Next.js harness demo UI (web/ deploys to Vercel separately)
+#   1. microbots-app             — public FastAPI: /mcp, /api/kg/*, /api/composio/*
+#   2. microbot-harness-mcp      — public FastMCP harness server (SSE for the agent)
+#   3. microbot-harness-frontend — legacy minimal demo UI (DEPRECATED — replaced by microbots-web)
+#   4. microbots-web             — production Next.js UI (orchestrator + ElevenLabs voice + harness MCP client)
 #
 # SurrealDB lives on a separate Render service David provisioned:
 #   wss://surrealdb-latest-i2nj.onrender.com/rpc  (root/root, ns=microbots, db=memory)
@@ -57,10 +58,14 @@ services:
       - key: RENDER_API_KEY
         sync: false       # required so MCP can call Workflows
       # Point the harness at the unified app's MCP transport.
+      # NOTE: the deployed FastAPI service is reachable at app-bf31.onrender.com
+      # (not microbots-app.onrender.com — that hostname 404s).
       - key: KG_MCP_URL
-        value: https://microbots-app.onrender.com/mcp
+        value: https://app-bf31.onrender.com/mcp
 
-  # ---------- Minimal harness demo UI (web/ goes to Vercel separately) ----------
+  # ---------- Legacy minimal harness demo UI (DEPRECATED) ----------
+  # Kept temporarily to avoid surprise teardowns; superseded by microbots-web below.
+  # Safe to delete the dashboard service + this block in a follow-up cleanup commit.
   - type: web
     name: microbot-harness-frontend
     runtime: node
@@ -80,3 +85,51 @@ services:
           envVarKey: MCP_API_TOKEN
       - key: ANTHROPIC_API_KEY
         sync: false       # set in dashboard
+
+  # ---------- Production Next.js UI (orchestrator + ElevenLabs + harness MCP client) ----------
+  - type: web
+    name: microbots-web
+    runtime: node
+    plan: starter        # free tier spin-down (~30s cold start) tanks voice UX
+    repo: https://github.com/j-d0g/microbots
+    rootDir: web
+    buildCommand: npm install && npm run build
+    # web/package.json hardcodes `next start --port 3000`; override so Next binds Render's $PORT.
+    startCommand: npx next start --port $PORT --hostname 0.0.0.0
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      # --- Orchestrator LLM (OpenRouter) ---
+      - key: OPENROUTER_API_KEY
+        sync: false        # set in dashboard
+      - key: OPENROUTER_MODEL
+        value: google/gemini-2.5-flash-lite
+
+      # --- Harness MCP (powers run_code / save_workflow / search_memory) ---
+      - key: HARNESS_MCP_URL
+        value: https://microbot-harness-mcp.onrender.com/sse
+      - key: HARNESS_MCP_TOKEN
+        fromService:
+          type: web
+          name: microbot-harness-mcp
+          envVarKey: MCP_API_TOKEN
+
+      # --- Backend (KG reads/writes + Composio OAuth) ---
+      # NEXT_PUBLIC_* vars are baked into the JS bundle at build time.
+      # If you change this, redeploy with "Clear build cache & deploy".
+      - key: NEXT_PUBLIC_MICROBOTS_BASE_URL
+        value: https://app-bf31.onrender.com
+
+      # --- ElevenLabs Conversational AI (voice) ---
+      - key: ELEVENLABS_API_KEY
+        sync: false        # set in dashboard (server-side only, never browser)
+      - key: ELEVENLABS_CONVAI_AGENT_ID
+        sync: false        # set in dashboard
+      - key: NEXT_PUBLIC_ELEVENLABS_CONVAI_AGENT_ID
+        sync: false        # mirror — used as client-side fallback in signed-url route
+      - key: ELEVENLABS_VOICE_ID
+        sync: false        # optional, for non-default TTS voice
+
+      # --- Feature flag (must be false in prod) ---
+      - key: NEXT_PUBLIC_MOCK_AGENT
+        value: "false"
