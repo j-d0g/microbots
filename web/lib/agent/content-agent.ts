@@ -118,7 +118,7 @@ export async function runContentAgent(
 
   const result = streamText({
     model: chatModel(),
-    system: buildSystemPrompt(relevantKinds),
+    system: buildSystemPrompt(relevantKinds, mode),
     prompt: `${snapshotToPrompt(ctx.snapshot, { includeGrid: false })}
 
 intent: ${intent}`,

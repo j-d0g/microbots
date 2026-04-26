@@ -1,87 +1,58 @@
 /**
- * Top-level orchestrator — single round-trip design.
+ * Top-level orchestrator — single LLM call design.
  *
- * The model emits reply text + delegate_* tool calls in ONE generation
- * (step 1). Step 2 exists only as a safety net. Sub-agents run inside
- * `delegate_*.execute()` so the orchestrator effectively has them as
- * remote callable tools.
+ * The orchestrator now owns LAYOUT TOOLS DIRECTLY (open/close/focus/
+ * arrange) so the common case — "open settings", "show graph",
+ * "connect slack" — completes in ONE round-trip. The layout sub-agent
+ * is gone (its capabilities are now inline). delegate_content remains
+ * for genuine content reasoning (drafting, explaining, graph queries).
+ *
+ * Reply text streams in the SAME step as tool calls, so the user sees
+ * the response immediately while side-effects fire in parallel.
  */
 
 import { streamText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { chatModel } from "./providers/openrouter";
-import { runLayoutAgent } from "./layout-agent";
 import { runContentAgent } from "./content-agent";
-import type { AgentToolCtx } from "./tools";
+import { layoutTools, type AgentToolCtx } from "./tools";
 import { snapshotToPrompt } from "./server-snapshot";
 
-const ORCH_SYSTEM = `you are the microbots stage manager. you control a desktop
-of floating windows for a startup founder. you NEVER write more than one short
-sentence to the user. lowercase, no emojis, no marketing voice.
+const ORCH_SYSTEM = `microbots stage manager. control floating windows for a founder. NEVER write more than ONE short lowercase sentence. no emojis.
 
-═══ UI MODES ═══
-the snapshot's <canvas mode=…> tag tells you which mode is active.
+WINDOWED mode (check <canvas mode=>): only three kinds exist:
+  settings, integration (slug=slack|github|gmail|linear|notion|perplexityai), graph.
+CHAT mode: seven kinds: brief, graph, workflow, stack, waffle, playbooks, settings.
 
-WINDOWED mode (the default):
-- only THREE window kinds exist: settings, integration, graph.
-- 'integration' is per-toolkit; one window per slug, max 6 slugs:
-  slack, github, gmail, linear, notion, perplexityai.
-- the snapshot <canvas> tag shows user_id=VALUE or user_id=NOT_SET.
-  CHECK THIS EVERY TIME. If user_id is NOT a placeholder like NOT_SET
-  or null, the user IS authenticated — do NOT say user_id is missing.
-- if user_id is NOT_SET and the user asks for anything except settings,
-  delegate_layout("open settings as subject") and reply: "set your
-  user id in settings first." nothing else.
-- if user_id is set and the user asks to "connect X", delegate_content
-  with intent "integration_connect for slug=X". the content-agent
-  knows the tool. ALSO delegate_layout to bring that integration
-  window forward.
-- integration_connect REQUIRES a slug — one of: slack, github, gmail,
-  linear, notion, perplexityai. Never call it without a slug.
-- if the user asks about an integration that's not ACTIVE, open its
-  window so they can connect.
-- if the user asks for the graph and no integrations are ACTIVE,
-  open the graph anyway — it'll show what little the kg has — and
-  mention they may want to connect tools first.
+user_id rule: <canvas user_id=> is the source of truth. NOT_SET means unauth.
+if NOT_SET and user asks anything except settings → open_window(kind="settings") and reply "set your user id in settings first."
 
-CHAT mode:
-- all seven legacy kinds are available (brief, graph, workflow, stack,
-  waffle, playbooks, settings). same heuristics as before this update.
+═══ TOOLS (call directly, in parallel when sensible) ═══
+open_window(kind, slug?, mount?)        — open or refocus. for kind="integration" pass slug.
+close_window(id?, kind?)                — close one window. clean canvas = calm canvas.
+focus_window(id?, kind?)                — bring forward.
+arrange_windows(layout)                 — tile every window. presets:
+   focus | split | reading | triptych | grid | spotlight | theater | stack-right.
+   picker: 1=focus, 2=split, 2+hero=spotlight, 3=triptych, 4+=grid.
+clear_canvas()                          — close everything (rare).
+delegate_content(intent)                — ONLY for content reasoning: drafts,
+   explains, comparisons, graph queries, integration_connect (REQUIRES slug).
 
-═══ SUB-AGENTS ═══
-- delegate_layout(intent) — opens/closes/moves/arranges windows.
-- delegate_content(intent) — pushes cards, highlights elements,
-  explains, drafts, calls per-window tools (graph_*, brief_*,
-  workflow_*, integration_connect, etc.).
+═══ HEURISTICS ═══
+- "open X"            → open_window(kind=X). if 2+ windows after, arrange_windows.
+- "connect X"         → open_window(kind="integration", slug=X) + delegate_content("integration_connect slug=X").
+- "show all"          → open all relevant + arrange_windows("grid").
+- "clean slate"       → clear_canvas.
+- emotional/vague     → open the most relevant window + delegate_content if facts needed.
+   anxiety→brief/stack, curiosity→graph, recap→brief, risk→stack+brief (chat mode only).
 
-YOU SHOULD ALMOST ALWAYS DELEGATE LAYOUT in windowed mode — the canvas
-must feel alive. heuristics:
-- user mentions a window by name/topic → delegate_layout("put the
-  {kind} forward; demote others to pip-br / pip-tr") AND
-  delegate_content("{their ask}") in PARALLEL.
-- user wants content in a kind that isn't open → delegate_layout
-  with "open {kind} as subject" so it appears.
-- user asks "reset" / "clean slate" → delegate_layout with that intent.
-
-call sub-agents in parallel when both are needed — they share the snapshot.
-
-after delegating, write at most one short sentence of reply. that text
-streams as the visible response.
-
-ALWAYS-STAGE: emotional/status/vague intent → BOTH delegates. infer window from tone:
-anxiety → brief/stack, curiosity → graph, recap → brief, risk → stack+brief.
-- "how's the team doing?" → layout("open brief as subject") + content("surface team status")
-- "is anything on fire?" → layout("open stack as subject, brief sidebar") + content("highlight warnings")
+in WINDOWED mode NEVER open brief / workflow / stack / waffle / playbooks — refused.
 
 rules:
-- never describe what you did in detail. one sentence max. lowercase.
-- never call sub-agents with vague intents — be specific.
-- never claim to have done something a tool didn't do.
-- if backend.surreal=DOWN or backend.composio=DOWN in the snapshot,
-  prepend the reply with a one-word tag: "degraded · …".
+- one short sentence. never describe tool calls. never claim what you didn't do.
+- if backend.surreal=DOWN or composio=DOWN, prefix reply with "degraded · ".
 
-CRITICAL: write your reply in the SAME generation as your delegate_* calls.
-do NOT wait for a second step. one sentence alongside tool calls. snappy.`;
+CRITICAL: emit reply text in the SAME generation as tool calls. one short sentence alongside tools. snappy.`;
 
 export interface OrchestrateInput {
   ctx: AgentToolCtx;
@@ -94,18 +65,12 @@ export interface OrchestrateInput {
  *  effects flow through `ctx.emit` as they fire. */
 export function runOrchestrator({ ctx, query }: OrchestrateInput) {
   const tools = {
-    delegate_layout: tool({
-      description:
-        "Hand off to the layout sub-agent. Use whenever the user wants windows opened, closed, moved, focused, or rearranged.",
-      inputSchema: z.object({ intent: z.string().min(1).max(200) }),
-      execute: async ({ intent }) => {
-        ctx.emit({ type: "agent.delegate", to: "layout", intent });
-        return runLayoutAgent(ctx, intent);
-      },
-    }),
+    // Direct layout tools — no sub-agent indirection. Each fires its
+    // ui.* events synchronously through ctx.emit.
+    ...layoutTools(ctx),
     delegate_content: tool({
       description:
-        "Hand off to the content sub-agent. Use when the user asks for facts, drafts, comparisons, or actions inside a window (highlight, focus a graph node, etc).",
+        "Hand off to the content sub-agent for genuine content reasoning: drafts, explanations, comparisons, graph queries, and integration_connect (which requires a slug). Do NOT use for layout — call open_window/close_window/focus_window/arrange_windows directly.",
       inputSchema: z.object({ intent: z.string().min(1).max(200) }),
       execute: async ({ intent }) => {
         ctx.emit({ type: "agent.delegate", to: "content", intent });
@@ -117,11 +82,16 @@ export function runOrchestrator({ ctx, query }: OrchestrateInput) {
   return streamText({
     model: chatModel(),
     system: ORCH_SYSTEM,
-    prompt: `${snapshotToPrompt(ctx.snapshot)}
+    // Compact snapshot: skip 12×8 grid (router doesn't need spatial
+    // math) and recent-actions ring (noise for first-turn). ~300 tokens
+    // shaved per call → faster TTFT.
+    prompt: `${snapshotToPrompt(ctx.snapshot, { includeGrid: false, includeRecentActions: false })}
 
 user said: ${query}`,
     tools,
-    stopWhen: stepCountIs(2),
+    // stepCountIs(1) — reply text streams in step 1 alongside tool
+    // calls. No follow-up text generation after tools return.
+    stopWhen: stepCountIs(1),
     temperature: 0.2,
   });
 }

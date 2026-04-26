@@ -523,10 +523,30 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     } else {
       const pct = resolveMount(defaultMount, { w: vw, h: vh });
       const usableH = Math.max(200, vh - DOCK_PX_H);
-      dw = Math.max(Math.round((pct.w / 100) * vw), min.w);
-      dh = Math.max(Math.round((pct.h / 100) * usableH), min.h);
-      dx = Math.max(GAP, Math.round((pct.x / 100) * vw));
-      dy = Math.max(GAP, Math.round((pct.y / 100) * usableH));
+      // Inset ~2.5% from each edge so windows don't touch the canvas
+      // borders, plus a small inter-window gutter on the inner edge.
+      const OUTER_PCT = 2.5;
+      const insetX = Math.round((OUTER_PCT / 100) * vw);
+      const insetY = Math.round((OUTER_PCT / 100) * usableH);
+      const rawX = Math.round((pct.x / 100) * vw);
+      const rawY = Math.round((pct.y / 100) * usableH);
+      const rawW = Math.round((pct.w / 100) * vw);
+      const rawH = Math.round((pct.h / 100) * usableH);
+      // Touches left edge → push in; touches right edge → shrink by inset
+      const touchesLeft = pct.x < 0.5;
+      const touchesRight = pct.x + pct.w > 99.5;
+      const touchesTop = pct.y < 0.5;
+      const touchesBottom = pct.y + pct.h > 99.5;
+      dx = Math.max(GAP, rawX + (touchesLeft ? insetX : Math.round(insetX / 2)));
+      dy = Math.max(GAP, rawY + (touchesTop ? insetY : Math.round(insetY / 2)));
+      const widthAdjust =
+        (touchesLeft ? insetX : Math.round(insetX / 2)) +
+        (touchesRight ? insetX : Math.round(insetX / 2));
+      const heightAdjust =
+        (touchesTop ? insetY : Math.round(insetY / 2)) +
+        (touchesBottom ? insetY : Math.round(insetY / 2));
+      dw = Math.max(rawW - widthAdjust, min.w);
+      dh = Math.max(rawH - heightAdjust, min.h);
     }
 
     const id = `win-${++_modalId}`;

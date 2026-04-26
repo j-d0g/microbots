@@ -651,9 +651,10 @@ export function applyToolToSnapshot(
  *  Layout-agent needs it for spatial reasoning; content-agent does not. */
 export function snapshotToPrompt(
   snap: CanvasSnapshot,
-  opts: { includeGrid?: boolean } = {},
+  opts: { includeGrid?: boolean; includeRecentActions?: boolean } = {},
 ): string {
   const includeGrid = opts.includeGrid ?? true;
+  const includeRecentActions = opts.includeRecentActions ?? true;
   const lines: string[] = [];
   const mode = snap.ui?.mode ?? "windowed";
   const userId = snap.user?.userId ?? null;
@@ -674,9 +675,11 @@ export function snapshotToPrompt(
   }
 
   lines.push("");
-  lines.push("grid (12 cols × 8 rows, uppercase=focused, lowercase=open, ·=empty):");
-  lines.push(snap.grid);
-  lines.push("");
+  if (includeGrid) {
+    lines.push("grid (12 cols × 8 rows, uppercase=focused, lowercase=open, ·=empty):");
+    lines.push(snap.grid);
+    lines.push("");
+  }
   if (snap.windows.length === 0) {
     lines.push("windows: (none)");
   } else {
@@ -688,7 +691,7 @@ export function snapshotToPrompt(
       );
     }
   }
-  if (snap.recentActions.length > 0) {
+  if (includeRecentActions && snap.recentActions.length > 0) {
     lines.push("");
     lines.push("recent actions (most recent last):");
     for (const a of snap.recentActions) {

@@ -113,23 +113,25 @@ export function CommandBar() {
     if (busy) setForceSpotlight(false);
   }, [busy]);
 
-  /* In windowed mode, auto-dismiss once the reply finishes so the
-   * FloatingDock takes over and the user sees the canvas. The reply
-   * text persists in the store so the dock still shows it. */
+  /* In windowed mode, auto-dismiss once the agent finishes so the
+   * FloatingDock takes over and the user sees the canvas behind.
+   * Fires on every busy→idle transition (not gated on reply length —
+   * tool-only responses and fallbacks should also dismiss). The reply
+   * text, if any, persists in the store so the dock still shows it. */
   const prevBusyRef = useRef(false);
   useEffect(() => {
     const wasBusy = prevBusyRef.current;
     prevBusyRef.current = busy;
-    if (wasBusy && !busy && reply.length > 0 && uiMode === "windowed") {
-      // Small delay so the user sees the final text land in the bar
-      // before it animates away.
+    if (wasBusy && !busy && uiMode === "windowed") {
+      // Short delay so the user sees the final text land before
+      // the spotlight animates away.
       const t = window.setTimeout(() => {
         setOpen(false);
         // Don't clearReply — the dock reads agentReply from the store.
-      }, 600);
+      }, 350);
       return () => window.clearTimeout(t);
     }
-  }, [busy, reply, uiMode, setOpen]);
+  }, [busy, uiMode, setOpen]);
 
   const handleClose = useCallback(() => {
     abortRef.current?.abort();

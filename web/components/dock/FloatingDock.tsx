@@ -11,6 +11,7 @@
  */
 
 import { motion } from "framer-motion";
+import { MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { VoiceDot } from "./VoiceDot";
@@ -23,6 +24,7 @@ export function FloatingDock() {
   const status = useAgentStore((s) => s.agentStatus);
   const reply = useAgentStore((s) => s.agentReply);
   const transcript = useAgentStore((s) => s.transcript);
+  const toggleUiMode = useAgentStore((s) => s.toggleUiMode);
 
   const hidden = dock === "hidden";
 
@@ -117,6 +119,23 @@ export function FloatingDock() {
           {displayText}
         </motion.div>
       </div>
+
+      {/* Chat mode toggle */}
+      <button
+        type="button"
+        onClick={toggleUiMode}
+        aria-label="switch to chat mode"
+        title="chat mode"
+        data-testid="dock-chat-mode"
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
+          "text-ink-35 hover:text-ink-90 hover:bg-paper-2",
+          "transition-colors duration-200",
+          "ml-22",
+        )}
+      >
+        <MessageSquare size={14} strokeWidth={1.5} />
+      </button>
     </motion.nav>
   );
 }

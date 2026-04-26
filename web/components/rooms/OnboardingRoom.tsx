@@ -10,9 +10,25 @@ export function OnboardingRoom() {
 
   const handleStart = () => {
     setOnboarded(true);
-    // Windowed mode now starts at settings: the user must enter a
-    // user_id before integrations / graph can do anything useful.
-    openWindow("settings");
+    // Open settings centered on the canvas during onboarding so the
+    // user_id field is right where their attention is. After onboarding
+    // it falls back to the registry's defaultMount (right-wide).
+    if (typeof window !== "undefined") {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const w = Math.min(720, Math.round(vw * 0.6));
+      const h = Math.min(640, Math.round(vh * 0.7));
+      openWindow("settings", {
+        rect: {
+          x: Math.round((vw - w) / 2),
+          y: Math.round((vh - h) / 2),
+          w,
+          h,
+        },
+      });
+    } else {
+      openWindow("settings");
+    }
   };
 
   return (
