@@ -31,7 +31,7 @@
 Additive on top of v0. **Done = all of these green:**
 
 1. `find_examples(query: string) -> Array<{title, description, code}>` returns up to 3 templates from a seeded `templates/index.json` (substring match). 3 templates seeded: hello-world, fetch-and-count-words, slack-ping (Composio stub).
-2. `Ask_User_A_Question(question: string, options?: string[]) -> string` — frontend renders an inline prompt UI; user selects/types; answer flows back to LLM. Test: agent asks "should I proceed?", user clicks "yes", agent continues.
+2. `ask_user(question: string, options?: string[]) -> string` — frontend renders an inline prompt UI; user selects/types; answer flows back to LLM. Test: agent asks "should I proceed?", user clicks "yes", agent continues.
 3. `save_workflow(name: string, code: string) -> {url: string}` — writes code to `agent/harness/frontend/saved/<name>.py`, returns mock URL `https://example.com/workflows/<name>`. Real Render deploy is v2.
 4. Multi-step tool use works: user types `"fetch https://example.com and tell me the word count"`, LLM emits ≥2 sequential `run_code` calls, gets correct count.
 5. Streaming visible: LLM tokens appear progressively, not all-at-once.
