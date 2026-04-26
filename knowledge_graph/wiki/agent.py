@@ -75,12 +75,17 @@ def build_wiki_agent(config: WikiConfig) -> Agent[WikiDeps, WikiUpdate]:
     """Construct the WikiAgent with all tools registered."""
     model = _resolve_model(config)
 
+    # Cap max_tokens to fit OpenRouter's free-tier per-request budget.
+    # See enrich/llm.py:enrich_model_settings for rationale.
+    from enrich.llm import enrich_model_settings  # local import to avoid cycle
+
     agent: Agent[WikiDeps, WikiUpdate] = Agent(
         model=model,
         deps_type=WikiDeps,
         output_type=WikiUpdate,
         system_prompt=SYSTEM_PROMPT,
         retries=2,
+        model_settings=enrich_model_settings(),
     )
 
     # Register tools

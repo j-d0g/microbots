@@ -51,6 +51,6 @@ These are the high-ROI ideas to lift into a Python harness around pydantic-ai. N
 - Adopt patterns 1–4 in microbots' core loop *before* the hackathon demo: frozen graph, typed transcript hand-off, per-stage agent/model tiering, sub-agent role taxonomy.
 - Treat patterns 5–7 as fast follows.
 - Do not vendor, fork, or shell out to Atomic. There is no scenario where a Bun/tmux harness improves a Python/FastAPI in-process agent server.
-- Update the existing memory note ("Atomic = TypeScript Harness for Claude Code and Multi-Agent Workflows") to add: *"Patterns inform microbots; runtime does not slot in. See agent-workspace/docs/research/atomic-sdk.md."*
+- Update the existing memory note ("Atomic = TypeScript Harness for Claude Code and Multi-Agent Workflows") to add: *"Patterns inform microbots; runtime does not slot in. See agent/research/harness/atomic-sdk.md."*
 
 Sources: github.com/flora131/atomic, deepwiki.com/flora131/atomic, alexlavaee.me/blog/open-claude-design-atomic-harness/.

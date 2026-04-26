@@ -1,30 +1,29 @@
 "use client";
 
+/**
+ * FloatingDock — agent-solo windowed mode.
+ *
+ *   - The room-icon strip is GONE. Navigation in windowed mode is
+ *     agent-driven; the user opens windows by talking/typing, not by
+ *     tapping icons.
+ *   - The narration panel above the core row is now the streaming
+ *     reply surface. It expands to host `agentReply` chunks during a
+ *     speak cycle and the live transcript while listening.
+ *   - The dock is slightly taller (h-16 vs h-14) and the narration
+ *     scrolls internally up to ~38vh so longer replies stay readable
+ *     without pushing the canvas around.
+ *   - CommandBar (spotlight) is still the input surface — `/` opens
+ *     it. The dock is read-only here.
+ *   - The chat-mode toggle remains; clicking it switches uiMode and
+ *     the page swaps to ChatLayout.
+ */
+
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Sunrise,
-  Network,
-  ListOrdered,
-  Boxes,
-  Mic,
-  BookOpen,
-  Settings2,
-  LayoutGrid,
-} from "lucide-react";
-import { useAgentStore, type RoomKind } from "@/lib/store";
+import { MessageSquare } from "lucide-react";
+import { useAgentStore } from "@/lib/store";
 import { VoiceDot } from "./VoiceDot";
 import { CommandKey } from "./CommandKey";
 import { cn } from "@/lib/cn";
-
-const ROOMS: Array<{ room: RoomKind; label: string; Icon: typeof Sunrise }> = [
-  { room: "brief", label: "Brief", Icon: Sunrise },
-  { room: "graph", label: "Graph", Icon: Network },
-  { room: "workflow", label: "Workflows", Icon: ListOrdered },
-  { room: "stack", label: "Stack", Icon: Boxes },
-  { room: "waffle", label: "Waffle", Icon: Mic },
-  { room: "playbooks", label: "Playbooks", Icon: BookOpen },
-  { room: "settings", label: "Settings", Icon: Settings2 },
-];
 
 const DOCK_SPRING = {
   type: "spring",
@@ -33,43 +32,38 @@ const DOCK_SPRING = {
   mass: 0.6,
 } as const;
 
+type DockState = ReturnType<typeof useAgentStore.getState>["dock"];
+
 export function FloatingDock() {
-  const room = useAgentStore((s) => s.room);
   const dock = useAgentStore((s) => s.dock);
   const status = useAgentStore((s) => s.agentStatus);
   const reply = useAgentStore((s) => s.agentReply);
   const transcript = useAgentStore((s) => s.transcript);
-  const openWindow = useAgentStore((s) => s.openWindow);
-  const restoreWindow = useAgentStore((s) => s.restoreWindow);
-  const arrangeWindows = useAgentStore((s) => s.arrangeWindows);
-  const windows = useAgentStore((s) => s.windows);
+  const toggleUiMode = useAgentStore((s) => s.toggleUiMode);
 
   const hidden = dock === "hidden";
 
-  /* Decide what (if anything) the dock should narrate above its core row.
-     Speaking → reply. Listening → live transcript. Anything else → null. */
-  const narrationText =
-    dock === "speaking" && reply.trim().length > 0
-      ? reply
-      : dock === "listening" && transcript.trim().length > 0
-        ? transcript
-        : null;
+  /* Narration: prefer the live agent reply (streaming or just-finished)
+   *  over the listening transcript. We surface BOTH the speaking phase
+   *  and any post-speak afterglow where reply has content but the dock
+   *  has already returned to idle — that prevents the message popping
+   *  away the moment the model emits "reply.done". */
+  const hasReply = reply.trim().length > 0;
+  const hasTranscript = transcript.trim().length > 0;
 
   const narrationKind: "speaking" | "listening" | null =
-    dock === "speaking" && reply.trim().length > 0
+    hasReply && (dock === "speaking" || dock === "thinking" || dock === "idle")
       ? "speaking"
-      : dock === "listening" && transcript.trim().length > 0
+      : dock === "listening" && hasTranscript
         ? "listening"
         : null;
 
-  const handleRoomClick = (r: RoomKind) => {
-    const minimized = windows.find((w) => w.kind === r && w.minimized);
-    if (minimized) {
-      restoreWindow(minimized.id);
-    } else {
-      openWindow(r);
-    }
-  };
+  const narrationText =
+    narrationKind === "speaking"
+      ? reply
+      : narrationKind === "listening"
+        ? transcript
+        : null;
 
   return (
     <motion.div
@@ -85,7 +79,7 @@ export function FloatingDock() {
       transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
       className={cn(
         "fixed bottom-6 left-1/2 -translate-x-1/2 z-[40]",
-        "flex w-auto max-w-[min(92vw,820px)] flex-col",
+        "flex w-auto max-w-[min(92vw,720px)] flex-col",
       )}
     >
       <motion.div
@@ -98,7 +92,9 @@ export function FloatingDock() {
           "shadow-[0_18px_40px_-22px_rgba(0,0,0,0.30),0_1px_0_rgba(0,0,0,0.04)]",
         )}
       >
-        {/* Narration panel — appears when speaking or listening with text */}
+        {/* Streaming-reply / live-transcript narration panel.
+            Internal scroll caps at 38vh so a long reply doesn't push
+            the canvas around. */}
         <AnimatePresence initial={false} mode="popLayout">
           {narrationText && (
             <motion.div
@@ -110,7 +106,12 @@ export function FloatingDock() {
               transition={DOCK_SPRING}
               className="overflow-hidden"
             >
-              <div className="flex items-start gap-3 border-b border-rule px-5 pt-3 pb-3">
+              <div
+                className={cn(
+                  "flex items-start gap-3 border-b border-rule px-5 pt-3 pb-3",
+                  "max-h-[38vh] overflow-y-auto muji-scroll",
+                )}
+              >
                 <span
                   className={cn(
                     "mt-1 block h-1.5 w-1.5 shrink-0 rounded-full",
@@ -126,11 +127,11 @@ export function FloatingDock() {
                   </p>
                   <motion.p
                     key={`${narrationKind}-${narrationText.length}`}
-                    initial={{ opacity: 0.8 }}
+                    initial={{ opacity: 0.85 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.18 }}
                     className={cn(
-                      "mt-1 text-[14px] leading-snug",
+                      "mt-1 whitespace-pre-wrap text-[14px] leading-relaxed",
                       narrationKind === "speaking"
                         ? "text-ink-90"
                         : "text-ink-60",
@@ -145,69 +146,32 @@ export function FloatingDock() {
           )}
         </AnimatePresence>
 
-        {/* Core dock row */}
+        {/* Core dock row — voice + status + chat-mode toggle. */}
         <motion.nav
           layout
           transition={DOCK_SPRING}
-          className="flex h-14 items-center gap-4 px-4"
+          className="flex h-16 items-center gap-4 px-5"
         >
           <VoiceDot />
           <CommandKey />
 
-          <div className="flex min-w-[140px] max-w-[220px] items-center">
-            <span className="truncate text-xs text-ink-60 font-mono">
+          <div className="flex min-w-[180px] max-w-[280px] flex-1 items-center">
+            <span className="truncate text-[13px] text-ink-60 font-mono">
               {status || dockPlaceholder(dock)}
             </span>
           </div>
 
           <div className="h-6 w-px bg-rule" aria-hidden />
 
-          <ul className="flex items-center gap-1">
-            {ROOMS.map(({ room: r, label, Icon }) => {
-              const winState = windows.find((w) => w.kind === r);
-              const active = r === room;
-              const isMinimized = winState?.minimized;
-
-              return (
-                <li key={r}>
-                  <button
-                    type="button"
-                    onClick={() => handleRoomClick(r)}
-                    aria-label={label}
-                    title={label}
-                    data-testid={`dock-${r}`}
-                    className={cn(
-                      "relative flex h-9 w-9 items-center justify-center rounded-sm",
-                      "transition-colors duration-200",
-                      active
-                        ? "text-ink-90 bg-paper-2"
-                        : "text-ink-35 hover:text-ink-60",
-                    )}
-                  >
-                    <Icon size={16} strokeWidth={1.5} />
-                    {winState && !isMinimized && (
-                      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 w-2 rounded-full bg-ink-35" />
-                    )}
-                    {isMinimized && (
-                      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 w-2 rounded-full bg-ink-35/40" />
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          <div className="h-6 w-px bg-rule" aria-hidden />
-
           <button
             type="button"
-            onClick={() => arrangeWindows("grid")}
-            aria-label="arrange windows"
-            title="arrange (grid)"
-            data-testid="dock-arrange"
+            onClick={toggleUiMode}
+            aria-label="switch to chat mode"
+            title="chat mode"
+            data-testid="dock-chat-mode"
             className="flex h-9 w-9 items-center justify-center rounded-sm text-ink-35 hover:text-ink-60 transition-colors duration-200"
           >
-            <LayoutGrid size={14} strokeWidth={1.5} />
+            <MessageSquare size={14} strokeWidth={1.5} />
           </button>
         </motion.nav>
       </motion.div>
@@ -215,7 +179,7 @@ export function FloatingDock() {
   );
 }
 
-function dockPlaceholder(dock: ReturnType<typeof useAgentStore.getState>["dock"]) {
+function dockPlaceholder(dock: DockState): string {
   switch (dock) {
     case "listening":
       return "listening . to release";

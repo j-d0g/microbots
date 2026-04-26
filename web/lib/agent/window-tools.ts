@@ -63,7 +63,7 @@ function dispatchRoomTool(
   ctx.emit({ type: "ui.tool", room: kind, tool, args });
   const result = applyToolToSnapshot(ctx.snapshot, fullName, args);
   ctx.snapshot = result.snapshot;
-  ctx.emit({ type: "agent.tool.done", name: fullName, ok: result.ok });
+  ctx.emit({ type: "agent.tool.done", name: fullName, ok: (result.ok ?? true) });
   return `${fullName} dispatched.`;
 }
 
@@ -324,64 +324,79 @@ export function playbooksTools(ctx: AgentToolCtx) {
 
 /* ------------------------------------------------------------------ *
  *  settings room
+ *
+ *  In windowed mode the SettingsRoom registers a tiny tool surface:
+ *  set_user_id / clear_user_id / refresh_health. We expose typed
+ *  agent wrappers for those. The legacy chat-mode SettingsRoom
+ *  (which exposed scroll_to / highlight / filter / wipe_graph) was
+ *  rewritten — those tools no longer exist on the client, so we
+ *  removed the matching agent surface to avoid no-op calls.
  * ------------------------------------------------------------------ */
 
 export function settingsTools(ctx: AgentToolCtx) {
   return {
-    settings_scroll_to: tool({
+    settings_set_user_id: tool({
       description:
-        "Scroll to a settings section: integrations|members|org|schedule|voice|memory|danger.",
+        "Persist the user_id used as the Composio namespace key + X-User-Id header on every backend call. Required before integrations or graph can do anything useful. Allowed: 3–64 chars, [a-zA-Z0-9_-].",
       inputSchema: z.object({
-        section: z.enum([
-          "integrations",
-          "members",
-          "org",
-          "schedule",
-          "voice",
-          "memory",
-          "danger",
-        ]),
+        user_id: z
+          .string()
+          .min(3)
+          .max(64)
+          .regex(/^[a-zA-Z0-9_-]+$/),
       }),
       execute: async (args) =>
-        dispatchRoomTool(ctx, "settings", "scroll_to", args),
+        dispatchRoomTool(ctx, "settings", "set_user_id", args),
     }),
-    settings_highlight: tool({
-      description: "Briefly flash a settings section.",
-      inputSchema: z.object({
-        section: z.enum([
-          "integrations",
-          "members",
-          "org",
-          "schedule",
-          "voice",
-          "memory",
-          "danger",
-        ]),
-      }),
-      execute: async (args) =>
-        dispatchRoomTool(ctx, "settings", "highlight", args),
-    }),
-    settings_filter_integrations: tool({
-      description:
-        "Filter the integrations list by status (all|connected|disconnected).",
-      inputSchema: z.object({
-        integrations: z.enum(["all", "connected", "disconnected"]),
-      }),
-      execute: async (args) =>
-        dispatchRoomTool(ctx, "settings", "filter", args),
-    }),
-    settings_clear_filters: tool({
-      description: "Reset settings filters.",
+    settings_clear_user_id: tool({
+      description: "Clear the persisted user_id. Used when switching profiles.",
       inputSchema: z.object({}),
       execute: async () =>
-        dispatchRoomTool(ctx, "settings", "clear_filters", {}),
+        dispatchRoomTool(ctx, "settings", "clear_user_id", {}),
     }),
-    settings_wipe_graph: tool({
+    settings_refresh_health: tool({
       description:
-        "DESTRUCTIVE: stage a memory wipe (drops a confirmation toast). Only call when the user explicitly asks to wipe / reset / clear their memory. Never speculatively.",
+        "Force-refresh the /api/health probe and update the live status row.",
       inputSchema: z.object({}),
       execute: async () =>
-        dispatchRoomTool(ctx, "settings", "wipe_graph", {}),
+        dispatchRoomTool(ctx, "settings", "refresh_health", {}),
+    }),
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ *  integration room (per-toolkit OAuth + KG slice)
+ *
+ *  Each IntegrationRoom mounts a registry handler keyed by `kind:
+ *  "integration"` that filters incoming tool calls by `args.slug`.
+ *  Multiple integration windows on canvas → multiple registered
+ *  handlers; only the matching slug fires. The agent always passes
+ *  `slug` to disambiguate.
+ * ------------------------------------------------------------------ */
+
+export function integrationTools(ctx: AgentToolCtx) {
+  const SLUG = z.enum([
+    "slack",
+    "github",
+    "gmail",
+    "linear",
+    "notion",
+    "perplexityai",
+  ]);
+  return {
+    integration_refresh: tool({
+      description:
+        "Refresh the live composio status + KG slice for one integration window. Use after a successful oauth round-trip or to recover from a transient error.",
+      inputSchema: z.object({ slug: SLUG }),
+      execute: async (args) =>
+        dispatchRoomTool(ctx, "integration", "refresh", args),
+    }),
+    integration_cancel: tool({
+      description:
+        "Cancel an in-flight oauth attempt for one integration. Closes the popup if open and returns the window to its idle state.",
+      inputSchema: z.object({ slug: SLUG }),
+      execute: async (args) =>
+        dispatchRoomTool(ctx, "integration", "cancel", args),
     }),
   };
 }
@@ -423,6 +438,7 @@ const FACTORY_BY_KIND: Partial<
   waffle: waffleTools as never,
   playbooks: playbooksTools as never,
   settings: settingsTools as never,
+  integration: integrationTools as never,
 };
 
 /**
@@ -490,12 +506,26 @@ const KIND_TAGS: Record<RoomKind, readonly string[]> = {
   ],
   settings: [
     "settings",
-    "integration",
+    "user_id",
+    "userid",
+    "namespace",
     "members",
     "danger",
     "wipe",
     "preferences",
     "schedule",
+  ],
+  integration: [
+    "integration",
+    "connect",
+    "oauth",
+    "slack",
+    "github",
+    "gmail",
+    "linear",
+    "notion",
+    "perplexity",
+    "perplexityai",
   ],
 };
 
@@ -539,13 +569,20 @@ export function pickRelevantKinds(
   return [...union];
 }
 
-/** Compose a per-window tool bag, intent-narrowed by default. */
+/** Compose a per-window tool bag, intent-narrowed by default. In
+ *  windowed mode we additionally hard-filter to {settings, integration}
+ *  so a stray brief/workflow/etc. window (left over from a chat-mode
+ *  session) can't leak its tool surface into the agent's call. */
 export function activeWindowTools(
   ctx: AgentToolCtx,
   intent?: string,
 ): Record<string, ReturnType<typeof tool>> {
   const bag: Record<string, ReturnType<typeof tool>> = {};
+  const mode = ctx.snapshot.ui?.mode ?? "windowed";
   for (const kind of pickRelevantKinds(ctx.snapshot, intent)) {
+    if (mode === "windowed" && kind !== "settings" && kind !== "integration") {
+      continue;
+    }
     const factory = FACTORY_BY_KIND[kind];
     if (!factory) continue;
     Object.assign(bag, factory(ctx));

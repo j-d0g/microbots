@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { seed } from "@/lib/seed/ontology";
 import { GraphCanvas } from "@/components/graph/GraphCanvas";
+import * as backend from "@/lib/api/backend";
+import { toGraph } from "@/lib/api/kg-to-graph";
 import { GraphControls } from "@/components/graph/GraphControls";
 import { GraphActionBar } from "@/components/graph/GraphActionBar";
 import { GraphLegend } from "@/components/graph/GraphLegend";
@@ -31,6 +32,8 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
   const roomState = useAgentStore((s) => s.roomStates.graph);
   const lastVerb = useAgentStore((s) => s.lastVerb);
   const pushCard = useAgentStore((s) => s.pushCard);
+  const userId = useAgentStore((s) => s.userId);
+  const openWindow = useAgentStore((s) => s.openWindow);
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const controllerRef = useRef<GraphController | null>(null);
@@ -42,6 +45,67 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
   );
   const [pathIds, setPathIds] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  /* live KG data */
+  const [graph, setGraph] = useState<{
+    nodes: GraphNode[];
+    links: GraphLink[];
+  }>({ nodes: [], links: [] });
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const refresh = useCallback(() => setRefreshTick((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!userId) {
+      // Empty state shown below — no fetches without an identity.
+      setGraph({ nodes: [], links: [] });
+      setLoadError(null);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    Promise.all([
+      backend.getKgUser(userId).catch(() => null),
+      backend.getKgIntegrations(userId).catch(() => []),
+      backend.getKgEntities(undefined, userId).catch(() => []),
+      backend
+        .getKgMemories({ by: "confidence", limit: 30 }, userId)
+        .catch(() => []),
+      backend.getKgSkills({ minStrength: 1 }, userId).catch(() => []),
+      backend.getKgWorkflows(userId).catch(() => []),
+      backend.getConnections(userId).catch(() => []),
+    ])
+      .then(
+        ([user, integrations, entities, memories, skills, workflows, connections]) => {
+          if (cancelled) return;
+          setGraph(
+            toGraph({
+              user,
+              integrations,
+              entities,
+              memories,
+              skills,
+              workflows,
+              connections,
+            }),
+          );
+        },
+      )
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err.message : "load failed");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, refreshTick]);
 
   /* container size — drives canvas + responsive layout */
   useEffect(() => {
@@ -64,9 +128,9 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
     ? { top: 44, right: 12, bottom: 32, left: 12 }
     : { top: 52, right: 12, bottom: 40, left: 12 };
 
-  /* derived data: filter nodes / edges */
-  const allNodes = seed.nodes as GraphNode[];
-  const allEdges = seed.edges as GraphLink[];
+  /* derived data: filter nodes / edges (sourced from live KG) */
+  const allNodes = graph.nodes;
+  const allEdges = graph.links;
 
   const filtered = useMemo(() => {
     let nodes = allNodes;
@@ -360,6 +424,75 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
         data-testid="graph-canvas"
         className="absolute inset-0 overflow-hidden bg-paper-1"
       >
+        {/* Live-data overlays (no userId / loading / error). The
+            canvas mounts beneath; these stack on top so the existing
+            zoom/pan etc. logic stays intact. */}
+        {!userId && (
+          <div
+            data-testid="graph-no-user"
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-paper-1/95 px-6 text-center"
+          >
+            <p className="font-mono text-[11px] uppercase tracking-wider text-ink-35">
+              graph
+            </p>
+            <p className="max-w-[40ch] text-[14px] leading-relaxed text-ink-90">
+              set your <span className="font-mono text-[12px]">user_id</span>{" "}
+              in settings to see your knowledge graph.
+            </p>
+            <button
+              type="button"
+              onClick={() => openWindow("settings")}
+              className="mt-2 inline-flex items-center rounded-sm border border-ink-90 bg-ink-90 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-paper-0 transition-colors duration-150 hover:bg-accent-indigo"
+            >
+              open settings →
+            </button>
+          </div>
+        )}
+        {userId && loading && allNodes.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center font-mono text-[11px] uppercase tracking-wider text-ink-35">
+            loading graph…
+          </div>
+        )}
+        {userId && loadError && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-paper-1/95 px-6 text-center">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-confidence-low">
+              graph load failed
+            </p>
+            <p className="max-w-[40ch] text-[13px] text-ink-90">{loadError}</p>
+            <button
+              type="button"
+              onClick={refresh}
+              className="mt-2 inline-flex items-center rounded-sm border border-rule px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-ink-60 transition-colors hover:border-ink-90 hover:text-ink-90"
+            >
+              retry
+            </button>
+          </div>
+        )}
+        {userId && !loading && !loadError && allNodes.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 px-6 text-center">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-ink-35">
+              empty graph
+            </p>
+            <p className="max-w-[36ch] text-[13px] text-ink-60">
+              connect a tool to start filling this in.
+            </p>
+          </div>
+        )}
+
+        {/* Refresh control — small, top-right. Sits above the action
+            bar's zoom/clear cluster and only renders once data has
+            loaded so it doesn't visually compete with the empty
+            states above. */}
+        {userId && allNodes.length > 0 && (
+          <button
+            type="button"
+            onClick={refresh}
+            data-testid="graph-refresh"
+            className="absolute right-3 top-3 z-30 rounded-sm border border-rule bg-paper-0/85 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-60 backdrop-blur-md transition-colors hover:border-ink-90 hover:text-ink-90"
+          >
+            {loading ? "…" : "refresh"}
+          </button>
+        )}
         {/* Top caption strip */}
         <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-center justify-between gap-3 px-3 py-2">
           {/* (left + right overlays render below; this strip stays empty for breathing room) */}

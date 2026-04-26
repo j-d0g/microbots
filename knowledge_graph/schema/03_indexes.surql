@@ -8,12 +8,15 @@ DEFINE INDEX OVERWRITE idx_entity_embedding ON entity FIELDS embedding HNSW DIME
 -- chat indexes
 DEFINE INDEX OVERWRITE idx_chat_source ON chat FIELDS source_type, source_id;
 DEFINE INDEX OVERWRITE idx_chat_embedding ON chat FIELDS embedding HNSW DIMENSION 1536 DIST COSINE;
-DEFINE INDEX OVERWRITE idx_chat_content ON chat FIELDS content SEARCH ANALYZER chat_analyzer BM25;
+-- NOTE: v3 dropped inline `SEARCH ANALYZER ... BM25` on DEFINE INDEX. Re-add when we
+-- confirm the v3 FTS syntax. Not needed by the MCP named queries today.
+-- DEFINE INDEX OVERWRITE idx_chat_content ON chat FIELDS content SEARCH ANALYZER chat_analyzer BM25;
 
 -- memory indexes
 DEFINE INDEX OVERWRITE idx_memory_type ON memory FIELDS memory_type;
 DEFINE INDEX OVERWRITE idx_memory_embedding ON memory FIELDS embedding HNSW DIMENSION 1536 DIST COSINE;
-DEFINE INDEX OVERWRITE idx_memory_content ON memory FIELDS content SEARCH ANALYZER memory_analyzer BM25;
+-- NOTE: v3 FTS — see comment above on idx_chat_content.
+-- DEFINE INDEX OVERWRITE idx_memory_content ON memory FIELDS content SEARCH ANALYZER memory_analyzer BM25;
 
 -- skill indexes
 DEFINE INDEX OVERWRITE idx_skill_slug ON skill FIELDS slug UNIQUE;

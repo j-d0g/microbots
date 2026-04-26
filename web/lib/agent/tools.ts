@@ -50,7 +50,7 @@ function applyAndEmit(
   for (const e of uiEvents) ctx.emit(e);
   const result = applyToolToSnapshot(ctx.snapshot, toolName, args);
   ctx.snapshot = result.snapshot;
-  ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok });
+  ctx.emit({ type: "agent.tool.done", name: toolName, ok: (result.ok ?? true) });
   return result.message;
 }
 
@@ -66,6 +66,19 @@ export const WINDOW_KIND = z.enum([
   "waffle",
   "playbooks",
   "settings",
+  "integration",
+]);
+
+/** Toolkit slugs the live Composio account exposes. Hand-mirrored from
+ *  `lib/api/backend.ts#TOOLKIT_SLUGS`; if the backend grows another
+ *  toolkit, extend both lists. */
+export const TOOLKIT_SLUG = z.enum([
+  "slack",
+  "github",
+  "gmail",
+  "linear",
+  "notion",
+  "perplexityai",
 ]);
 
 export const MOUNT_POINT = z.enum([
@@ -115,16 +128,26 @@ export function layoutTools(ctx: AgentToolCtx) {
   return {
     open_window: tool({
       description:
-        "Open a window of a given kind at a named mount point. If the window is already open, brings it forward and re-mounts it. Use 'full' if no other constraint.",
+        "Open a window of a given kind at a named mount point. If the window is already open, brings it forward and re-mounts it. Use 'full' if no other constraint. For kind='integration' you MUST pass a `slug` (one of: slack, github, gmail, linear, notion, perplexityai) — multiple integration windows can coexist, distinguished by slug. In windowed mode only graph, settings, and integration are openable.",
       inputSchema: z.object({
         kind: WINDOW_KIND,
         mount: MOUNT_POINT.optional().default("full"),
+        slug: z.string().optional(),
       }),
-      execute: async ({ kind, mount }) => {
+      execute: async ({ kind, mount, slug }) => {
         const events: AgentEvent[] = [
-          { type: "ui.room", room: kind as RoomKind },
+          {
+            type: "ui.room",
+            room: kind as RoomKind,
+            payload: slug ? { slug } : undefined,
+          },
         ];
-        return applyAndEmit(ctx, "open_window", { kind, mount }, events);
+        return applyAndEmit(
+          ctx,
+          "open_window",
+          { kind, mount, slug },
+          events,
+        );
       },
     }),
 
@@ -233,7 +256,7 @@ export function layoutTools(ctx: AgentToolCtx) {
         ctx.emit({
           type: "agent.tool.done",
           name: "arrange_windows",
-          ok: result.ok,
+          ok: (result.ok ?? true),
         });
         return result.message;
       },
@@ -348,6 +371,33 @@ export function contentTools(ctx: AgentToolCtx) {
           },
         ];
         return applyAndEmit(ctx, "draft", { topic }, events);
+      },
+    }),
+
+    integration_connect: tool({
+      description:
+        "Kick off the OAuth flow for an integration. Opens the integration window for the slug if it isn't already open, then fires the Composio connect popup. Only valid in windowed mode AND when user_id is set in settings.",
+      inputSchema: z.object({ slug: TOOLKIT_SLUG }),
+      execute: async ({ slug }) => {
+        // Defense-in-depth: surface a clear failure if user_id is missing
+        // so the orchestrator's reply can guide the user to settings.
+        if (!ctx.snapshot.user.userId) {
+          return "user_id is not set — open settings and enter one first";
+        }
+        const events: AgentEvent[] = [
+          // Make sure the integration window is on canvas so the user
+          // sees the connect spinner/state.
+          { type: "ui.room", room: "integration", payload: { slug } },
+          // The IntegrationRoom registers a `connect` room-tool that
+          // performs the actual popup + poll cycle.
+          {
+            type: "ui.tool",
+            room: "integration",
+            tool: "connect",
+            args: { slug },
+          },
+        ];
+        return applyAndEmit(ctx, "integration_connect", { slug }, events);
       },
     }),
   };

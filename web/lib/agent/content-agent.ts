@@ -43,11 +43,32 @@ function adaptiveStopCondition(ctx: AgentToolCtx): any {
 }
 
 const BASE_SYSTEM = `CONTENT sub-agent. surface content inside windows. NEVER write prose — tools only.
+general tools (always available):
+- push_card(kind, text, confidence?, ttl?) — surface a transient card
+    kinds: memory | entity | source | diff | toast
+- highlight(target, window_kind?) — spotlight an element
+- explain(topic, depth?) — drop an explanation card
+- compare(a, b) — side-by-side
+- draft(topic) — surface a generated draft as a diff card
+- integration_connect(slug) — kick off Composio OAuth for one toolkit.
+  ONLY call when user_id is set (check the snapshot). slugs: slack,
+  github, gmail, linear, notion, perplexityai.
 
 tools: push_card(kind,text,ttl?) · highlight(target) · explain(topic) · compare(a,b) · draft(topic)
 graph: graph_focus_node · graph_zoom_fit · graph_select · graph_neighbors · graph_path · graph_filter_layer · graph_filter_integration · graph_search · graph_clear
 
-rules: no prose. prefer per-window tools over generic. toast ttl 4000-6500. no speculation.
+rules:
+- never write prose. only call tools.
+- if the user's intent is purely about layout, no-op.
+- toast cards must have a ttl (4000–6500). memory/entity cards default to 6000.
+- never speculate; only surface facts the snapshot or the user implied.
+- in WINDOWED mode (canvas mode=windowed), the only per-window tools
+  available are graph_* and integration_connect — DO NOT call brief_*,
+  workflow_*, stack_*, waffle_*, playbooks_*, settings_*. those rooms
+  do not exist in this mode.
+- if the user asks to connect a toolkit but user_id is NOT_SET, do
+  NOT call integration_connect. delegate the layout-agent to surface
+  settings instead (already handled by the orchestrator).
 
 at most 3 steps. decisive.`;
 
@@ -64,15 +85,21 @@ const PER_WINDOW_HINT: Record<RoomKind, string> = {
   playbooks:
     "playbooks_filter, playbooks_search, playbooks_clear_filters, playbooks_scroll_to, playbooks_highlight, playbooks_try_tonight",
   settings:
-    "settings_scroll_to, settings_highlight, settings_filter_integrations, settings_clear_filters",
+    "settings_set_user_id, settings_clear_user_id, settings_refresh_health",
+  integration:
+    "integration_connect, integration_refresh, integration_cancel — pass slug for the matching window",
 };
 
-function buildSystemPrompt(openKinds: RoomKind[]): string {
+function buildSystemPrompt(openKinds: RoomKind[], mode: "windowed" | "chat"): string {
   if (openKinds.length === 0) return BASE_SYSTEM;
-  const lines = openKinds
-    .filter((k) => k !== "graph")
-    .map((k) => `  · ${k}: ${PER_WINDOW_HINT[k]}`);
-  if (lines.length === 0) return BASE_SYSTEM;
+  // In windowed mode the only valid per-window tool families are
+  // settings_* and integration_*; everything else is hidden.
+  const visible =
+    mode === "windowed"
+      ? openKinds.filter((k) => k === "settings" || k === "integration")
+      : openKinds.filter((k) => k !== "graph");
+  if (visible.length === 0) return BASE_SYSTEM;
+  const lines = visible.map((k) => `  · ${k}: ${PER_WINDOW_HINT[k]}`);
   return `${BASE_SYSTEM}
 
 per-window tools available right now (only for windows currently open):
@@ -87,6 +114,7 @@ export async function runContentAgent(
   // match first, fall back to all-open-windows. Same one LLM call,
   // dramatically smaller tool surface.
   const relevantKinds = pickRelevantKinds(ctx.snapshot, intent);
+  const mode = ctx.snapshot.ui?.mode ?? "windowed";
 
   const result = streamText({
     model: chatModel(),

@@ -3,7 +3,7 @@ DEFINE TABLE OVERWRITE user_profile SCHEMAFULL;
 DEFINE FIELD OVERWRITE name            ON user_profile TYPE string;
 DEFINE FIELD OVERWRITE role            ON user_profile TYPE option<string>;
 DEFINE FIELD OVERWRITE goals           ON user_profile TYPE option<array<string>>;
-DEFINE FIELD OVERWRITE preferences     ON user_profile TYPE option<object>;
+DEFINE FIELD OVERWRITE preferences     ON user_profile TYPE option<object> FLEXIBLE;
 DEFINE FIELD OVERWRITE context_window  ON user_profile TYPE int DEFAULT 4000;
 DEFINE FIELD OVERWRITE created_at      ON user_profile TYPE datetime DEFAULT time::now();
 DEFINE FIELD OVERWRITE updated_at      ON user_profile TYPE datetime DEFAULT time::now();

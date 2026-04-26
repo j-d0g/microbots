@@ -11,6 +11,7 @@ import { StackRoom } from "@/components/rooms/StackRoom";
 import { WaffleRoom } from "@/components/rooms/WaffleRoom";
 import { PlaybooksRoom } from "@/components/rooms/PlaybooksRoom";
 import { SettingsRoom } from "@/components/rooms/SettingsRoom";
+import { IntegrationRoom } from "@/components/rooms/IntegrationRoom";
 
 const ROOM_COMPONENTS: Record<RoomKind, React.ComponentType<{ payload?: Record<string, unknown> }>> = {
   brief: BriefRoom,
@@ -20,6 +21,7 @@ const ROOM_COMPONENTS: Record<RoomKind, React.ComponentType<{ payload?: Record<s
   waffle: WaffleRoom,
   playbooks: PlaybooksRoom,
   settings: SettingsRoom,
+  integration: IntegrationRoom,
 };
 
 const SPRING = { type: "spring", stiffness: 400, damping: 32, mass: 0.8 } as const;
