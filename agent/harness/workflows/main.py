@@ -1,8 +1,9 @@
 """Render Workflows tasks for the harness.
 
-Phase-0 scope:
+M1 scope:
 - noop_task           — cold-start probe
-- run_user_code       — Phase-2 stub (sandboxed Python execution)
+- run_user_code       — execute arbitrary Python in the Workflows container,
+                        capture stdout/stderr, return result
 - fanout_sum          — fan-out parallelism test
 - chain_3             — sequential chain test
 - trivial_compute     — subtask used by fanout_sum
@@ -10,6 +11,11 @@ Phase-0 scope:
 """
 
 import asyncio
+import io
+import sys
+import traceback
+from contextlib import redirect_stderr, redirect_stdout
+from typing import Any
 
 from render_sdk import Workflows
 
@@ -21,14 +27,69 @@ app = Workflows()
 
 @app.task
 def noop_task() -> dict:
-    """Phase 0 cold-start probe. Returns immediately."""
+    """Cold-start probe. Returns immediately."""
     return {"status": "ok"}
+
+
+# ---------- run_user_code ----------
+
+
+def _serialize(value: Any) -> Any:
+    """Best-effort JSON-serialize a value, falling back to repr."""
+    if value is None:
+        return None
+    try:
+        import json
+
+        json.dumps(value)
+        return value
+    except (TypeError, ValueError):
+        return repr(value)
 
 
 @app.task
 def run_user_code(code: str, args: dict | None = None) -> dict:
-    """Phase 2 stub. Sandboxed execution not yet implemented."""
-    return {"error": "not implemented yet"}
+    """Execute Python code in this container.
+
+    - Captures stdout and stderr.
+    - Pre-imports the bundled deps so the LLM can `import httpx`, etc.
+    - If the code defines `main(args)`, calls it and returns its result.
+    - Otherwise, the result is the namespace's last expression value (best
+      effort) or None.
+    - On exception, returns the traceback in `error`.
+    """
+    args = args or {}
+
+    # Pre-imports available to user code.
+    namespace: dict[str, Any] = {"__name__": "__user__", "args": args}
+
+    stdout_buf = io.StringIO()
+    stderr_buf = io.StringIO()
+    result: Any = None
+    error: str | None = None
+
+    try:
+        with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
+            exec(compile(code, "<user_code>", "exec"), namespace)
+            main = namespace.get("main")
+            if callable(main):
+                value = main(args)
+                if asyncio.iscoroutine(value):
+                    value = asyncio.run(value)
+                result = value
+    except SystemExit as exc:
+        # Treat SystemExit(0) as success, anything else as error.
+        if exc.code not in (0, None):
+            error = f"SystemExit: {exc.code}"
+    except BaseException:  # noqa: BLE001
+        error = traceback.format_exc()
+
+    return {
+        "result": _serialize(result),
+        "stdout": stdout_buf.getvalue(),
+        "stderr": stderr_buf.getvalue(),
+        "error": error,
+    }
 
 
 # ---------- Fan-out parallelism test ----------
