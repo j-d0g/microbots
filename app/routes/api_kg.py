@@ -80,6 +80,16 @@ async def workflows_all() -> list[dict[str, Any]]:
         return await q(s, Q.Q_WORKFLOWS_ALL)
 
 
+@router.get("/chats")
+async def chats_list(
+    source_type: str = Query("ui_chat", min_length=1),
+    limit: int = Query(50, ge=1, le=200),
+) -> list[dict[str, Any]]:
+    """Return recent chat messages, newest first."""
+    async with session() as s:
+        return await q(s, Q.Q_CHATS_BY_SOURCE, {"source_type": source_type, "limit": limit})
+
+
 @router.get("/chats/summary")
 async def chats_summary() -> list[dict[str, Any]]:
     async with session() as s:

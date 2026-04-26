@@ -327,7 +327,7 @@ export function getKgEntities(
 }
 
 /* ============================== KG writes ========================= */
-/* Scaffolded for future agent tools — not yet wired. */
+/* KG write helpers — used by kg-write-tools.ts and window tools. */
 
 export interface AddMemoryBody {
   content: string;
@@ -368,6 +368,93 @@ export function upsertEntity(
   userId?: string | null,
 ): Promise<{ id: string; slug: string }> {
   return api("/api/kg/entities", { method: "POST", body, userId });
+}
+
+export interface UpsertSkillBody {
+  slug: string;
+  name: string;
+  description: string;
+  steps?: string[];
+  frequency?: string;
+  strength_increment?: number; // 1–10
+  tags?: string[];
+  uses_integrations?: string[];
+}
+
+export function upsertSkill(
+  body: UpsertSkillBody,
+  userId?: string | null,
+): Promise<{ id: string; slug: string }> {
+  return api("/api/kg/skills", { method: "POST", body, userId });
+}
+
+export interface UpsertWorkflowBody {
+  slug: string;
+  name: string;
+  description: string;
+  trigger?: string;
+  outcome?: string;
+  frequency?: string;
+  tags?: string[];
+  skill_chain?: { slug: string; step_order: number }[];
+}
+
+export function upsertWorkflow(
+  body: UpsertWorkflowBody,
+  userId?: string | null,
+): Promise<{ id: string; slug: string }> {
+  return api("/api/kg/workflows", { method: "POST", body, userId });
+}
+
+export interface AddChatBody {
+  content: string;
+  source_type: string;
+  source_id?: string;
+  title?: string;
+  summary?: string;
+  signal_level?: "low" | "mid" | "high";
+  occurred_at?: string;
+  from_integration?: string;
+  mentions?: { id: string; mention_type: string }[];
+}
+
+export function addChat(
+  body: AddChatBody,
+  userId?: string | null,
+): Promise<{ id: string; chat_id: string }> {
+  return api("/api/kg/chats", { method: "POST", body, userId });
+}
+
+export interface WriteWikiPageBody {
+  content: string;
+  rationale?: string;
+}
+
+export function writeWikiPage(
+  path: string,
+  body: WriteWikiPageBody,
+  userId?: string | null,
+): Promise<{ path: string; revision: number }> {
+  return api(`/api/kg/wiki/${encodeURIComponent(path)}`, {
+    method: "PUT",
+    body,
+    userId,
+  });
+}
+
+export interface UpdateUserProfileBody {
+  name?: string;
+  role?: string;
+  goals?: string[];
+  preferences?: Record<string, unknown>;
+  context_window?: number; // 512–200000
+}
+
+export function updateUser(
+  body: UpdateUserProfileBody,
+  userId?: string | null,
+): Promise<UserProfile> {
+  return api("/api/kg/user", { method: "PATCH", body, userId });
 }
 
 /* ============================== system ============================ */

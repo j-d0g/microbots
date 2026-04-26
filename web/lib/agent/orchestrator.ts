@@ -23,6 +23,7 @@ import {
   graphTools,
   type AgentToolCtx,
 } from "./tools";
+import { kgWriteTools } from "./kg-write-tools";
 import {
   graphWindowTools,
   chatWindowTools,
@@ -201,6 +202,7 @@ export function runOrchestrator({ ctx, query }: OrchestrateInput) {
   const tools = {
     ...metaTools(ctx),
     ...v1WorkTools(ctx),
+    ...kgWriteTools(ctx),
     ...graphTools(ctx),
     ...windowManagementTools(ctx),
     ...windowTools,

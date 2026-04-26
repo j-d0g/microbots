@@ -376,6 +376,30 @@ export function getWorkflows(
   return kg<Workflow[]>("/workflows", { userId, signal });
 }
 
+export interface ChatRow {
+  id: RecordId;
+  content: string;
+  source_type: string;
+  source_id?: string;
+  title?: string;
+  summary?: string;
+  signal_level?: "low" | "mid" | "high";
+  occurred_at?: ISO8601;
+}
+
+export function getChats(
+  opts: { sourceType?: string; limit?: number } = {},
+  userId?: string | null,
+  signal?: AbortSignal,
+): Promise<ChatRow[]> {
+  const st = opts.sourceType ?? "ui_chat";
+  const limit = opts.limit ?? 50;
+  return kg<ChatRow[]>(
+    `/chats?source_type=${encodeURIComponent(st)}&limit=${limit}`,
+    { userId, signal },
+  );
+}
+
 export function getChatsSummary(
   userId?: string | null,
   signal?: AbortSignal,

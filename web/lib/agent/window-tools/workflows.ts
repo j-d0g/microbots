@@ -13,6 +13,8 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { AgentToolCtx } from "../tools";
 import { applyToolToSnapshot } from "../server-snapshot";
+import { getKgWorkflows, upsertWorkflow } from "@/lib/api/backend";
+import type { Workflow } from "@/lib/api/backend";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
 
@@ -53,13 +55,22 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
         "List all saved workflows. Opens or focuses the workflows window and displays the complete list of workflows in the browser pane.",
       inputSchema: z.object({}),
       execute: async () => {
+        let workflows: Workflow[] = [];
+        try {
+          workflows = await getKgWorkflows();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          ctx.emit({ type: "agent.tool.start", name: "workflows_list_all", args: {} });
+          ctx.emit({ type: "agent.tool.done", name: "workflows_list_all", ok: false });
+          return `Failed to list workflows: ${msg}`;
+        }
         const events: AgentEvent[] = [
           ...ensureWorkflowsWindow(),
           {
             type: "ui.tool",
             room: "workflows" as WindowKind,
             tool: "list_all",
-            args: {},
+            args: { data: workflows },
           },
         ];
         ctx.emit({ type: "agent.tool.start", name: "workflows_list_all", args: {} });
@@ -71,7 +82,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           name: "workflows_list_all",
           ok: result.ok ?? true,
         });
-        return "Listed all workflows. The workflows window now shows the complete list.";
+        return `Listed ${workflows.length} workflow(s). The workflows window now shows the complete list.`;
       },
     }),
 
@@ -85,7 +96,22 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
         slug: z.string().min(1).describe("The unique slug of the workflow to select"),
       }),
       execute: async ({ slug }) => {
-        return dispatch("select", { slug });
+        let workflow: Workflow | undefined;
+        try {
+          const workflows = await getKgWorkflows();
+          workflow = workflows.find((w) => w.slug === slug);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          ctx.emit({ type: "agent.tool.start", name: "workflows_select", args: { slug } });
+          ctx.emit({ type: "agent.tool.done", name: "workflows_select", ok: false });
+          return `Failed to fetch workflow: ${msg}`;
+        }
+        if (!workflow) {
+          ctx.emit({ type: "agent.tool.start", name: "workflows_select", args: { slug } });
+          ctx.emit({ type: "agent.tool.done", name: "workflows_select", ok: false });
+          return `Workflow "${slug}" not found.`;
+        }
+        return dispatch("select", { slug, data: workflow });
       },
     }),
 
@@ -159,6 +185,33 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           .describe("Ordered list of skills that make up this workflow"),
       }),
       execute: async (input) => {
+        // Persist to backend first
+        try {
+          await upsertWorkflow({
+            slug: input.slug,
+            name: input.name,
+            description: input.description,
+            trigger: input.trigger,
+            outcome: input.outcome,
+            frequency: input.frequency,
+            tags: input.tags,
+            skill_chain: input.skill_chain,
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          ctx.emit({
+            type: "agent.tool.start",
+            name: "workflows_save",
+            args: input as Record<string, unknown>,
+          });
+          ctx.emit({
+            type: "agent.tool.done",
+            name: "workflows_save",
+            ok: false,
+          });
+          return `Failed to save workflow: ${msg}`;
+        }
+
         const events: AgentEvent[] = [
           ...ensureWorkflowsWindow(),
           {

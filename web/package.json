@@ -15,6 +15,7 @@
     "agent:eval:demo": "tsx agent-evals/demo-rehearsal.eval.ts"
   },
   "dependencies": {
+    "@ai-sdk/mcp": "^1.0.29",
     "@ai-sdk/openai-compatible": "^2.0.41",
     "ai": "^6.0.168",
     "clsx": "^2.1.1",
@@ -37,6 +38,7 @@
     "tailwindcss": "^4.0.0-beta.6",
     "tsx": "^4.21.0",
     "typescript": "^5.6.3",
+    "vitest": "^4.1.5",
     "yaml": "^2.8.3"
   },
   "overrides": {
