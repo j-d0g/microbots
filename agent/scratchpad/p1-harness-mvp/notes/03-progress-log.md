@@ -51,7 +51,7 @@ cd agent/scratchpad/p1-harness-mvp/tests
 npx playwright test
 ```
 
-**M1 Done = pending evaluator verdict.** Once evaluator returns CONTRACT FULFILLED, flip M1 to ✅ in `02-v0-v1-contract.md` milestone table.
+**M1 Done = ✅** Evaluator returned CONTRACT FULFILLED (8/8 criteria, with adversarial 5/5 in parallel). Milestone table in `02-v0-v1-contract.md` flipped to ✅. Commit `3fe16cc`.
 
 ---
 
