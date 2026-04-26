@@ -26,9 +26,12 @@ dependencies = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+# importlib mode keeps namespace-package layout intact so ``app/mcp`` (our
+# package) doesn't shadow the PyPI ``mcp`` package when running ``app/tests``.
+addopts = "--import-mode=importlib"
 markers = [
     "e2e: end-to-end tests requiring a running SurrealDB",
     "live_llm: tests that make real LLM API calls",
 ]
-testpaths = ["knowledge_graph/tests"]
+testpaths = ["knowledge_graph/tests", "app/tests"]
 pythonpath = [".", "knowledge_graph"]
