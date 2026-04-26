@@ -1,4 +1,5 @@
 # Render Blueprint for the microbot harness.
+# Two services: MCP (Python, FastMCP, SSE) + Frontend (Next.js, Vercel AI SDK).
 #
 # Workflows services aren't yet supported in render.yaml (beta).
 # The Workflows service `microbots` was provisioned manually via the Dashboard.
