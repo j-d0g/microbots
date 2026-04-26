@@ -286,8 +286,17 @@ def query_logfire(sql: str, *, limit: int = 500) -> list[dict[str, Any]]:
     )
     resp.raise_for_status()
     body = resp.json()
-    # Query API returns row-oriented JSON: {"columns": [...], "rows": [[...]]}
-    # OR column-oriented depending on Accept; we requested row-oriented.
+    # Logfire's Query API returns column-oriented JSON, not row-oriented:
+    #   {"columns": [{"name": ..., "datatype": ..., "values": [...]}, ...]}
+    # Transpose into row dicts so callers can iterate naturally.
     columns = body.get("columns") or []
-    rows = body.get("rows") or []
-    return [dict(zip(columns, r)) for r in rows]
+    if not columns:
+        return []
+    names = [c["name"] for c in columns]
+    value_arrays = [c.get("values") or [] for c in columns]
+    n_rows = max((len(v) for v in value_arrays), default=0)
+    return [
+        {names[i]: value_arrays[i][r] if r < len(value_arrays[i]) else None
+         for i in range(len(names))}
+        for r in range(n_rows)
+    ]
