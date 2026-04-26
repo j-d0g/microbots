@@ -272,10 +272,11 @@ function scoreLayoutAesthetic(result: InstrumentedResult): AxisScore {
   const issues: string[] = [];
 
   // Check 1: no window exceeds 85% of canvas area
-  const vp = result.finalSnapshot.viewport;
+  // rect values are in percentage space (0–100), not pixels
+  const canvasArea = 100 * 100;
   for (const w of wins) {
     if (!w.rect) continue;
-    const areaPct = ((w.rect.w ?? 0) * (w.rect.h ?? 0)) / (vp.w * vp.h) * 100;
+    const areaPct = ((w.rect.w ?? 0) * (w.rect.h ?? 0)) / canvasArea * 100;
     if (areaPct > 85) {
       s -= 1;
       issues.push(`${w.kind} is ${areaPct.toFixed(0)}% of canvas`);
@@ -287,8 +288,8 @@ function scoreLayoutAesthetic(result: InstrumentedResult): AxisScore {
   const focused = wins.find(w => w.focused);
   if (focused?.rect) {
     const cx = (focused.rect.x ?? 0) + (focused.rect.w ?? 0) / 2;
-    const canvasCx = vp.w / 2;
-    const offsetPct = Math.abs(cx - canvasCx) / vp.w * 100;
+    const canvasCx = 50; // center of percentage space
+    const offsetPct = Math.abs(cx - canvasCx); // already in percentage units
     if (offsetPct > 15) {
       s -= 0.5;
       issues.push(`focused ${focused.kind} off-center by ${offsetPct.toFixed(0)}%`);

@@ -87,30 +87,19 @@ function pipRow(count: number, y: number, h: number): RectPct[] {
 const PRESETS: Record<LayoutPreset, (n: number) => RectPct[]> = {
   focus: (n) => {
     // SUBJECT-CENTRED with breathing room (never full-screen unless n=1).
-    // Subject ~78% wide × ~75% tall, centred. Demoted windows go to a
-    // bottom-right pip stack for minimal distraction.
+    // Subject ~78% wide, centred. Demoted windows sit in a horizontal
+    // pip strip below — clearly separated by GUTTER, no overlap.
     if (n <= 1) return [rectFull()];
     const subjectW = 78;
-    const subjectH = 75;
+    const subjectH = 100 - 2 * OUTER - GUTTER - PIP_STRIP_H;
     const subject: RectPct = {
       x: (100 - subjectW) / 2,
       y: OUTER,
       w: subjectW,
       h: subjectH,
     };
-    // Pip stack: small thumbnails anchored bottom-right
-    const pipW = 20;
-    const pipH = 14;
-    const pipGap = GUTTER;
-    const pips: RectPct[] = [];
-    for (let i = 0; i < n - 1; i++) {
-      pips.push({
-        x: 100 - OUTER - pipW,
-        y: 100 - OUTER - (i + 1) * (pipH + pipGap) + pipGap,
-        w: pipW,
-        h: pipH,
-      });
-    }
+    const stripY = OUTER + subjectH + GUTTER;
+    const pips = pipRow(n - 1, stripY, PIP_STRIP_H);
     return [subject, ...pips];
   },
 

@@ -64,11 +64,11 @@ for (const preset of LAYOUT_PRESET_NAMES) {
           // Check if both top AND bottom edges match (perfectly aligned rows)
           const yAligned =
             Math.abs(a.y - b.y) < eps && Math.abs((a.y + a.h) - (b.y + b.h)) < eps;
-          // Having BOTH x AND y perfectly aligned means identical position
-          // Having either x OR y aligned is fine (columns/rows are expected)
-          // The aesthetic rule is about edges *touching* — adjacent edges being equal
-          // e.g. a.x + a.w === b.x (right edge of a = left edge of b)
-          // But with gutters this shouldn't happen. The jitter prevents exact alignment.
+          // Both x AND y perfectly aligned means identical position/size — should not happen
+          assert(
+            !(xAligned && yAligned),
+            `${label}: rects ${i} and ${j} have identical position and size`,
+          );
         }
       }
     }
