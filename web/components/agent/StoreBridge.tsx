@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useAgentStore } from "@/lib/store";
 import * as backend from "@/lib/api/backend";
+import { hydrateChatHistory } from "@/lib/chat-persistence";
 
 const USER_ID_STORAGE_KEY = "microbots:userId";
 const HEALTH_POLL_MS = 30_000;
@@ -107,6 +108,27 @@ export function StoreBridge() {
     void fetch();
     return () => { cancelled = true; };
   }, [setToolkits]);
+
+  /* chat history hydration — once on mount (or when userId changes) */
+  useEffect(() => {
+    let cancelled = false;
+    const hydrate = async () => {
+      try {
+        const msgs = await hydrateChatHistory(userId, 50);
+        if (cancelled) return;
+        // Only hydrate if the store is still empty (don't overwrite an
+        // active conversation).
+        const current = useAgentStore.getState().chatMessages;
+        if (current.length === 0 && msgs.length > 0) {
+          useAgentStore.setState({ chatMessages: msgs });
+        }
+      } catch {
+        /* swallow — health poll surfaces degraded mode separately */
+      }
+    };
+    void hydrate();
+    return () => { cancelled = true; };
+  }, [userId]);
 
   /* connections poll — only when userId is set */
   useEffect(() => {

@@ -102,6 +102,13 @@ GROUP BY entity_type
 ORDER BY count DESC
 """
 
+Q_CHATS_BY_SOURCE = """
+SELECT * FROM chat
+WHERE source_type = $source_type
+ORDER BY occurred_at DESC
+LIMIT $limit
+"""
+
 Q_WIKI_PAGE = """
 SELECT path, content, depth, layer FROM wiki_page WHERE path = $path LIMIT 1
 """

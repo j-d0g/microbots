@@ -11,6 +11,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { applyToolToSnapshot } from "../server-snapshot";
+import { getKgSkills } from "@/lib/api/backend";
+import type { Skill } from "@/lib/api/backend";
 import type { AgentToolCtx } from "../tools";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
@@ -79,7 +81,20 @@ export function skillsWindowTools(ctx: AgentToolCtx) {
         "List all skills in the skills window, applying the current filter state. Use this to view the complete skill catalog or refresh the current view.",
       inputSchema: z.object({}),
       execute: async () => {
-        return dispatch("list_all", {});
+        let skills: Skill[] = [];
+        try {
+          skills = await getKgSkills();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          ctx.emit({ type: "agent.tool.start", name: "skills_list_all", args: {} });
+          ctx.emit({ type: "agent.tool.done", name: "skills_list_all", ok: false });
+          return `Failed to list skills: ${msg}`;
+        }
+        const events: AgentEvent[] = [
+          ...ensureSkillsWindow(ctx),
+          skillToolEvent("list_all", { data: skills }),
+        ];
+        return dispatchWindowTool(ctx, "skills_list_all", {}, events);
       },
     }),
 

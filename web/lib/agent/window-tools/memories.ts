@@ -13,6 +13,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { applyToolToSnapshot } from "../server-snapshot";
+import { getKgMemories, addMemory } from "@/lib/api/backend";
+import type { Memory } from "@/lib/api/backend";
 import type { AgentToolCtx } from "../tools";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
@@ -38,8 +40,10 @@ function applyAndEmit(
 }
 
 /** Ensure the memories window is open; returns events to open it if needed. */
-function ensureMemoriesWindow(): AgentEvent[] {
-  return [{ type: "ui.room", room: "memories" as WindowKind }];
+function ensureMemoriesWindow(ctx: AgentToolCtx): AgentEvent[] {
+  return ctx.snapshot.windows.some((w) => w.kind === "memories")
+    ? []
+    : [{ type: "ui.room", room: "memories" as WindowKind }];
 }
 
 /** Dispatch a tool command to the memories window. */
@@ -49,7 +53,7 @@ function dispatchToMemories(
   args: Record<string, unknown>,
 ): string {
   const events: AgentEvent[] = [
-    ...ensureMemoriesWindow(),
+    ...ensureMemoriesWindow(ctx),
     { type: "ui.tool", room: "memories" as WindowKind, tool: toolName, args },
   ];
   return applyAndEmit(ctx, `memories_${toolName}`, args, events);
@@ -83,7 +87,24 @@ export function memoriesWindowTools(ctx: AgentToolCtx) {
         "List memories in the memories window with the current sort and filter settings. Returns the count and current view configuration.",
       inputSchema: z.object({}),
       execute: async () => {
-        const events: AgentEvent[] = ensureMemoriesWindow();
+        let memories: Memory[] = [];
+        try {
+          memories = await getKgMemories();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          ctx.emit({ type: "agent.tool.start", name: "memories_list", args: {} });
+          ctx.emit({ type: "agent.tool.done", name: "memories_list", ok: false });
+          return `Failed to list memories: ${msg}`;
+        }
+        const events: AgentEvent[] = [
+          ...ensureMemoriesWindow(ctx),
+          {
+            type: "ui.tool",
+            room: "memories" as WindowKind,
+            tool: "list",
+            args: { data: memories },
+          },
+        ];
         return applyAndEmit(ctx, "memories_list", {}, events);
       },
     }),
@@ -128,7 +149,29 @@ export function memoriesWindowTools(ctx: AgentToolCtx) {
         query: z.string().min(1).describe("Search query to match against memory content"),
       }),
       execute: async ({ query }) => {
-        return dispatchToMemories(ctx, "search", { query });
+        let filtered: Memory[] = [];
+        try {
+          const memories = await getKgMemories({ limit: 100 });
+          const lowerQ = query.toLowerCase();
+          filtered = memories.filter((m) =>
+            m.content.toLowerCase().includes(lowerQ),
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          ctx.emit({ type: "agent.tool.start", name: "memories_search", args: { query } });
+          ctx.emit({ type: "agent.tool.done", name: "memories_search", ok: false });
+          return `Failed to search memories: ${msg}`;
+        }
+        const events: AgentEvent[] = [
+          ...ensureMemoriesWindow(ctx),
+          {
+            type: "ui.tool",
+            room: "memories" as WindowKind,
+            tool: "search",
+            args: { query, data: filtered },
+          },
+        ];
+        return applyAndEmit(ctx, "memories_search", { query }, events);
       },
     }),
 
@@ -174,8 +217,26 @@ export function memoriesWindowTools(ctx: AgentToolCtx) {
         about_integration_slug: z.string().optional().describe("Optional integration slug this memory relates to"),
       }),
       execute: async (input) => {
+        // Persist to backend first if content is provided
+        if (input.content) {
+          try {
+            await addMemory({
+              content: input.content,
+              memory_type: (input.memory_type as "fact" | "preference" | "action_pattern" | "decision" | "observation") ?? "fact",
+              confidence: input.confidence,
+              about_entity_id: input.about_entity_id,
+              about_integration_slug: input.about_integration_slug,
+            });
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            ctx.emit({ type: "agent.tool.start", name: "memories_quick_add", args: input });
+            ctx.emit({ type: "agent.tool.done", name: "memories_quick_add", ok: false });
+            return `Failed to add memory: ${msg}`;
+          }
+        }
+
         const events: AgentEvent[] = [
-          ...ensureMemoriesWindow(),
+          ...ensureMemoriesWindow(ctx),
           {
             type: "ui.tool.open",
             kind: "memories" as WindowKind,

@@ -35,7 +35,7 @@ async function persistChatTurn(userId: string | null): Promise<void> {
       addChat(
         {
           content: user.text,
-          source_type: "canvas",
+          source_type: "ui_chat",
           source_id: user.id,
           signal_level: "high",
         },
@@ -49,7 +49,7 @@ async function persistChatTurn(userId: string | null): Promise<void> {
       addChat(
         {
           content: agent.text,
-          source_type: "canvas_agent",
+          source_type: "ui_chat",
           source_id: agent.id,
           signal_level: "mid",
         },
