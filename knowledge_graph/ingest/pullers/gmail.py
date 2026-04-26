@@ -25,7 +25,7 @@ def _list_msg_ids(
 ) -> list[str]:
     q = f"{_q_after(config)}"
     for lb in (config.scopes.gmail_labels or ["INBOX"]):
-        for slug in ("GMAIL_FETCH_EMAILS", "GMAIL_LIST_EMAILS", "GMAIL_GET_EMAILS"):
+        for slug in ("GMAIL_FETCH_EMAILS", "GMAIL_GET_EMAILS"):
             d = execute_tool(
                 composio,
                 slug,
@@ -38,24 +38,60 @@ def _list_msg_ids(
             )
             if d is None:
                 continue
+            payload = d.get("data", d) if isinstance(d, dict) else None
             ids: list[str] = []
-            if isinstance(d, dict) and d.get("messages"):
-                for m in d["messages"]:
-                    if isinstance(m, dict) and m.get("id"):
-                        ids.append(m["id"])
+            if isinstance(payload, dict) and payload.get("messages"):
+                for m in payload["messages"]:
+                    if isinstance(m, dict):
+                        mid = m.get("id") or m.get("messageId")
+                        if mid:
+                            ids.append(mid)
             if ids:
                 return ids
     return []
 
 
 def _get_msg(composio: Composio, user_id: str, mid: str) -> dict[str, Any] | None:
-    for slug in ("GMAIL_GET_EMAIL", "GMAIL_FETCH_A_EMAIL", "GMAIL_RETRIEVE_A_EMAIL"):
+    for slug in ("GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID", "GMAIL_GET_EMAIL", "GMAIL_FETCH_A_EMAIL", "GMAIL_RETRIEVE_A_EMAIL"):
         d = execute_tool(
-            composio, slug, {"id": mid, "format": "full"}, user_id
+            composio, slug, {"message_id": mid, "messageId": mid, "id": mid, "format": "full"}, user_id
         )
-        if d is not None:
-            return d if isinstance(d, dict) else None
+        if d is None:
+            continue
+        if isinstance(d, dict):
+            return d.get("data", d) if isinstance(d.get("data"), dict) else d
     return None
+
+
+_KEEP_HEADERS = {"From", "To", "Cc", "Subject", "Date", "Reply-To"}
+_MAX_BODY_CHARS = 4000  # ~1k tokens; truncate long emails for triage
+
+
+def _slim_email(body: dict[str, Any], mid: str) -> dict[str, Any]:
+    """Strip raw Gmail payload to triage-relevant fields only.
+
+    Drops base64-encoded body data, MIME parts, attachments, and 30+ noise
+    headers. Keeps decoded messageText (truncated) plus a handful of headers.
+    """
+    if not isinstance(body, dict):
+        return {"id": mid, "placeholder": True}
+    payload = body.get("payload") or {}
+    headers = {
+        h.get("name"): h.get("value")
+        for h in (payload.get("headers") or [])
+        if isinstance(h, dict) and h.get("name") in _KEEP_HEADERS
+    }
+    text = body.get("messageText") or ""
+    if len(text) > _MAX_BODY_CHARS:
+        text = text[:_MAX_BODY_CHARS] + f"\n…[truncated {len(text) - _MAX_BODY_CHARS} chars]"
+    return {
+        "id": body.get("messageId") or mid,
+        "thread_id": body.get("threadId"),
+        "labels": body.get("labelIds") or [],
+        "snippet": body.get("snippet") or body.get("preview") or "",
+        "headers": headers,
+        "text": text,
+    }
 
 
 class GmailPuller(BasePuller):
@@ -67,18 +103,17 @@ class GmailPuller(BasePuller):
         out: list[RawItem] = []
         for mid in ids:
             body = _get_msg(composio, user, mid)
-            if not body:
-                body = {"id": mid, "placeholder": True}
+            slim = _slim_email(body, mid) if body else {"id": mid, "placeholder": True}
             ext = f"gmail:{mid}"
             out.append(
                 RawItem(
                     external_id=ext,
                     source_type="gmail_email",
                     integration="gmail",
-                    content=body,
+                    content=slim,
                     occurred_at=utcnow(),
                     metadata={"message_id": mid},
                 )
             )
-        log.info("Gmail pull: %d items", len(out))
+        log.info("Gmail pull: %d items (slim)", len(out))
         return out
