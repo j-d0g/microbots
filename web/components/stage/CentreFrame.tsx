@@ -27,6 +27,9 @@ export function CentreFrame({
 }) {
   const closeWindow = useAgentStore((s) => s.closeWindow);
   const minimizeWindow = useAgentStore((s) => s.minimizeWindow);
+  const pinWindow = useAgentStore((s) => s.pinWindow);
+  const unpinWindow = useAgentStore((s) => s.unpinWindow);
+  const pinned = win.pinned === true;
 
   return (
     <motion.div
@@ -64,6 +67,39 @@ export function CentreFrame({
           )}
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => (pinned ? unpinWindow(win.id) : pinWindow(win.id))}
+            aria-label={pinned ? "unpin" : "pin to sideline"}
+            aria-pressed={pinned}
+            title={pinned ? "unpin (let go)" : "pin (keep this in stage)"}
+            data-testid="centre-pin"
+            data-pinned={pinned ? "true" : "false"}
+            className={cn(
+              "h-6 w-6 rounded-full",
+              "flex items-center justify-center",
+              "transition-colors",
+              pinned
+                ? "text-accent-indigo hover:bg-paper-2"
+                : "text-ink-35 hover:bg-paper-2 hover:text-ink-60",
+            )}
+          >
+            {/* Pin glyph: a tiny push-pin. Filled when pinned. */}
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 11 11"
+              aria-hidden="true"
+              fill={pinned ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth={1.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5.5 1.5 L5.5 5 L3.5 7 L7.5 7 L5.5 5 Z" />
+              <line x1="5.5" y1="7" x2="5.5" y2="9.5" />
+            </svg>
+          </button>
           <button
             type="button"
             onClick={() => minimizeWindow(win.id)}
