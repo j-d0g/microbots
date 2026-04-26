@@ -9,7 +9,11 @@ export type RoomKind =
   | "stack"
   | "waffle"
   | "playbooks"
-  | "settings";
+  | "settings"
+  /** Per-toolkit integration window. The `slug` lives in
+   *  `WindowState.payload.slug` so multiple integration windows
+   *  (e.g. slack + github) can coexist on the canvas. */
+  | "integration";
 
 /** Keep backward compat alias */
 export type RoomName = RoomKind;
@@ -77,7 +81,8 @@ const MIN_SIZES: Record<RoomKind, { w: number; h: number }> = {
   stack: { w: 400, h: 320 },
   waffle: { w: 360, h: 300 },
   playbooks: { w: 520, h: 360 },
-  settings: { w: 400, h: 320 },
+  settings: { w: 400, h: 360 },
+  integration: { w: 360, h: 320 },
 };
 
 export function getMinSize(kind: RoomKind) { return MIN_SIZES[kind]; }
@@ -161,10 +166,76 @@ export interface VerbPayload {
   at: number;
 }
 
+/* --- Backend mirrors (for snapshot + UI) --- */
+
+export type ConnectionStatus =
+  | "INITIATED"
+  | "ACTIVE"
+  | "EXPIRED"
+  | "FAILED";
+
+export interface BackendHealthMirror {
+  surrealOk: boolean;
+  composioOk: boolean;
+  /** ms since epoch when the probe was checked. */
+  checkedAt: number;
+}
+
+/* --- Chat mode --- */
+
+export type UiMode = "windowed" | "chat";
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "agent";
+  text: string;
+  ts: number;
+  /** Which room is in focus when this message is sent/received.
+   *  Used to render a small context tag in the message list. */
+  room?: RoomKind;
+  status?: "streaming" | "done";
+}
+
 export interface AgentStoreState {
   /* --- onboarding --- */
   onboarded: boolean;
   setOnboarded: (v: boolean) => void;
+
+  /* --- ui mode --- */
+  uiMode: UiMode;
+  setUiMode: (mode: UiMode) => void;
+  toggleUiMode: () => void;
+
+  /* --- backend identity & connectivity ---
+   *
+   * `userId` is the single source of truth for the user's namespace
+   * key. Composio routes require it; KG read endpoints currently
+   * ignore it (single-tenant in v1) but we still attach it as the
+   * `X-User-Id` header on every request so the day the backend goes
+   * per-user, no UI changes are needed. Persisted to localStorage by
+   * `StoreBridge`. Null until the user enters one in settings. */
+  userId: string | null;
+  setUserId: (id: string | null) => void;
+  /** Live composio connection status mirror — kept fresh by the
+   *  IntegrationRoom and a 30s background poll. Surfaced into the
+   *  agent's snapshot so it can answer "is slack connected?" without
+   *  burning a tool call. */
+  connections: { slug: string; status: ConnectionStatus }[];
+  setConnections: (c: { slug: string; status: ConnectionStatus }[]) => void;
+  /** Most recent /api/health probe. Used by the SettingsRoom badge and
+   *  surfaced into the snapshot so the agent can mention degraded
+   *  mode. `null` while the first probe is in flight. */
+  backendHealth: BackendHealthMirror | null;
+  setBackendHealth: (h: BackendHealthMirror | null) => void;
+
+  /* --- chat mode --- */
+  chatRoom: RoomKind;
+  setChatRoom: (room: RoomKind) => void;
+  chatMessages: ChatMessage[];
+  appendChatMessage: (m: ChatMessage) => void;
+  appendToLastAgentMessage: (chunk: string) => void;
+  finalizeLastAgentMessage: () => void;
+  clearChatHistory: () => void;
 
   /* --- modal stack (legacy, still wired for backward compat) --- */
   modals: Modal[];
@@ -246,6 +317,83 @@ const nextModalId = () => `modal-${++_modalId}`;
 export const useAgentStore = create<AgentStoreState>((set, get) => ({
   onboarded: false,
   setOnboarded: (v) => set({ onboarded: v }),
+
+  /* --- ui mode --- */
+  uiMode: "windowed",
+  setUiMode: (mode) => set({ uiMode: mode }),
+  toggleUiMode: () =>
+    set((s) => {
+      const next: UiMode = s.uiMode === "windowed" ? "chat" : "windowed";
+      // When entering chat, inherit the topmost windowed room as
+      // the focused one so context persists across the switch.
+      if (next === "chat" && s.windows.length > 0) {
+        const top = [...s.windows]
+          .filter((w) => !w.minimized)
+          .sort((a, b) => b.zIndex - a.zIndex)[0];
+        if (top) return { uiMode: next, chatRoom: top.kind, room: top.kind };
+      }
+      // When leaving chat, open a window for the focused chat room
+      // if none is open yet, so the windowed canvas isn't empty.
+      if (next === "windowed") {
+        const existing = s.windows.find(
+          (w) => w.kind === s.chatRoom && !w.minimized,
+        );
+        if (!existing) {
+          // Defer the actual open — we can't call store actions inside
+          // this set() — schedule it via microtask.
+          queueMicrotask(() => {
+            const cur = useAgentStore.getState();
+            if (cur.uiMode === "windowed") cur.openWindow(cur.chatRoom);
+          });
+        }
+      }
+      return { uiMode: next };
+    }),
+
+  /* --- backend identity & connectivity --- */
+  userId: null,
+  setUserId: (id) => set({ userId: id }),
+  connections: [],
+  setConnections: (connections) => set({ connections }),
+  backendHealth: null,
+  setBackendHealth: (backendHealth) => set({ backendHealth }),
+
+  /* --- chat mode --- */
+  chatRoom: "brief",
+  setChatRoom: (room) => set({ chatRoom: room, room }),
+  chatMessages: [],
+  appendChatMessage: (m) =>
+    set((s) => ({ chatMessages: [...s.chatMessages, m] })),
+  appendToLastAgentMessage: (chunk) =>
+    set((s) => {
+      const list = s.chatMessages;
+      // Find the last agent message; append chunk to it.
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (list[i].role === "agent") {
+          const next = list.slice();
+          next[i] = {
+            ...list[i],
+            text: list[i].text + chunk,
+            status: "streaming",
+          };
+          return { chatMessages: next };
+        }
+      }
+      return s;
+    }),
+  finalizeLastAgentMessage: () =>
+    set((s) => {
+      const list = s.chatMessages;
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (list[i].role === "agent") {
+          const next = list.slice();
+          next[i] = { ...list[i], status: "done" };
+          return { chatMessages: next };
+        }
+      }
+      return s;
+    }),
+  clearChatHistory: () => set({ chatMessages: [] }),
 
   modals: [],
   openRoom: (kind, payload) => {
@@ -331,7 +479,20 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
 
   openWindow: (kind, opts) => {
     const s = get();
-    const existing = s.windows.find((w) => w.kind === kind && !w.minimized);
+    // Integration windows are slug-keyed: multiple instances may coexist
+    // (slack + github), distinguished by `payload.slug`. All other kinds
+    // dedupe by kind alone.
+    const wantedSlug =
+      kind === "integration"
+        ? (opts?.payload?.slug as string | undefined)
+        : undefined;
+    const existing = s.windows.find((w) => {
+      if (w.kind !== kind || w.minimized) return false;
+      if (kind === "integration") {
+        return (w.payload?.slug as string | undefined) === wantedSlug;
+      }
+      return true;
+    });
     if (existing) {
       s.bringToFront(existing.id);
       return existing.id;
