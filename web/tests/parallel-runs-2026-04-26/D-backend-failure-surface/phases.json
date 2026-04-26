@@ -1,0 +1,192 @@
+[
+  {
+    "label": "phase1-goto",
+    "t": 1777184748742
+  },
+  {
+    "label": "phase1-onboarded",
+    "t": 1777184752491
+  },
+  {
+    "label": "phase2-userid-saved",
+    "t": 1777184753581
+  },
+  {
+    "label": "phase2-health-pre-refresh",
+    "t": 1777184753583,
+    "surrealText": "surrealdbdown",
+    "composioText": "composiodown",
+    "backendHealth": {
+      "surrealOk": false,
+      "composioOk": false,
+      "checkedAt": 1777184750950
+    }
+  },
+  {
+    "label": "phase2-health-post-refresh",
+    "t": 1777184756141,
+    "surrealText": "surrealdbdown",
+    "composioText": "composiodown",
+    "backendHealth": {
+      "surrealOk": false,
+      "composioOk": false,
+      "checkedAt": 1777184753601
+    }
+  },
+  {
+    "label": "phase3-graph-state",
+    "t": 1777184758759,
+    "noUserVisible": false,
+    "visibleText": [
+      "empty graphconnect a tool to start filling this in.",
+      "empty graph",
+      "connect a tool to start filling this in.",
+      "alluserintegrationentitymemoryskillworkflow0",
+      "all",
+      "user",
+      "integration",
+      "entity",
+      "memory",
+      "skill",
+      "workflow",
+      "userintegrationentitymemoryskillworkflow"
+    ]
+  },
+  {
+    "label": "phase4-brief-state",
+    "t": 1777184759614,
+    "cardCount": 6,
+    "hasYesterday": true
+  },
+  {
+    "label": "phase5-slack-state",
+    "t": 1777184762229,
+    "noUserVisible": false,
+    "initiatedVisible": false,
+    "connectButtonVisible": true,
+    "connectButtonText": "connect slack",
+    "connections": [],
+    "toolkits": [],
+    "visibleSampling": [
+      "settings",
+      "set your user_id once. it’s the namespace key for composio and the X-User-Id header on every backend call. integrations and the graph need it.",
+      "user_idsavedsaveclearstored locally · used as namespace for /api/composio/* + as X-User-Id on every request.",
+      "save",
+      "clear",
+      "stored locally · used as namespace for /api/composio/* + as X-User-Id on every request.",
+      "backendrefreshsurrealdbdowncomposiodownchecked 6s ago · base https://app-bf31.onrender.com",
+      "refresh",
+      "checked 6s ago · base https://app-bf31.onrender.com",
+      "empty graph",
+      "connect a tool to start filling this in.",
+      "all",
+      "user",
+      "integration",
+      "entity",
+      "memory",
+      "skill",
+      "workflow",
+      "integration · slack",
+      "Channels, threads, and DMs — the agent reads what people are talking about.",
+      "connectyou'll be redirected to composio to authorize access, then return here.connect slack",
+      "connect",
+      "you'll be redirected to composio to authorize access, then return here.",
+      "connect slack",
+      "dismiss",
+      "user_id saved as test_e2e_d",
+      "agent · snapshot"
+    ]
+  },
+  {
+    "label": "phase6-after-connect-click",
+    "t": 1777184764820,
+    "initiatedVisible": false,
+    "toasts": [],
+    "cards": [
+      {
+        "id": "toast-userid-1777184752540",
+        "kind": "toast",
+        "data": {
+          "text": "user_id saved as test_e2e_d"
+        },
+        "ttl": 4500,
+        "createdAt": 1777184752540
+      },
+      {
+        "id": "toast-err-slack-1777184762277",
+        "kind": "toast",
+        "data": {
+          "text": "connect failed: Failed to fetch"
+        },
+        "ttl": 6500,
+        "createdAt": 1777184762277
+      }
+    ],
+    "url": "http://localhost:3001/",
+    "visibleSampling": [
+      "settings",
+      "set your user_id once. it’s the namespace key for composio and the X-User-Id header on every backend call. integrations and the graph need it.",
+      "user_idsavedsaveclearstored locally · used as namespace for /api/composio/* + as X-User-Id on every request.",
+      "user_idsaved",
+      "saveclear",
+      "stored locally · used as namespace for /api/composio/* + as X-User-Id on every request.",
+      "backendrefreshsurrealdbdowncomposiodownchecked 8s ago · base https://app-bf31.onrender.com",
+      "backendrefresh",
+      "checked 8s ago · base https://app-bf31.onrender.com",
+      "graphempty graphconnect a tool to start filling this in.alluserintegrationentitymemoryskillworkflow0userintegrationentitymemoryskillworkflow",
+      "graph",
+      "empty graphconnect a tool to start filling this in.alluserintegrationentitymemoryskillworkflow0userintegrationentitymemoryskillworkflow",
+      "empty graphconnect a tool to start filling this in.",
+      "empty graph",
+      "connect a tool to start filling this in.",
+      "alluserintegrationentitymemoryskillworkflow0",
+      "userintegrationentitymemoryskillworkflow",
+      "integration · slack",
+      "integration · slackSlackChannels, threads, and DMs — the agent reads what people are talking about.",
+      "Channels, threads, and DMs — the agent reads what people are talking about.",
+      "connectyou'll be redirected to composio to authorize access, then return here.connect slack",
+      "connect",
+      "you'll be redirected to composio to authorize access, then return here.",
+      "toastdismissuser_id saved as test_e2e_dtoastdismissconnect failed: Failed to fetch",
+      "toastdismissuser_id saved as test_e2e_d",
+      "toastdismiss",
+      "user_id saved as test_e2e_d",
+      "toastdismissconnect failed: Failed to fetch",
+      "connect failed: Failed to fetch",
+      "/ to type · hold dot to talk"
+    ]
+  },
+  {
+    "label": "phase7-after-show-graph",
+    "t": 1777184772250,
+    "dockText": "/ to type · hold dot to talk",
+    "reply": "",
+    "lastQuery": "",
+    "windows": [
+      {
+        "kind": "settings",
+        "minimized": false
+      },
+      {
+        "kind": "graph",
+        "minimized": false
+      },
+      {
+        "kind": "integration",
+        "payload": {
+          "slug": "slack"
+        },
+        "minimized": false
+      }
+    ],
+    "backendHealth": {
+      "surrealOk": false,
+      "composioOk": false,
+      "checkedAt": 1777184753601
+    }
+  },
+  {
+    "label": "phase8-second-refresh",
+    "t": 1777184772250
+  }
+]

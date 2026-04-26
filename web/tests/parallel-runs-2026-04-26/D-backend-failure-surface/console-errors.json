@@ -1,0 +1,432 @@
+[
+  {
+    "t": 1777184748900,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/health",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184748900,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/health",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184748900,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/toolkits",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184750951,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/health",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184750951,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/health",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184750951,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/toolkits",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184750951,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/health",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184750951,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/health",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184750952,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/toolkits",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184752545,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184753601,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/health",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756167,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756167,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756170,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756171,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184756171,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/user",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/integrations",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/memories?by=confidence&limit=30",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/skills?min_strength=1",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/workflows",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184759641,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184760150,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184760150,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/connections?user_id=test_e2e_d",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184762278,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/composio/connect",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  },
+  {
+    "t": 1777184773117,
+    "type": "error",
+    "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/health",
+      "lineNumber": 0,
+      "columnNumber": 0
+    }
+  }
+]

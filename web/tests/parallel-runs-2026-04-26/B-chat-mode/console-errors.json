@@ -1,0 +1,52 @@
+[
+  {
+    "type": "warning",
+    "text": "[room-tools] no tool 'search' on room 'graph'",
+    "location": {
+      "url": "http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js",
+      "lineNumber": 2431,
+      "columnNumber": 27
+    },
+    "ts": "2026-04-26T06:27:54.691Z"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 422 ()",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "lineNumber": 0,
+      "columnNumber": 0
+    },
+    "ts": "2026-04-26T06:27:55.168Z"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 422 ()",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "lineNumber": 0,
+      "columnNumber": 0
+    },
+    "ts": "2026-04-26T06:27:55.265Z"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 422 ()",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "lineNumber": 0,
+      "columnNumber": 0
+    },
+    "ts": "2026-04-26T06:28:00.464Z"
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 422 ()",
+    "location": {
+      "url": "https://app-bf31.onrender.com/api/kg/entities",
+      "lineNumber": 0,
+      "columnNumber": 0
+    },
+    "ts": "2026-04-26T06:28:00.658Z"
+  }
+]
