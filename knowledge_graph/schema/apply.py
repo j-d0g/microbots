@@ -22,6 +22,16 @@ SCHEMA_FILES = sorted(SCHEMA_DIR.glob("*.surql"))
 log = get_logger(__name__)
 
 
+def table_names(info) -> list[str]:
+    if isinstance(info, list):
+        if not info:
+            return []
+        info = info[0]
+    if isinstance(info, dict):
+        return list(info.get("tables", {}).keys())
+    return []
+
+
 async def apply_schema():
     with span(
         "schema.apply",
@@ -41,7 +51,7 @@ async def apply_schema():
                     log.info("schema file applied {filename}", filename=path.name)
 
             result = await db.query("INFO FOR DB;")
-            tables = list(result[0].get("tables", {}).keys())
+            tables = table_names(result)
             log.info(
                 "schema applied — {table_count} tables defined",
                 table_count=len(tables),
