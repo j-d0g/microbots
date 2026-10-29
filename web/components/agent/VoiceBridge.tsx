@@ -134,9 +134,9 @@ export function VoiceBridge() {
 
   /* ---------- Auto read-back on reply.done --------------------------
    *
-   * The agent stream sets dock="speaking" while it streams chunks of a
-   * reply, then back to "idle" when done. We watch that speaking → idle
-   * edge to start TTS.
+   * The agent stream sets dock="speaking" (or stays "thinking") while it
+   * streams a reply, then back to "idle" when done. We watch that edge to
+   * start TTS.
    *
    * Important: TTS playback itself toggles the dock (we set "speaking"
    * for the audio's duration, then "idle" on `onEnd`). Without a guard
@@ -158,7 +158,9 @@ export function VoiceBridge() {
       const prev = lastDock;
       lastDock = next;
 
-      if (prev === "speaking" && next === "idle") {
+      // Server turns go thinking → speaking → idle; local-router turns
+      // go thinking → idle. Both end a reply.
+      if ((prev === "speaking" || prev === "thinking") && next === "idle") {
         // Skip transitions caused by our own TTS finishing.
         if (speaking) {
           speaking = false;
