@@ -99,7 +99,7 @@ export interface IntegrationSummary {
   frequency?: string;
   description?: string;
   user_purpose?: string;
-  co_used_with_slugs?: { out: { slug: string } }[];
+  co_used_with_slugs?: { out: { slug: string }; frequency?: number }[];
 }
 
 export interface IntegrationDetail extends IntegrationSummary {
@@ -114,6 +114,7 @@ export interface Memory {
   memory_type: string;
   confidence: number;
   source?: string;
+  integration_slugs?: string[];
   tags?: string[];
   created_at?: string;
 }
@@ -146,6 +147,7 @@ export interface EntityRow {
   aliases?: string[];
   tags?: string[];
   chat_mention_count?: number;
+  integration_slugs?: string[];
 }
 
 export interface EntityTypeCount {

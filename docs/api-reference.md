@@ -249,8 +249,8 @@ Every integration the user has connected, with co-usage edges.
     "description": "Code hosting, PR reviews, and CI/CD pipelines.",
     "user_purpose": "Code collaboration, PR reviews, and CI pipeline management.",
     "co_used_with_slugs": [
-      { "out": { "slug": "linear" } },
-      { "out": { "slug": "perplexity" } }
+      { "out": { "slug": "linear" }, "frequency": 4 },
+      { "out": { "slug": "perplexity" }, "frequency": 2 }
     ]
   }
 ]
@@ -299,6 +299,7 @@ Top memories the system has learned about the user.
     "memory_type":  "fact",
     "confidence":   0.98,
     "source":       "slack",
+    "integration_slugs": ["slack"],
     "tags":         ["people", "infra"],
     "created_at":   "..."
   }
@@ -381,7 +382,8 @@ Multi-step workflows that chain skills together.
     "entity_type": "person",
     "aliases":     ["@martin"],
     "tags":        ["engineer"],
-    "chat_mention_count": 7
+    "chat_mention_count": 7,
+    "integration_slugs": ["linear"]
   }
 ]
 ```
@@ -793,7 +795,7 @@ export interface Integration {
   frequency?:         string;
   description?:       string;
   user_purpose?:      string;
-  co_used_with_slugs: { out: { slug: string } }[];
+  co_used_with_slugs: { out: { slug: string }; frequency?: number }[];
 }
 
 export interface Memory {
@@ -802,6 +804,7 @@ export interface Memory {
   memory_type:  string;
   confidence:   number;
   source?:      string;
+  integration_slugs?: string[];
   tags?:        string[];
   created_at:   string;
 }
@@ -834,6 +837,7 @@ export interface Entity {
   aliases?:            string[];
   tags?:               string[];
   chat_mention_count?: number;
+  integration_slugs?: string[];
 }
 
 export interface WikiPage {

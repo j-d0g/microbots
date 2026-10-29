@@ -3,7 +3,7 @@
  * the GraphCanvas force-sim consumes.
  *
  * Layers (mirrored from the seed ontology shape):
- *   user        — one node, top of the graph
+ *   user        — one node, center of the graph
  *   integration — one per Composio toolkit, attribute = slug
  *   entity      — KG entities (person/organisation/project/...)
  *   memory      — confidence-ranked memory rows
@@ -13,8 +13,8 @@
  * Edges:
  *   user                          → integration   (uses)
  *   integration ↔ integration     (co_used_with_slugs)
- *   entity → integration          (appears_in_edges)
- *   memory → integration          (memory.source where it matches a slug)
+ *   entity → integration          (integration_slugs)
+ *   memory → integration          (integration_slugs, plus matching source)
  *   skill → integration           (skill.integrations)
  *   workflow → skill (ordered)    (skill_chain)
  */
@@ -32,7 +32,6 @@ import type {
   GraphLink,
   GraphNode,
 } from "@/components/graph/types";
-import type { NodeLayer } from "@/lib/seed/types";
 
 export interface KgBundle {
   user: UserProfile | null;
@@ -52,18 +51,25 @@ interface NodeAcc {
 function pushNode(acc: NodeAcc, node: GraphNode) {
   if (!acc.byId.has(node.id)) acc.byId.set(node.id, node);
 }
-function pushLink(acc: NodeAcc, source: string, target: string, relation?: string) {
+function pushLink(
+  acc: NodeAcc,
+  source: string,
+  target: string,
+  relation?: string,
+  weight?: number,
+) {
   // Only add edges where both endpoints exist.
   if (!acc.byId.has(source) || !acc.byId.has(target)) return;
-  acc.links.push({ source, target, relation });
+  acc.links.push({
+    source,
+    target,
+    relation,
+    ...(weight === undefined ? {} : { weight }),
+  });
 }
 
 const integrationId = (slug: string) => `int-${slug}`;
 const userId = () => "user-self";
-
-function safeLayer(layer: NodeLayer): NodeLayer {
-  return layer;
-}
 
 export function toGraph(bundle: KgBundle): {
   nodes: GraphNode[];
@@ -76,7 +82,7 @@ export function toGraph(bundle: KgBundle): {
     pushNode(acc, {
       id: userId(),
       label: bundle.user.name || "you",
-      layer: safeLayer("user"),
+      layer: "user",
     });
   }
 
@@ -86,7 +92,7 @@ export function toGraph(bundle: KgBundle): {
     pushNode(acc, {
       id,
       label: i.name || i.slug,
-      layer: safeLayer("integration"),
+      layer: "integration",
       integration: i.slug,
     });
     if (bundle.user) pushLink(acc, userId(), id, "uses");
@@ -96,7 +102,7 @@ export function toGraph(bundle: KgBundle): {
     const a = integrationId(i.slug);
     for (const co of i.co_used_with_slugs ?? []) {
       const b = integrationId(co.out.slug);
-      pushLink(acc, a, b, "co_used_with");
+      pushLink(acc, a, b, "co_used_with", co.frequency);
     }
   }
 
@@ -105,29 +111,33 @@ export function toGraph(bundle: KgBundle): {
     pushNode(acc, {
       id: e.id,
       label: e.name,
-      layer: safeLayer("entity"),
+      layer: "entity",
     });
+    for (const slug of e.integration_slugs ?? []) {
+      pushLink(acc, e.id, integrationId(slug), "appears_in");
+    }
   }
 
   /* memories */
   for (const m of bundle.memories) {
+    const integrations = [...new Set([
+      ...(m.integration_slugs ?? []),
+      ...(m.source && bundle.integrations.some((i) => i.slug === m.source)
+        ? [m.source]
+        : []),
+    ])];
     pushNode(acc, {
       id: m.id,
       label:
         m.content.length > 60
           ? m.content.slice(0, 57).trimEnd() + "…"
           : m.content,
-      layer: safeLayer("memory"),
+      layer: "memory",
       confidence: m.confidence,
-      integration:
-        m.source && bundle.integrations.some((i) => i.slug === m.source)
-          ? m.source
-          : undefined,
+      ...(integrations[0] ? { integration: integrations[0] } : {}),
     });
-    // memory → integration edge if source matches
-    if (m.source) {
-      const intId = integrationId(m.source);
-      pushLink(acc, m.id, intId, "from");
+    for (const slug of integrations) {
+      pushLink(acc, m.id, integrationId(slug), "from");
     }
   }
 
@@ -136,7 +146,7 @@ export function toGraph(bundle: KgBundle): {
     pushNode(acc, {
       id: s.id,
       label: s.name,
-      layer: safeLayer("skill"),
+      layer: "skill",
     });
     for (const integSlug of s.integrations ?? []) {
       pushLink(acc, s.id, integrationId(integSlug), "uses");
@@ -148,7 +158,7 @@ export function toGraph(bundle: KgBundle): {
     pushNode(acc, {
       id: w.id,
       label: w.name,
-      layer: safeLayer("workflow"),
+      layer: "workflow",
     });
     for (const step of w.skill_chain ?? []) {
       // KG REST returns flat { skill_slug, step_order }; defend

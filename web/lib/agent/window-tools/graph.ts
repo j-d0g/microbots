@@ -95,7 +95,7 @@ export function graphWindowTools(ctx: AgentToolCtx) {
     /** Center and zoom to a specific node by ID */
     graph_focus_node: tool({
       description:
-        "Center and zoom to a specific node in the graph. Pass node_id like 'user-maya', 'ent-product-bugs', 'wf-bug-triage', 'mem-abc123', 'skill-research', 'integration-slack'.",
+        "Center and zoom to a graph node. Pass a node id ('int-linear', 'skill:triage_incoming_bug', 'workflow:bug_triage', 'entity:alice') or an exact case-insensitive label like 'Linear'.",
       inputSchema: z.object({
         node_id: z.string().min(1, "Node ID is required"),
       }),
@@ -119,7 +119,7 @@ export function graphWindowTools(ctx: AgentToolCtx) {
     /** Open node inspector panel for a node (empty string to close) */
     graph_select: tool({
       description:
-        "Open the node inspector panel for a specific node. Pass node_id to inspect, or empty string to close the inspector.",
+        "Open the node inspector for a node id ('int-linear', 'skill:triage_incoming_bug', 'workflow:bug_triage', 'entity:alice') or label like 'Linear'. Pass an empty string to clear focus.",
       inputSchema: z.object({
         node_id: z.string(),
       }),
@@ -133,7 +133,7 @@ export function graphWindowTools(ctx: AgentToolCtx) {
     /** Highlight node and 1-hop neighbors, fade others */
     graph_neighbors: tool({
       description:
-        "Highlight a node and its 1-hop neighbors (directly connected nodes). Other nodes are faded. Useful for exploring local context around a node.",
+        "Highlight a node id ('int-linear', 'skill:triage_incoming_bug', 'workflow:bug_triage', 'entity:alice') or exact case-insensitive label and its 1-hop neighbors without changing zoom.",
       inputSchema: z.object({
         node_id: z.string().min(1, "Node ID is required"),
       }),
@@ -146,7 +146,7 @@ export function graphWindowTools(ctx: AgentToolCtx) {
     /** Highlight node and direct neighbors (no zoom change) */
     graph_highlight: tool({
       description:
-        "Highlight a node and its direct neighbors without changing the zoom level. Pass empty string to clear all highlights.",
+        "Highlight a node id ('int-linear', 'skill:triage_incoming_bug', 'workflow:bug_triage', 'entity:alice') or label like 'Linear' and its direct neighbors without changing zoom. Pass empty string to clear focus.",
       inputSchema: z.object({
         node_id: z.string(),
       }),
@@ -175,7 +175,7 @@ export function graphWindowTools(ctx: AgentToolCtx) {
     /** Highlight shortest path between two nodes */
     graph_path: tool({
       description:
-        "Highlight the shortest path between two nodes. Useful for tracing relationships or finding connections between entities.",
+        "Highlight the shortest path between two node ids or exact case-insensitive labels.",
       inputSchema: z.object({
         from: z.string().min(1, "Source node ID is required"),
         to: z.string().min(1, "Target node ID is required"),

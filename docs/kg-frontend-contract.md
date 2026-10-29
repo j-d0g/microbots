@@ -47,7 +47,7 @@ interface Integration {
   frequency?: string;
   description?: string;
   user_purpose?: string;
-  co_used_with_slugs: Slug[];
+  co_used_with_slugs: { out: { slug: Slug }; frequency?: number }[];
 }
 
 interface IntegrationDetail extends Integration {
@@ -66,6 +66,7 @@ interface Entity {
   aliases: string[];
   tags: string[];
   chat_mention_count: number;
+  integration_slugs: Slug[];
 }
 
 interface EntityDetail extends Entity {
@@ -79,6 +80,7 @@ interface Memory {
   memory_type: "fact" | "preference" | "observation" | string;
   confidence: number;         // 0..1
   source?: string;
+  integration_slugs: Slug[];
   tags: string[];
   updated_at?: ISO8601;
 }
@@ -178,7 +180,10 @@ type WikiLayer =
   "slug": "slack",
   "name": "Slack",
   "category": "comms",
-  "co_used_with_slugs": ["linear", "github"],
+  "co_used_with_slugs": [
+    { "out": { "slug": "linear" }, "frequency": 4 },
+    { "out": { "slug": "github" }, "frequency": 2 }
+  ],
   "entities": [ /* Entity[] */ ],
   "top_memories": [ /* Memory[] */ ],
   "skills": [ /* Skill[] */ ]

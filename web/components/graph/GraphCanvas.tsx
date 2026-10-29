@@ -6,22 +6,26 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import type { ForwardedRef } from "react";
+import { forceCollide, forceRadial } from "d3-force-3d";
 import {
-  type GraphController,
-  type GraphFilter,
-  type GraphLink,
-  type GraphNode,
-  LAYER_INK,
-  LAYER_RING,
-} from "./types";
+  coUsedWidth,
+  edgeStyle,
+  linkEnds,
+  nodeOpacity,
+  ringRadii,
+  shouldLabel,
+} from "./graph-view";
+import type { CoUsedEdge, GraphView } from "./graph-view";
+import type { GraphController, GraphLink, GraphNode } from "./types";
+import { LAYER_INK, LAYER_RING } from "./types";
 
 const ForceGraph2D = dynamic(
-  () => import("react-force-graph-2d").then((m) => m.default),
+  () => import("react-force-graph-2d").then((module) => module.default),
   { ssr: false },
 );
 
@@ -29,35 +33,26 @@ type FGRef = {
   zoomToFit: (
     durationMs?: number,
     padding?: number,
-    nodeFilter?: (n: GraphNode) => boolean,
+    nodeFilter?: (node: GraphNode) => boolean,
   ) => void;
-  zoom: (scale: number, durationMs?: number) => void;
-  centerAt: (x: number, y: number, durationMs?: number) => void;
-  d3Force: (
-    name: string,
-    force?:
-      | {
-          strength?: (s: number) => unknown;
-          distance?: (d: number) => unknown;
-        }
-      | unknown,
-  ) => unknown;
+  zoom: (scale?: number, durationMs?: number) => number | void;
+  d3Force: (name: string, force?: unknown) => unknown;
   d3ReheatSimulation: () => void;
 };
 
 interface Props {
-  nodes: GraphNode[];
-  links: GraphLink[];
-  filter: GraphFilter;
+  view: GraphView;
+  pathIds: Set<string>;
+  hoverId: string | null;
+  onHover: (node: GraphNode | null) => void;
+  focusId: string | null;
+  fitOnFocusChange: boolean;
   width: number;
   height: number;
-  selectedId: string | null;
-  highlightId: string | null;
-  highlightNeighborIds: Set<string>;
-  pathIds: Set<string>;
   onNodeClick: (node: GraphNode) => void;
-  onNodeHover: (node: GraphNode | null) => void;
   onBackgroundClick: () => void;
+  compact: boolean;
+  coUsed: CoUsedEdge[];
 }
 
 function radiusFor(layer: GraphNode["layer"]) {
@@ -65,11 +60,9 @@ function radiusFor(layer: GraphNode["layer"]) {
     case "user":
       return 7;
     case "integration":
-      return 5.5;
     case "workflow":
       return 5.5;
     case "entity":
-      return 4;
     case "skill":
       return 4;
     default:
@@ -77,260 +70,407 @@ function radiusFor(layer: GraphNode["layer"]) {
   }
 }
 
+function hashId(id: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < id.length; index += 1) {
+    hash = Math.imul(hash ^ id.charCodeAt(index), 16777619);
+  }
+  return hash >>> 0;
+}
+
+function linkKey(link: GraphLink): string {
+  const [source, target] = linkEnds(link);
+  return `${source}\u001f${target}\u001f${link.relation ?? ""}`;
+}
+
 export const GraphCanvas = forwardRef(function GraphCanvas(
   props: Props,
   ref: ForwardedRef<GraphController>,
 ) {
   const {
-    nodes,
-    links,
+    view,
+    pathIds,
+    hoverId,
+    onHover,
+    focusId,
+    fitOnFocusChange,
     width,
     height,
-    selectedId,
-    highlightId,
-    highlightNeighborIds,
-    pathIds,
     onNodeClick,
-    onNodeHover,
     onBackgroundClick,
+    compact,
+    coUsed,
   } = props;
-
   const fgRef = useRef<FGRef | null>(null);
-  const [hoverId, setHoverId] = useState<string | null>(null);
-  const adjacency = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    const get = (k: string) => {
-      let s = map.get(k);
-      if (!s) {
-        s = new Set();
-        map.set(k, s);
-      }
-      return s;
-    };
-    for (const link of links) {
-      const s =
-        typeof link.source === "string" ? link.source : link.source.id;
-      const t =
-        typeof link.target === "string" ? link.target : link.target.id;
-      get(s).add(t);
-      get(t).add(s);
-    }
-    return map;
-  }, [links]);
 
-  const data = useMemo(() => ({ nodes, links }), [nodes, links]);
-
-  /* tune simulation forces for calm spacing */
-  useEffect(() => {
-    const fg = fgRef.current;
-    if (!fg) return;
-    const charge = fg.d3Force("charge") as
-      | { strength: (s: number | ((n: GraphNode) => number)) => unknown }
-      | undefined;
-    if (charge && typeof charge.strength === "function") {
-      charge.strength(-90);
-    }
-    const link = fg.d3Force("link") as
-      | { distance: (d: number | ((l: GraphLink) => number)) => unknown }
-      | undefined;
-    if (link && typeof link.distance === "function") {
-      link.distance(46);
-    }
-    fg.d3ReheatSimulation();
-  }, [data]);
-
-  /* zoom-to-fit when data set changes (filter, etc).
-   * Filter to nodes with degree >= 2 so weakly-connected pad-out nodes
-   * don't skew the framing. Falls back to all nodes if there aren't enough.
-   */
-  const fit = useCallback(
-    (duration = 440, padding?: number) => {
-      const fg = fgRef.current;
-      if (!fg) return;
-      const p = padding ?? Math.min(64, Math.max(32, Math.round(Math.min(width, height) * 0.06)));
-      const main = nodes.filter((n) => (adjacency.get(n.id)?.size ?? 0) >= 2);
-      const filterFn = main.length >= 6
-        ? (n: GraphNode) => (adjacency.get(n.id)?.size ?? 0) >= 2
-        : undefined;
-      fg.zoomToFit(duration, p, filterFn);
-    },
-    [width, height, nodes, adjacency],
+  const nodeSetKey = useMemo(
+    () => view.nodes.map((node) => node.id).sort().join("\u001e"),
+    [view.nodes],
   );
 
-  useEffect(() => {
-    const t = setTimeout(() => fit(440), 380);
-    return () => clearTimeout(t);
-  }, [data, width, height, fit]);
+  const dataRef = useRef<{
+    key: string;
+    data: { nodes: GraphNode[]; links: GraphLink[] };
+  } | null>(null);
+  const dataKey = [
+    nodeSetKey,
+    view.links.map(linkKey).sort().join("\u001e"),
+  ].join("\u001d");
+  const previousNodes = new Map(
+    (dataRef.current?.data.nodes ?? []).map((node) => [node.id, node]),
+  );
+  for (const node of view.nodes) {
+    const previous = previousNodes.get(node.id);
+    if (!previous || previous === node || (node.x != null && node.y != null)) {
+      continue;
+    }
+    if (previous.x != null) node.x = previous.x;
+    if (previous.y != null) node.y = previous.y;
+    if (previous.vx != null) node.vx = previous.vx;
+    if (previous.vy != null) node.vy = previous.vy;
+    if (previous.fx != null) node.fx = previous.fx;
+    if (previous.fy != null) node.fy = previous.fy;
+  }
+  if (dataRef.current?.key !== dataKey) {
+    const byId = new Map(view.nodes.map((node) => [node.id, node]));
+    const seedRadii = ringRadii(view.nodes);
+    const integrations = view.nodes.filter(
+      (node) => node.layer === "integration",
+    );
+    integrations.forEach((node, index) => {
+      if (node.x != null && node.y != null) return;
+      const angle = (2 * Math.PI * index) / integrations.length;
+      node.x = Math.cos(angle) * seedRadii.integration;
+      node.y = Math.sin(angle) * seedRadii.integration;
+    });
+    for (const node of view.nodes) {
+      if (node.layer === "user") {
+        node.fx = 0;
+        node.fy = 0;
+      }
+      if (node.layer !== "memory" || (node.x != null && node.y != null)) {
+        continue;
+      }
+      const memoryLink = view.links.find(
+        (link) => link.relation === "from" && linkEnds(link)[0] === node.id,
+      );
+      const targetId = memoryLink
+        ? linkEnds(memoryLink)[1]
+        : node.integration
+          ? `int-${node.integration}`
+          : null;
+      if (!targetId) continue;
+      const integration = byId.get(targetId);
+      const hash = hashId(node.id);
+      const angle = hashId(targetId) / 0x1_0000_0000 * 2 * Math.PI;
+      const integrationX =
+        integration?.x ?? Math.cos(angle) * seedRadii.integration;
+      const integrationY =
+        integration?.y ?? Math.sin(angle) * seedRadii.integration;
+      node.x = integrationX + ((hash % 101) / 100 - 0.5) * 12;
+      node.y =
+        integrationY + (((Math.floor(hash / 101) % 101) / 100) - 0.5) * 12;
+    }
+    dataRef.current = {
+      key: dataKey,
+      data: { nodes: view.nodes, links: view.links },
+    };
+  }
+  const data = dataRef.current.data;
+  const radii = useMemo(() => ringRadii(data.nodes), [data]);
+  const appliedForces = useRef<{
+    data: typeof data;
+    radii: typeof radii;
+  } | null>(null);
 
-  /* expose imperative API to parent */
+  const visibleMemoryCounts = useMemo(() => {
+    const visible = new Map<string, number>();
+    for (const link of view.links) {
+      if (link.relation !== "from") continue;
+      const [, target] = linkEnds(link);
+      visible.set(target, (visible.get(target) ?? 0) + 1);
+    }
+    const hidden = new Map<string, number>();
+    for (const [integrationId, count] of view.memoryCounts) {
+      const remaining = count - (visible.get(integrationId) ?? 0);
+      if (remaining > 0) hidden.set(integrationId, remaining);
+    }
+    return hidden;
+  }, [view.links, view.memoryCounts]);
+
+  const fit = useCallback(
+    (ids?: Set<string>, durationMs = 440) => {
+      const fg = fgRef.current;
+      if (!fg) return;
+      const padding = Math.min(
+        64,
+        Math.max(32, Math.round(Math.min(width, height) * 0.06)),
+      );
+      fg.zoomToFit(
+        durationMs,
+        padding,
+        ids ? (node) => ids.has(node.id) : undefined,
+      );
+    },
+    [width, height],
+  );
+
   useImperativeHandle(
     ref,
     () => ({
-      zoomToFit: (duration = 360, padding) => fit(duration, padding),
-      zoomTo: (scale, duration = 360) =>
-        fgRef.current?.zoom(scale, duration),
-      centerAt: (x, y, duration = 360) =>
-        fgRef.current?.centerAt(x, y, duration),
-      focusNode: (id, duration = 360, scale = 2.4) => {
-        const node = nodes.find((n) => n.id === id);
-        if (!node || node.x == null || node.y == null) return;
-        fgRef.current?.centerAt(node.x, node.y, duration);
-        fgRef.current?.zoom(scale, duration);
+      fit: (ids, durationMs) => fit(ids, durationMs ?? 360),
+      zoomTo: (scale, durationMs = 360) =>
+        fgRef.current?.zoom(scale, durationMs),
+      zoomBy: (factor, durationMs = 240) => {
+        const current = fgRef.current?.zoom();
+        if (typeof current === "number" && Number.isFinite(factor)) {
+          fgRef.current?.zoom(current * factor, durationMs);
+        }
       },
-      selectNode: () => {},
-      highlightNode: () => {},
-      highlightNeighbors: () => {},
-      highlightPath: () => {},
-      clearHighlight: () => {},
-      setFilter: () => {},
-      clearFilters: () => {},
-      getViewport: () => null,
-      getSelectedNode: () =>
-        nodes.find((n) => n.id === selectedId) ?? null,
     }),
-    [nodes, selectedId],
+    [fit],
   );
 
-  /* canvas painter */
+  const configureForces = useCallback(() => {
+    const fg = fgRef.current;
+    if (
+      !fg ||
+      (appliedForces.current?.data === data &&
+        appliedForces.current.radii === radii)
+    ) {
+      return;
+    }
+    const charge = fg.d3Force("charge") as
+      | { strength: (strength: number) => unknown }
+      | undefined;
+    charge?.strength(-70);
+    const link = fg.d3Force("link") as
+      | {
+          distance: (distance: (link: GraphLink) => number) => unknown;
+          strength: (strength: (link: GraphLink) => number) => unknown;
+        }
+      | undefined;
+    link?.distance((edge) => (edge.relation === "from" ? 26 : 60));
+    link?.strength((edge) => (edge.relation === "from" ? 0.7 : 0.08));
+    const radial = forceRadial<GraphNode>((node) => radii[node.layer]).strength(
+      (node) => (node.layer === "memory" ? 0.08 : 0.7),
+    );
+    fg.d3Force("radial", radial);
+    fg.d3Force(
+      "collide",
+      forceCollide<GraphNode>((node) => radiusFor(node.layer) + 8),
+    );
+    appliedForces.current = { data, radii };
+    fg.d3ReheatSimulation();
+  }, [data, radii]);
+
+  useEffect(() => {
+    configureForces();
+  }, [configureForces]);
+
+  const focusKey = view.focusSet
+    ? [...view.focusSet].sort().join("\u001e")
+    : null;
+  const focusSetRef = useRef(view.focusSet);
+  useLayoutEffect(() => {
+    focusSetRef.current = view.focusSet;
+  }, [view.focusSet]);
+  useEffect(() => {
+    if (!fitOnFocusChange) return;
+    fit(focusSetRef.current ?? undefined, 440);
+  }, [fitOnFocusChange, focusKey, fit]);
+  const onEngineStop = useCallback(() => {
+    configureForces();
+    if (fitOnFocusChange) fit(focusSetRef.current ?? undefined, 440);
+  }, [configureForces, fit, fitOnFocusChange]);
+
+  const nodeById = useMemo(
+    () => new Map(data.nodes.map((node) => [node.id, node])),
+    [data],
+  );
+
   const drawNode = useCallback(
     (rawNode: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const n = rawNode as GraphNode;
-      if (n.x == null || n.y == null) return;
-
-      const r = radiusFor(n.layer);
-      const isSelected = selectedId === n.id;
-      const isHover = hoverId === n.id;
-      const isHighlight = highlightId === n.id;
-      const isNeighbor = highlightNeighborIds.has(n.id);
-      const inPath = pathIds.has(n.id);
-
-      // Dim everything when something is highlighted but this node isn't part of it.
-      let alpha = 1;
-      const hasFocus = highlightId || pathIds.size > 0;
-      if (hasFocus && !isHighlight && !isNeighbor && !inPath) alpha = 0.18;
-
-      const fill = isSelected || isHighlight ? "#2E3A8C" : LAYER_INK[n.layer];
-      const ring = LAYER_RING[n.layer];
+      const node = rawNode as GraphNode;
+      if (node.x == null || node.y == null) return;
+      const radius = radiusFor(node.layer);
+      const focused = focusId === node.id;
+      const hovered = hoverId === node.id;
+      const alpha = nodeOpacity(node.id, view, pathIds);
+      const fill = focused ? "#2E3A8C" : LAYER_INK[node.layer];
 
       ctx.save();
       ctx.globalAlpha = alpha;
-
-      // outer halo for selected/highlight
-      if (isSelected || isHighlight) {
+      if (focused) {
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r + 6, 0, 2 * Math.PI);
+        ctx.arc(node.x, node.y, radius + 6, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(46,58,140,0.10)";
         ctx.fill();
       }
 
-      // hairline ring for definition on paper background
       ctx.beginPath();
-      ctx.arc(n.x, n.y, r + 0.5, 0, 2 * Math.PI);
-      ctx.strokeStyle = isSelected || isHighlight ? "#2E3A8C" : ring;
+      ctx.arc(node.x, node.y, radius + 0.5, 0, Math.PI * 2);
+      ctx.strokeStyle = focused ? "#2E3A8C" : LAYER_RING[node.layer];
       ctx.lineWidth = 1 / globalScale;
       ctx.stroke();
 
-      // fill
       ctx.beginPath();
-      ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+      ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
       ctx.fillStyle = fill;
       ctx.fill();
 
-      // hover ring
-      if (isHover && !isSelected && !isHighlight) {
+      if (hovered && !focused) {
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r + 3, 0, 2 * Math.PI);
+        ctx.arc(node.x, node.y, radius + 3, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(26,26,26,0.35)";
         ctx.lineWidth = 1 / globalScale;
         ctx.stroke();
       }
 
-      // labels: show always for select/hover/highlight, otherwise gated by zoom + degree
-      const degree = adjacency.get(n.id)?.size ?? 0;
-      const showLabel =
-        isSelected ||
-        isHover ||
-        isHighlight ||
-        (globalScale >= 1.8 && degree >= 2) ||
-        (globalScale >= 0.9 && degree >= 5) ||
-        n.layer === "user" ||
-        n.layer === "workflow";
-
-      if (showLabel) {
-        const fontSize = Math.max(11 / globalScale, 5.5);
+      if (
+        shouldLabel(node, {
+          hoverId,
+          focusSet: view.focusSet,
+          pathIds,
+          zoom: globalScale,
+        })
+      ) {
+        const fontSize = Math.max((compact ? 10 : 11) / globalScale, 5.5);
         ctx.font = `${fontSize}px "Inter", system-ui, sans-serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
-        ctx.fillStyle =
-          isSelected || isHighlight ? "#1A1A1A" : "rgba(91,91,88,0.92)";
-        ctx.fillText(n.label, n.x + r + 4, n.y);
+        ctx.fillStyle = focused
+          ? "#1A1A1A"
+          : "rgba(91,91,88,0.92)";
+        ctx.fillText(node.label, node.x + radius + 4, node.y);
       }
 
+      const hiddenMemoryCount = visibleMemoryCounts.get(node.id);
+      if (node.layer === "integration" && hiddenMemoryCount) {
+        const badgeX = node.x + radius - 1;
+        const badgeY = node.y - radius + 1;
+        const badgeRadius =
+          (5 + Math.min(String(hiddenMemoryCount).length - 1, 2)) /
+          globalScale;
+        ctx.beginPath();
+        ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "#F8F7F2";
+        ctx.fill();
+        ctx.strokeStyle = LAYER_RING.integration;
+        ctx.lineWidth = 0.7 / globalScale;
+        ctx.stroke();
+        ctx.font = `${9 / globalScale}px ui-monospace, SFMono-Regular, monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#5B5B58";
+        ctx.fillText(String(hiddenMemoryCount), badgeX, badgeY + 0.2 / globalScale);
+      }
       ctx.restore();
     },
     [
-      selectedId,
+      compact,
+      focusId,
       hoverId,
-      highlightId,
-      highlightNeighborIds,
       pathIds,
-      adjacency,
+      view,
+      visibleMemoryCounts,
     ],
   );
 
-  /* link painter — slim hairlines, neighbor highlight on focus */
   const drawLink = useCallback(
     (rawLink: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const l = rawLink as {
-        source: GraphNode;
-        target: GraphNode;
-      };
-      const s = l.source;
-      const t = l.target;
+      const link = rawLink as GraphLink;
+      const source =
+        typeof link.source === "string" ? null : link.source;
+      const target =
+        typeof link.target === "string" ? null : link.target;
       if (
-        !s ||
-        !t ||
-        s.x == null ||
-        s.y == null ||
-        t.x == null ||
-        t.y == null
-      )
+        !source ||
+        !target ||
+        source.x == null ||
+        source.y == null ||
+        target.x == null ||
+        target.y == null
+      ) {
         return;
-
-      const sId = s.id;
-      const tId = t.id;
-      const hasFocus = highlightId || pathIds.size > 0;
-      const onPath = pathIds.has(sId) && pathIds.has(tId);
-      const touchesHighlight =
-        highlightId &&
-        (sId === highlightId ||
-          tId === highlightId ||
-          (highlightNeighborIds.has(sId) && highlightNeighborIds.has(tId)));
-
-      let stroke = "rgba(180,176,165,0.6)";
-      let width = 1 / globalScale;
-      let alpha = 1;
-
-      if (hasFocus) {
-        if (onPath || touchesHighlight) {
-          stroke = "rgba(46,58,140,0.85)";
-          width = 1.4 / globalScale;
-        } else {
-          alpha = 0.15;
-        }
       }
+      const style = edgeStyle(link.relation);
+      const isFocused = !!focusId &&
+        (source.id === focusId || target.id === focusId);
+      const alpha = isFocused ? 0.8 : focusId ? style.alpha * 0.1 : style.alpha;
+      const stroke = isFocused ? "#2E3A8C" : "#5B5B58";
+      const dx = target.x - source.x;
+      const dy = target.y - source.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance === 0) return;
+      const unitX = dx / distance;
+      const unitY = dy / distance;
+      const targetRadius = style.arrow ? radiusFor(target.layer) : 0;
+      const endX = target.x - unitX * targetRadius;
+      const endY = target.y - unitY * targetRadius;
 
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(t.x, t.y);
       ctx.strokeStyle = stroke;
-      ctx.lineWidth = width;
+      ctx.lineWidth = style.width / globalScale;
+      ctx.setLineDash(style.dash?.map((dash) => dash / globalScale) ?? []);
+      ctx.beginPath();
+      ctx.moveTo(source.x, source.y);
+      ctx.lineTo(endX, endY);
       ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (style.arrow) {
+        const arrowLength = 5 / globalScale;
+        const arrowHalfWidth = 2.5 / globalScale;
+        const baseX = endX - unitX * arrowLength;
+        const baseY = endY - unitY * arrowLength;
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(
+          baseX - unitY * arrowHalfWidth,
+          baseY + unitX * arrowHalfWidth,
+        );
+        ctx.lineTo(
+          baseX + unitY * arrowHalfWidth,
+          baseY - unitX * arrowHalfWidth,
+        );
+        ctx.closePath();
+        ctx.fillStyle = stroke;
+        ctx.fill();
+      }
       ctx.restore();
     },
-    [highlightId, highlightNeighborIds, pathIds],
+    [focusId],
+  );
+
+  const drawCoUsed = useCallback(
+    (ctx: CanvasRenderingContext2D, globalScale: number) => {
+      if (coUsed.length === 0) return;
+      const maxWeight = Math.max(...coUsed.map((edge) => edge.weight));
+      ctx.save();
+      ctx.strokeStyle = LAYER_INK.integration;
+      ctx.globalAlpha = 0.25;
+      for (const edge of coUsed) {
+        const source = nodeById.get(edge.source);
+        const target = nodeById.get(edge.target);
+        if (
+          source?.x == null ||
+          source.y == null ||
+          target?.x == null ||
+          target.y == null
+        ) {
+          continue;
+        }
+        ctx.beginPath();
+        ctx.lineWidth = coUsedWidth(edge.weight, maxWeight) / globalScale;
+        ctx.moveTo(source.x, source.y);
+        ctx.lineTo(target.x, target.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
+    [coUsed, nodeById],
   );
 
   return (
@@ -350,24 +490,24 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
       minZoom={0.18}
       maxZoom={6}
       nodeRelSize={4}
-      onEngineStop={() => fit(440)}
+      onEngineStop={onEngineStop}
+      onRenderFramePre={drawCoUsed}
       nodeCanvasObject={drawNode}
       nodePointerAreaPaint={(rawNode, color, ctx) => {
-        const n = rawNode as GraphNode;
-        if (n.x == null || n.y == null) return;
-        const r = radiusFor(n.layer) + 6;
+        const node = rawNode as GraphNode;
+        if (node.x == null || node.y == null) return;
+        const radius = radiusFor(node.layer) + 6;
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
         ctx.fill();
       }}
       linkCanvasObject={drawLink}
       linkCanvasObjectMode={() => "replace"}
       onNodeClick={(rawNode) => onNodeClick(rawNode as GraphNode)}
       onNodeHover={(rawNode) => {
-        const n = rawNode as GraphNode | null;
-        setHoverId(n?.id ?? null);
-        onNodeHover(n);
+        const node = rawNode as GraphNode | null;
+        onHover(node);
       }}
       onBackgroundClick={onBackgroundClick}
     />
