@@ -33,7 +33,8 @@ env/
 # --- Composio / ingest cache (optional override: COMPOSIO_CACHE_DIR) ---
 .composio_cache/
 
-# --- SurrealDB exports (see Makefile db-export) ---
+# --- Local SurrealDB process and exports ---
+.surrealdb.pid
 backup_*.surql
 *.backup.surql
 

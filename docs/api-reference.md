@@ -2,19 +2,18 @@
 
 *For the frontend developer.*
 
-Everything you need to connect users to their tools (Slack/GitHub/Gmail/Linear/Notion/Perplexity) and read the knowledge graph back, over plain HTTP. No MCP knowledge required — that's covered separately in `docs/agent-harness-integration.md` for agent authors.
+Connect users to their tools (Slack/GitHub/Gmail/Linear/Notion/Perplexity) and read the knowledge graph back over plain HTTP.
 
 > **Companion docs**:
-> - **Live Swagger UI**: https://app-bf31.onrender.com/docs (interactive request builder)
-> - **OpenAPI spec**: https://app-bf31.onrender.com/openapi.json (machine-readable)
-> - **Agent integration**: `docs/agent-harness-integration.md` (for MCP / pydantic-ai consumers)
+> - **Local Swagger UI**: http://localhost:8001/docs (interactive request builder)
+> - **OpenAPI spec**: http://localhost:8001/openapi.json (machine-readable)
 
 ---
 
 ## 1. Base URL and conventions
 
 ```
-Base URL: https://app-bf31.onrender.com
+Base URL: http://localhost:8001
 Auth:     none (single-tenant for the hackathon)
 CORS:     open (`Access-Control-Allow-Origin: *`) — browser fetches work without proxying
 Encoding: JSON in, JSON out
@@ -27,12 +26,11 @@ Encoding: JSON in, JSON out
 | Response content type | `application/json` always |
 | 4xx errors | Body shape: `{"detail": "human-readable message"}` |
 | Time format | ISO-8601 strings with `+00:00` offset (UTC) |
-| Cold-start latency | ~30 s on first request after 15 min idle (free Render tier) |
 
 The fastest way to test it works right now:
 
 ```bash
-curl https://app-bf31.onrender.com/api/health
+curl http://localhost:8001/api/health
 ```
 
 Should return:
@@ -51,7 +49,7 @@ Should return:
 ## 2. Quick start — connect a user's Slack in 3 lines
 
 ```typescript
-const BASE = "https://app-bf31.onrender.com";
+const BASE = "http://localhost:8001";
 
 const { redirect_url } = await fetch(`${BASE}/api/composio/connect`, {
   method: "POST",
@@ -641,7 +639,7 @@ If `surreal.ok` or `composio.ok` is `false`, downstream is impaired but the API 
 ### 6.1. Render the "Connect Apps" page
 
 ```typescript
-const BASE = "https://app-bf31.onrender.com";
+const BASE = "http://localhost:8001";
 
 async function loadAvailableToolkits() {
   const r = await fetch(`${BASE}/api/composio/toolkits`);
@@ -714,20 +712,6 @@ async function loadDashboard(userId: string) {
   return { user, integrations, memories, skills, workflows };
 }
 ```
-
-### 6.4. Wake the cold-started service before showing the UI
-
-```typescript
-async function warmUp() {
-  // Returns ~30s on cold start, ~150ms when warm.
-  await fetch(`${BASE}/health`);
-}
-
-// In your app entrypoint:
-warmUp().catch(() => {/* render skeleton anyway */});
-```
-
----
 
 ## 7. TypeScript types (copy-paste)
 
@@ -976,8 +960,7 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 | **Auth** | None on the API itself. Single-tenant for the hackathon. Don't put real PII in the graph. |
 | **OAuth tokens** | Stored at Composio, never on our backend. We never see raw `xoxb-…` etc. |
 | **Rate limits** | None enforced by us. Composio's free tier is 20k tool calls / month (way more than enough). |
-| **HTTPS** | Always. The base URL is HTTPS-only; HTTP requests get a 308 redirect. |
-| **Cold starts** | Render free tier spins down after ~15 min idle. First request after sleep takes 30–60 s. Hit `/health` to wake. |
+| **Transport** | Local development uses HTTP on `localhost:8001`. Use HTTPS if you deploy it. |
 
 ---
 
@@ -987,9 +970,7 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 
 2. **Auto-discovered toolkits.** The list returned by `GET /toolkits` reflects the live Composio dashboard. If admin enables a 7th toolkit there, it'll appear in the next request — no backend redeploy needed.
 
-3. **Free Render tier means cold starts.** Add a `/health` ping on app load to warm the instance before showing the UI.
-
-4. **Refresh the graph** by re-running ingest from the backend — frontend reads what's there, doesn't write. Pipeline command: `python -m ingest --from-fixtures` (synthetic) or `python -m ingest` (real Composio data).
+3. **Refresh the graph** by re-running ingest from the backend. See [pipeline commands](../knowledge_graph/README.md#pipeline-commands) for offline fixtures and live Composio data.
 
 ---
 

@@ -1,5 +1,8 @@
 # Entrypoint audit
 
+Historical audit of the earlier cleanup, not the current command list. See
+`make help` and [pipeline commands](README.md#pipeline-commands) for current usage.
+
 Audited from the cleanup base without provider keys, with SurrealDB v2 running.
 The original suite passed (106 tests, four skips). All original no-key Makefile
 targets were executed; `dev`, `db-down`, and `db-reset` are verified during the

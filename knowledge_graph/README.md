@@ -8,7 +8,7 @@ tests/fixtures/train ───┘                                │
                                                         │
                        wiki: graph slices → validated wiki_page markdown
                                                         │
-                       SurrealDB ← FastAPI /api/kg/* ← web Graph view
+                       SurrealDB ← FastAPI /api/kg/* ← chat results
 ```
 
 All paths use the same schema and writers. `make dev` only applies schema and seeds
@@ -17,22 +17,38 @@ it imports no KG runtime modules, but its tests use `schema/*.surql`.
 
 | Command | Keys / behavior |
 | --- | --- |
-| `make db-up db-schema db-seed` | None; Docker SurrealDB v2, schema, seeded demo |
+| `make dev` | None; installs dependencies, starts SurrealDB v2, applies schema and seeds demo |
 | `make ingest-demo` | None; fixture pullers + explicit deterministic offline/demo model |
-| `make ingest ARGS='-i slack'` | Composio + connected account, OpenRouter **or** Anthropic |
-| `make ingest ARGS='--from-fixtures'` | OpenRouter **or** Anthropic only; real extraction on fixtures |
-| `make wiki` | OpenRouter, Anthropic, or the configured OpenAI model/key |
-| `KG_LLM_MODE=offline make wiki` | None; deterministic wiki from live DB graph slices |
-| `make wiki-cat P=tree` / `P=user.md` | None; list/read stored wiki pages |
-| `make test` / `make e2e` | SurrealDB; no keys (two live wiki tests skip) |
-| `make synth-corpus` / `make surface` | None; regenerate fixtures / surface candidates |
-| `make db-reset` | None; **destructively resets** local DB volume and restores seed |
+| `make test` | SurrealDB; pytest + web typecheck/Vitest; live wiki tests skip without keys |
+| `make surface` | None; surface candidates from the current graph |
+| `make db-reset` | None; **destructively resets** the local DB and restores seed |
 
-Start with `cp -n .env.example .env`, then `make db-up ingest-demo`. Use `make dev`
+Start with `cp -n .env.example .env`, then `make ingest-demo`. Use `make dev`
 for the API (:8001) and web (:3000); it seeds demo rows alongside fixture rows.
 `make ingest-demo` never resets the DB. Reruns deduplicate by source ID. For live
 ingest, set keys in `.env`, then connect apps with `composio login` / `composio link
 slack` (or github/gmail/linear/notion/perplexityai) for `COMPOSIO_USER_ID`.
+
+## Pipeline commands
+
+Run from the repository root after copying `.env.example` to `.env`. The default
+`KG_LLM_MODE=offline` uses labeled deterministic demo outputs, including wiki
+generation. Live extraction requires `KG_LLM_MODE=live` and OpenRouter or Anthropic
+keys (plus Composio for connected apps); live wiki can also use its configured
+OpenAI model/key.
+
+```bash
+export PYTHONPATH="$PWD:$PWD/knowledge_graph"
+make db-up
+uv run python knowledge_graph/schema/apply.py
+uv run python knowledge_graph/seed/seed.py
+uv run python -m wiki
+uv run python knowledge_graph/seed/wiki_cat.py tree  # or user.md
+uv run python knowledge_graph/tests/synth/generate_corpus.py
+uv run pytest knowledge_graph/tests/e2e -v
+KG_LLM_MODE=live uv run python -m ingest -i slack
+KG_LLM_MODE=live uv run python -m ingest --from-fixtures
+```
 
 The two committed golden files validate stored triage/memory output schemas; they
 do not cover a complete run or implement recording. `offline.py` supplies labeled,
@@ -42,6 +58,6 @@ and renders bounded graph excerpts—not learned insights or quality evaluation.
 Real extraction still uses the original prompts and providers. Verify with
 `uv run pytest -q`; all DB tests use isolated test databases, not `memory`.
 
-[Reachability and Makefile target audit](TARGETS.md). The old `.devin/RULES.md`
-self-tuning instructions refer to retired eval CLIs; retained eval helpers are
+The [historical entrypoint audit](TARGETS.md) documents the earlier cleanup;
+`make help` is the current list of supported shortcuts. Retained eval helpers are
 regression-tested scoring functions, not an autonomous prompt-optimization loop.
