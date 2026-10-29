@@ -16,7 +16,7 @@
  */
 
 import { streamText, stepCountIs } from "ai";
-import { chatModel } from "./providers/openrouter";
+import { agentModel } from "./providers/openrouter";
 import {
   metaTools,
   v1WorkTools,
@@ -108,7 +108,7 @@ when COMPOSIO_CONNECT is active: integrations_open_connect_manager · integratio
 GLOBAL (always available):
 META: open_window · close_window · focus_window · arrange_windows · clear_canvas
 WRITES: add_memory · upsert_entity · upsert_skill · upsert_workflow · add_chat · write_wiki_page · update_user · ask_user
-WINDOW MANAGEMENT: winman_move_to_position · winman_arrange_preset · winman_set_centre_arrangement · winman_swap_positions · winman_pin_window · winman_unpin_window · winman_toggle_pin · winman_read_pinned · winman_bring_to_front · winman_send_to_back · winman_read_focused · winman_resize_window · winman_maximize_window · winman_minimize_window · winman_close_all_except · winman_cascade_windows · winman_tile_windows · winman_read_layout_state · winman_read_window_list
+WINDOW MANAGEMENT: winman_move_to_position · winman_arrange_preset · winman_pin_window · winman_unpin_window · winman_toggle_pin · winman_read_pinned · winman_bring_to_front · winman_read_focused · winman_resize_window · winman_maximize_window · winman_minimize_window · winman_close_all_except · winman_cascade_windows · winman_tile_windows · winman_read_layout_state · winman_read_window_list
 
 ═══ WINDOW KINDS (each backed by a real endpoint) ═══
 schema-backed:
@@ -393,7 +393,7 @@ ${skills.join("\n---\n")}`
     : "";
 
   const stream = streamText({
-    model: chatModel(),
+    model: agentModel(),
     system: ORCH_SYSTEM + skillBlock,
     prompt: `${snapshotToPrompt(ctx.snapshot, { includeGrid: false, includeRecentActions: false })}
 

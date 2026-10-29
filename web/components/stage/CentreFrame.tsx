@@ -223,7 +223,6 @@ function pickSwapCandidate(
   let best: WindowState | null = null;
   for (const w of windows) {
     if (w.id === selfId) continue;
-    if (w.minimized) continue;
     if (w.kind === "ask_user") continue;
     if (w.pinned) continue;
     if (!best || w.zIndex > best.zIndex) best = w;

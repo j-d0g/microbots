@@ -86,7 +86,7 @@ export function StageDesktop() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const visible = useMemo(() => windows.filter((w) => !w.minimized), [windows]);
+  const visible = windows;
 
   /* The window with the highest zIndex is the active one — that's
      what the store's `bringToFront` increments, and what we want to
