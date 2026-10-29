@@ -96,7 +96,7 @@ function MemoryCard({ card }: { card: ChatCard }) {
       {search ? (
         <>
           <p className="mb-2 font-mono text-[10px] text-ink-35">
-            “{search.query}” · {search.count} matches
+            “{search.query}” · {search.count} {search.count === 1 ? "match" : "matches"}
           </p>
           {search.snippets.length ? (
             <ul className="space-y-2">
