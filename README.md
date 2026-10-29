@@ -27,3 +27,10 @@ make dev
 - Web client: `web/`; its README documents local scripts.
 - `make db-schema`, `make db-seed`, `uv run pytest -q`
 - API docs: `docs/api-reference.md`; frontend contract: `docs/kg-frontend-contract.md`.
+
+## Knowledge-graph pipeline
+
+`make db-up ingest-demo` ingests local train fixtures through triage, enrichment,
+and wiki generation without API keys. Outputs are explicitly labeled offline/demo;
+they exercise the pipeline, not real semantic extraction. `make db-reset` restores
+the seeded demo afterward. See [KG commands and architecture](knowledge_graph/README.md).

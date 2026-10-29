@@ -53,11 +53,7 @@ class FixturePuller(BasePuller):
     async def pull(self, config: Config, composio: Composio) -> list[RawItem]:  # noqa: ARG002
         """Load fixture JSON and convert each entry to a ``RawItem``."""
         if not self.fixture_path.exists():
-            log.warning(
-                "fixture %s not found — returning 0 items",
-                self.fixture_path,
-            )
-            return []
+            raise FileNotFoundError(f"Fixture not found: {self.fixture_path}")
 
         with open(self.fixture_path, "r", encoding="utf-8") as f:
             entries = json.load(f)

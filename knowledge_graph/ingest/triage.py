@@ -105,6 +105,9 @@ async def triage_batch_with_retry(
             "chat_records": [],
             "items_dropped": [],
         }
+    if config.offline:
+        from offline import triage
+        return validate_triage_output(triage(batch))
     system = integration_system_prompt(integration)
     user = build_user_payload(batch)
     max_r = config.pipeline.max_retries

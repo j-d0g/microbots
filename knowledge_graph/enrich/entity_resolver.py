@@ -109,7 +109,8 @@ async def resolve_entities(
         )
 
         try:
-            result = await agent.run(user)
+            from offline import entities, model
+            result = await agent.run(user, model=model(entities(batch)) if config.offline else None)
             resolution = result.output
         except Exception as e:  # noqa: BLE001
             log.warning("Entity resolution failed for batch starting at %d: %s", batch_start, e)
