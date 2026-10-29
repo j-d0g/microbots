@@ -20,6 +20,7 @@ describe("voice config", () => {
     expect(await (await getVoiceConfig()).json()).toEqual({
       stt: "browser",
       tts: "browser",
+      live: false,
     });
   });
 
@@ -28,18 +29,20 @@ describe("voice config", () => {
     expect(await (await getVoiceConfig()).json()).toEqual({
       stt: "openai",
       tts: "openai",
+      live: true,
     });
   });
 
   it("loads the server config and falls back to browser on errors", async () => {
     vi.resetModules();
     vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(
-      jsonResponse({ stt: "openai", tts: "openai" }),
+      jsonResponse({ stt: "openai", tts: "openai", live: true }),
     ));
     const voice = await import("@/lib/voice");
     await expect(voice.loadVoiceConfig()).resolves.toEqual({
       stt: "openai",
       tts: "openai",
+      live: true,
     });
 
     vi.resetModules();
@@ -48,6 +51,7 @@ describe("voice config", () => {
     await expect(rejectedVoice.loadVoiceConfig()).resolves.toEqual({
       stt: "browser",
       tts: "browser",
+      live: false,
     });
 
     vi.resetModules();
@@ -58,6 +62,7 @@ describe("voice config", () => {
     await expect(unavailableVoice.loadVoiceConfig()).resolves.toEqual({
       stt: "browser",
       tts: "browser",
+      live: false,
     });
   });
 
@@ -79,7 +84,7 @@ describe("voice config", () => {
     vi.stubGlobal("window", { speechSynthesis: synthesis });
     vi.stubGlobal("SpeechSynthesisUtterance", MockUtterance);
     vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(
-      jsonResponse({ stt: "browser", tts: "browser" }),
+      jsonResponse({ stt: "browser", tts: "browser", live: false }),
     ));
 
     const { cancelSpeak, speak } = await import("@/lib/voice");
@@ -103,7 +108,7 @@ describe("voice config", () => {
       resolveTts = resolve;
     });
     const fetchMock = vi.fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse({ stt: "openai", tts: "openai" }))
+      .mockResolvedValueOnce(jsonResponse({ stt: "openai", tts: "openai", live: true }))
       .mockReturnValueOnce(pendingTts);
     const synthesis = {
       cancel: vi.fn(),
@@ -144,7 +149,7 @@ describe("voice config", () => {
       speak: vi.fn(),
     };
     const fetchMock = vi.fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse({ stt: "openai", tts: "openai" }))
+      .mockResolvedValueOnce(jsonResponse({ stt: "openai", tts: "openai", live: true }))
       .mockResolvedValueOnce(new Response(null, { status: 503 }));
     vi.stubGlobal("window", { speechSynthesis: synthesis });
     vi.stubGlobal("SpeechSynthesisUtterance", MockUtterance);
@@ -185,7 +190,7 @@ describe("voice config", () => {
       speak: vi.fn(),
     };
     const fetchMock = vi.fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse({ stt: "openai", tts: "openai" }))
+      .mockResolvedValueOnce(jsonResponse({ stt: "openai", tts: "openai", live: true }))
       .mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3])));
     vi.stubGlobal("window", { speechSynthesis: synthesis });
     vi.stubGlobal("SpeechSynthesisUtterance", MockUtterance);

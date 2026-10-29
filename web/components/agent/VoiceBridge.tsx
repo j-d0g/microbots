@@ -6,9 +6,11 @@ import {
   cancelSpeak,
   speak,
   usePushToTalk,
+  useVoiceConfig,
 } from "@/lib/voice";
 import { AgentFallback, applyAgentEvent, sendQuery } from "@/lib/agent-client";
 import { routeIntent } from "@/lib/agent-router";
+import { createLiveVoice, type LiveVoiceState } from "@/lib/voice-live";
 
 /* -------------------------------------------------------------------------
  * VoiceBridge
@@ -31,26 +33,29 @@ import { routeIntent } from "@/lib/agent-router";
 export function VoiceBridge() {
   const setDock = useAgentStore((s) => s.setDock);
   const startReply = useAgentStore((s) => s.startReply);
+  const cfg = useVoiceConfig();
 
   const submittingRef = useRef(false);
-  const submitTranscript = useCallback(
-    async (text: string) => {
-      if (!text.trim() || submittingRef.current) return;
-      submittingRef.current = true;
+  const liveActiveRef = useRef(false);
+  const liveRef = useRef<ReturnType<typeof createLiveVoice> | null>(null);
+
+  const runVoiceTurn = useCallback(
+    async (text: string, { recordUser }: { recordUser: boolean }) => {
+      if (!text.trim()) return "";
       // Mirror `/` typing: prime the reply pane with the user's query
       // so the dock + command bar can render it as it streams.
       startReply(text);
-      // Record the spoken turn into the chat transcript so the chat
-      // window picks it up. agent-client's reply.start dedupes
-      // against the same trailing-text user message, so this is
-      // safe even when the SSE path also recreates the entry.
-      useAgentStore.getState().appendChatMessage({
-        id: `user-${Date.now()}`,
-        role: "user",
-        text,
-        ts: Date.now(),
-        room: useAgentStore.getState().chatRoom,
-      });
+      if (recordUser) {
+        const now = Date.now();
+        const store = useAgentStore.getState();
+        store.appendChatMessage({
+          id: `user-${now}`,
+          role: "user",
+          text,
+          ts: now,
+          room: store.chatRoom,
+        });
+      }
       try {
         await sendQuery(text);
       } catch (err) {
@@ -62,12 +67,79 @@ export function VoiceBridge() {
           // eslint-disable-next-line no-console
           console.error("[voice-bridge] sendQuery failed", err);
         }
+      }
+      return useAgentStore.getState().agentReply;
+    },
+    [startReply],
+  );
+
+  const submitTranscript = useCallback(
+    async (text: string) => {
+      if (!text.trim() || submittingRef.current) return;
+      submittingRef.current = true;
+      try {
+        await runVoiceTurn(text, { recordUser: true });
       } finally {
         submittingRef.current = false;
       }
     },
-    [startReply],
+    [runVoiceTurn],
   );
+
+  const getLiveVoice = useCallback(() => {
+    if (!cfg.live) return null;
+    if (!liveRef.current) {
+      const mapState = (state: LiveVoiceState) => {
+        liveActiveRef.current = state !== "idle" && state !== "error";
+        const dockState =
+          state === "connecting" || state === "thinking"
+            ? "thinking"
+            : state === "listening"
+              ? "listening"
+              : state === "speaking"
+                ? "speaking"
+                : "idle";
+        useAgentStore.getState().setDock(dockState);
+      };
+      liveRef.current = createLiveVoice({
+        runAgentTurn: (text) => runVoiceTurn(text, { recordUser: false }),
+        onUserUtterance: (text) => {
+          const now = Date.now();
+          const store = useAgentStore.getState();
+          store.appendChatMessage({
+            id: `user-${now}`,
+            role: "user",
+            text,
+            ts: now,
+            room: store.chatRoom,
+          });
+        },
+        onAssistantUtterance: (text) => {
+          const now = Date.now();
+          const store = useAgentStore.getState();
+          store.appendChatMessage({
+            id: `agent-${now}`,
+            role: "agent",
+            text,
+            ts: now,
+            room: store.chatRoom,
+            status: "done",
+          });
+        },
+        onCaption: (who, text) => {
+          if (who !== "user") return;
+          const store = useAgentStore.getState();
+          store.clearTranscript();
+          store.appendTranscript(text);
+        },
+        onState: mapState,
+        onError: (message) => {
+          useAgentStore.getState().setAgentStatus(message);
+        },
+      });
+    }
+    return liveRef.current;
+  }, [cfg.live, runVoiceTurn]);
 
   const ptt = usePushToTalk({ onTranscript: submitTranscript });
 
@@ -81,8 +153,29 @@ export function VoiceBridge() {
   // Expose for VoiceDot — the dot still wants pointer-driven hold-to-talk.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    (window as unknown as { __voice?: typeof ptt }).__voice = ptt;
-  }, [ptt]);
+    const handle = {
+      ...ptt,
+      live: cfg.live,
+      toggleLive: () => {
+        const live = getLiveVoice();
+        if (!live) return;
+        if (live.state === "idle" || live.state === "error") {
+          void live.start();
+        } else {
+          void live.stop();
+        }
+      },
+    };
+    (window as unknown as { __voice?: typeof handle }).__voice = handle;
+    window.dispatchEvent(new Event("voice-handle-change"));
+    return () => {
+      const target = window as unknown as { __voice?: typeof handle };
+      if (target.__voice === handle) {
+        delete target.__voice;
+        window.dispatchEvent(new Event("voice-handle-change"));
+      }
+    };
+  }, [ptt, cfg.live, getLiveVoice]);
 
   /* ---------- `.` hold-to-talk (installed once) --------------------- */
   useEffect(() => {
@@ -99,7 +192,14 @@ export function VoiceBridge() {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "." || e.repeat) return;
+      if (e.key === "Escape") {
+        if (liveActiveRef.current && !isTyping(e.target)) {
+          e.preventDefault();
+          void liveRef.current?.stop();
+        }
+        return;
+      }
+      if (e.key !== "." || e.repeat || liveActiveRef.current) return;
       if (isTyping(e.target)) return;
       e.preventDefault();
       if (!pressed) {
@@ -131,6 +231,13 @@ export function VoiceBridge() {
       window.removeEventListener("blur", onBlur);
     };
   }, []);
+
+  useEffect(
+    () => () => {
+      void liveRef.current?.stop();
+    },
+    [],
+  );
 
   /* ---------- Auto read-back on reply.done --------------------------
    *
@@ -166,6 +273,7 @@ export function VoiceBridge() {
           speaking = false;
           return;
         }
+        if (liveActiveRef.current) return;
         const reply = s.agentReply;
         const query = s.lastQuery;
         if (!reply || !reply.trim()) return;
