@@ -7,7 +7,6 @@ from typing import Any
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from surrealdb import AsyncSurreal
-from surrealdb.data.types.record_id import RecordID
 
 from config import Config
 from enrich.context import group_chats_by_integration
@@ -97,7 +96,8 @@ async def extract_memories(
             )
 
             try:
-                result = await agent.run(user)
+                from offline import memories, model
+                result = await agent.run(user, model=model(memories(batch, integration)) if config.offline else None)
                 extraction = result.output
             except Exception as e:  # noqa: BLE001
                 log.warning(

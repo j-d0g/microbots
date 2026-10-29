@@ -101,7 +101,12 @@ export interface CanvasSnapshot {
   integrations?: { slug: string; status: string }[];
   /** Most recent /api/health probe — agent can mention degraded
    *  mode in its reply rather than failing silently. */
-  backend?: { surrealOk: boolean; composioOk: boolean };
+  backend?: {
+    surrealOk: boolean;
+    composioOk: boolean;
+    /** false when COMPOSIO_API_KEY is unset — "not configured", not an outage. */
+    composioConfigured?: boolean;
+  };
 }
 
 /** Result returned by every layout-tool's `execute()` so the next

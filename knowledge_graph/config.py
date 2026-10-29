@@ -13,7 +13,9 @@ load_dotenv()
 
 @dataclass
 class LLMConfig:
-    provider: Literal["openrouter", "anthropic"] = "anthropic"
+    provider: Literal["openrouter", "anthropic"] = field(
+        default_factory=lambda: "openrouter" if os.getenv("OPENROUTER_API_KEY") else "anthropic"
+    )
     openrouter_model: str = "google/gemini-2.5-flash"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     anthropic_model: str = "claude-haiku-4-5-20251001"
@@ -89,6 +91,7 @@ class WikiConfig:
 
 @dataclass
 class Config:
+    offline: bool = field(default_factory=lambda: os.getenv("KG_LLM_MODE") == "offline")
     llm: LLMConfig = field(default_factory=LLMConfig)
     backfill: BackfillConfig = field(default_factory=BackfillConfig)
     scopes: IntegrationScopes = field(default_factory=IntegrationScopes)

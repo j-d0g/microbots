@@ -27,7 +27,6 @@ import {
   type RoomKind,
 } from "@/lib/store";
 import { useWebSpeech } from "@/lib/voice";
-import { getDummyPayload } from "@/lib/chat-dummy-payloads";
 import { cn } from "@/lib/cn";
 
 const SUGGESTIONS = [
@@ -67,12 +66,12 @@ export function ChatPanel() {
       setChatRoom(kind);
       const existing = useAgentStore
         .getState()
-        .windows.find((w) => w.kind === kind && !w.minimized);
+        .windows.find((w) => w.kind === kind);
       if (existing) {
         useAgentStore.getState().bringToFront(existing.id);
         return;
       }
-      openWindow(kind, { payload: getDummyPayload(kind) });
+      openWindow(kind);
     },
     [setChatRoom, openWindow],
   );

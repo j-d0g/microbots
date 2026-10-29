@@ -6,6 +6,7 @@ and schema/04_wiki_seed.surql, so the 18-page skeleton is present.
 from __future__ import annotations
 
 import pytest
+from pathlib import Path
 
 from db.client import MicrobotsDB
 
@@ -52,6 +53,18 @@ async def test_skeleton_starts_empty(db):
         assert page.content == ""
         assert page.token_estimate == 0
         assert page.revision == 0
+
+
+async def test_schema_reapplication_preserves_wiki_and_revisions(db):
+    await db.write_wiki_page("user.md", "# first")
+    await db.write_wiki_page("user.md", "# second")
+    tables = ("wiki_page", "wiki_page_revision", "wiki_parent")
+    before = {table: await db.raw_query(f"SELECT * FROM {table} ORDER BY id") for table in tables}
+    for _ in range(2):
+        for path in sorted((Path(__file__).parents[2] / "schema").glob("*.surql")):
+            await db.raw_query(path.read_text())
+        after = {table: await db.raw_query(f"SELECT * FROM {table} ORDER BY id") for table in tables}
+        assert after == before
 
 
 @pytest.mark.asyncio

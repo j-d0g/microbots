@@ -2,23 +2,21 @@
  * Snapshot builder. Three responsibilities:
  *
  *   1. `buildSnapshot()` — assemble a `CanvasSnapshot` from the live
- *      Zustand store + viewport. Reads pixel rects, returns % rects,
- *      named mount points, summaries, and an ASCII grid.
- *   2. `renderGrid()` — produce the 12×8 ASCII map. Pure, testable.
+ *      Zustand store + viewport, summaries, and an ASCII grid.
+ *   2. `renderGrid()` — produce the 12×8 ASCII map from visible windows.
  *   3. `recordAction()` — push a `ToolCallRecord` into the store's
  *      ring buffer (cap 6).
  *
  * The agent NEVER receives pixels. It receives the JSON output of
- * `buildSnapshot()`. Plan ref: `microbots_text_canvas_representation`.
+ * `buildSnapshot()`.
  */
 
 import { useAgentStore, type AgentStoreState, type WindowState } from "@/lib/store";
 import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
-import { inferMount } from "./mount-points";
+import { topWindow } from "./canvas-reducer";
 import type {
   CanvasSnapshot,
   MountPoint,
-  RectPct,
   ToolCallRecord,
   WindowSnapshot,
 } from "./types";
@@ -45,11 +43,9 @@ function nowMs(): number {
 /** Snapshot a single window. */
 function snapshotWindow(
   win: WindowState,
-  viewport: { w: number; h: number },
   state: AgentStoreState,
-  topZ: number,
+  focusedId: string | null,
 ): WindowSnapshot {
-  const { mount, rectPct } = inferMount(win.rect, viewport);
   const mod = WINDOW_REGISTRY[win.kind];
   let summary = "";
   try {
@@ -64,27 +60,17 @@ function snapshotWindow(
     id: win.id,
     kind: win.kind,
     slug: undefined,
-    mount,
-    rect: round1(rectPct),
+    mount: win.mount,
+    rect: win.rect,
     zIndex: win.zIndex,
-    focused: win.zIndex === topZ,
+    focused: win.id === focusedId,
     pinned: win.pinned,
     openedAt: 0, // populated by the caller using its own clock
     summary,
   };
 }
 
-function round1(r: RectPct): RectPct {
-  return {
-    x: Math.round(r.x * 10) / 10,
-    y: Math.round(r.y * 10) / 10,
-    w: Math.round(r.w * 10) / 10,
-    h: Math.round(r.h * 10) / 10,
-  };
-}
-
-/** Build the full snapshot. Pure-ish: pulls from the store and the
- *  current `window.innerWidth/Height`. SSR-safe (returns zeros). */
+/** Build the full snapshot from the store and current viewport. */
 export function buildSnapshot(opts?: {
   query?: string;
   viewport?: { w: number; h: number };
@@ -94,19 +80,16 @@ export function buildSnapshot(opts?: {
     opts?.viewport ??
     (typeof window !== "undefined"
       ? { w: window.innerWidth, h: window.innerHeight }
-      : { w: 0, h: 0 });
+      : { w: 1440, h: 900 });
 
-  const visible = state.windows.filter((w) => !w.minimized);
-  const topZ = visible.reduce((m, w) => (w.zIndex > m ? w.zIndex : m), 0);
+  const focusedId = topWindow(state.windows)?.id ?? null;
 
   const t0 = state.canvasT0 ?? CANVAS_T0;
-  const windows: WindowSnapshot[] = visible.map((w) => {
-    const snap = snapshotWindow(w, viewport, state, topZ);
+  const windows: WindowSnapshot[] = state.windows.map((w) => {
+    const snap = snapshotWindow(w, state, focusedId);
     snap.openedAt = Math.round(((w.openedAt ?? nowMs()) - t0));
     return snap;
   });
-
-  const focusedId = windows.find((w) => w.focused)?.id ?? null;
 
   const grid = renderGrid(windows);
 
@@ -135,6 +118,7 @@ export function buildSnapshot(opts?: {
       ? {
           surrealOk: state.backendHealth.surrealOk,
           composioOk: state.backendHealth.composioOk,
+          composioConfigured: state.backendHealth.composioConfigured,
         }
       : undefined,
   };

@@ -12,6 +12,7 @@
  */
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { scriptedModel } from "./scripted";
 
 const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 
@@ -61,8 +62,22 @@ export function hasOpenRouterKey(): boolean {
   return Boolean(process.env.OPENROUTER_API_KEY);
 }
 
+export function isAgentLive(): boolean {
+  return hasOpenRouterKey() || process.env.MICROBOTS_AGENT_MODEL === "scripted";
+}
+
+export function agentModel() {
+  if (!hasOpenRouterKey() && process.env.MICROBOTS_AGENT_MODEL === "scripted") {
+    return scriptedModel();
+  }
+  return chatModel();
+}
+
 /** The model slug we'll ship to the OpenRouter dashboard / logs. */
 export function activeModelSlug(): string {
+  if (!hasOpenRouterKey() && process.env.MICROBOTS_AGENT_MODEL === "scripted") {
+    return "scripted";
+  }
   return process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 }
 

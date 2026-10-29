@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  python:
+    runs-on: ubuntu-latest
+    env:
+      SURREAL_USER: root
+      SURREAL_PASS: root
+      SURREAL_NS: microbots
+      SURREAL_DB: memory
+      SURREAL_PORT: "8000"
+      SURREAL_URL: ws://localhost:8000/rpc
+      COMPOSIO_USER_ID: default
+      LOGFIRE_SERVICE_NAME: microbots
+      LOGFIRE_ENVIRONMENT: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      # Service containers can't pass `start` args, so run SurrealDB directly (mirrors docker-compose.yml).
+      - name: Start SurrealDB
+        run: |
+          docker run -d --name surrealdb --user root -p 8000:8000 surrealdb/surrealdb:v2 \
+            start --log=info --user="$SURREAL_USER" --pass="$SURREAL_PASS" memory
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:8000/health && exit 0
+            sleep 1
+          done
+          docker logs surrealdb
+          exit 1
+      - run: uv run pytest -q

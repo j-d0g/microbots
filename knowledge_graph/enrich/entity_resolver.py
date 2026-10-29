@@ -76,7 +76,20 @@ async def resolve_entities(
     config: Config,
     db: AsyncSurreal,
 ) -> int:
-    res_stubs = await db.query("SELECT * FROM entity")
+    if config.offline and new_chat_ids:
+        mention_rows = unwrap_surreal_rows(await db.query(
+            "SELECT out FROM chat_mentions WHERE in IN $chat_ids",
+            {"chat_ids": new_chat_ids},
+        ))
+        entity_ids = [row["out"] for row in mention_rows if row.get("out") is not None]
+        if not entity_ids:
+            return 0
+        res_stubs = await db.query(
+            "SELECT * FROM entity WHERE id IN $ids",
+            {"ids": entity_ids},
+        )
+    else:
+        res_stubs = await db.query("SELECT * FROM entity")
     stubs = unwrap_surreal_rows(res_stubs)
     if not stubs:
         return 0
@@ -109,7 +122,8 @@ async def resolve_entities(
         )
 
         try:
-            result = await agent.run(user)
+            from offline import entities, model
+            result = await agent.run(user, model=model(entities(batch)) if config.offline else None)
             resolution = result.output
         except Exception as e:  # noqa: BLE001
             log.warning("Entity resolution failed for batch starting at %d: %s", batch_start, e)

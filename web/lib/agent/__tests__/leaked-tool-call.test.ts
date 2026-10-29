@@ -7,7 +7,10 @@ describe("detectLeakedToolCall", () => {
     const out = detectLeakedToolCall(text);
     expect(out?.name).toBe("open_window");
     expect(out?.args.kind).toBe("profile");
-    expect(out?.events[0]).toEqual({ type: "ui.room", room: "profile" });
+    expect(out?.events[0]).toEqual({
+      type: "ui.canvas",
+      action: { type: "open", kind: "profile", openedBy: "agent" },
+    });
   });
 
   it("handles double quotes and extra args", () => {
@@ -20,7 +23,10 @@ describe("detectLeakedToolCall", () => {
     const text = "close_window(kind='graph')";
     const out = detectLeakedToolCall(text);
     expect(out?.name).toBe("close_window");
-    expect(out?.events[0]).toEqual({ type: "ui.close_window", room: "graph" });
+    expect(out?.events[0]).toEqual({
+      type: "ui.canvas",
+      action: { type: "close", kind: "graph" },
+    });
   });
 
   it("ignores unknown window kinds", () => {
