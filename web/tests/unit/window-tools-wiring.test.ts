@@ -26,10 +26,7 @@ function makeCtx(): AgentToolCtx & { events: AgentEvent[] } {
   return {
     snapshot: {
       windows: [],
-      viewport: { w: 1920, h: 1080 },
-      grid: "",
       focusedId: null,
-      recentActions: [],
       user: { query: "" },
     } as AgentToolCtx["snapshot"],
     emit: (e: AgentEvent) => events.push(e),

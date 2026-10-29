@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { AskUserCard } from "@/components/windows/AskUserCard";
 import { GraphRoom } from "@/components/rooms/GraphRoom";
-import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
+import { WINDOW_REGISTRY } from "@/components/windows/registry";
 import {
   getEntities,
   getIntegrations,
@@ -52,10 +52,12 @@ export function InlineCard({
 function CardShell({
   card,
   title,
+  expandable = true,
   children,
 }: {
   card: ChatCard;
   title: string;
+  expandable?: boolean;
   children: ReactNode;
 }) {
   const openChatCanvas = useAgentStore((state) => state.openChatCanvas);
@@ -71,14 +73,16 @@ function CardShell({
         <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-60">
           {title}
         </span>
-        <button
-          type="button"
-          onClick={() => openChatCanvas(card.kind, card.payload)}
-          className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-ink-35 transition-colors hover:text-accent-indigo"
-          aria-label={`expand ${title}`}
-        >
-          expand <ArrowUpRight size={11} />
-        </button>
+        {expandable && (
+          <button
+            type="button"
+            onClick={() => openChatCanvas(card.kind, card.payload)}
+            className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-ink-35 transition-colors hover:text-accent-indigo"
+            aria-label={`expand ${title}`}
+          >
+            expand <ArrowUpRight size={11} />
+          </button>
+        )}
       </header>
       <div className="p-3">{children}</div>
     </motion.section>
@@ -307,7 +311,7 @@ function AskUserInlineCard({
     [answerChatCard, card.id, onSubmitAnswer],
   );
   return (
-    <CardShell card={card} title="one question">
+    <CardShell card={card} title="one question" expandable={false}>
       <AskUserCard
         payload={card.payload}
         answer={answer}

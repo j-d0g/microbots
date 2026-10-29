@@ -14,7 +14,6 @@ const INTENTS: ReadonlyArray<{
     rooms: ["workflows"],
   },
   { keywords: ["skill"], rooms: ["skills"] },
-  { keywords: ["wiki", "docs", "notes"], rooms: ["wiki"] },
   {
     keywords: ["integration", "connect", "stack", "slack", "github", "linear", "gmail", "notion"],
     rooms: ["integrations"],
@@ -24,22 +23,13 @@ const INTENTS: ReadonlyArray<{
     rooms: ["entities"],
   },
   {
-    keywords: ["chat", "conversation", "messages"],
-    rooms: ["chats_summary"],
-  },
-  {
-    keywords: ["profile", "about me", "who am i"],
-    rooms: ["profile"],
-  },
-  { keywords: ["setting"], rooms: ["settings"] },
-  {
     keywords: ["brief", "today", "morning"],
     rooms: ["memories", "workflows"],
   },
 ];
 
 const LOCAL_MODE_REPLY =
-  "local mode — try: graph, memories, workflows, skills, wiki, integrations";
+  "local mode — try: graph, memories, workflows, skills, or integrations";
 
 export function matchLocalIntent(query: string): RoomKind[] {
   const normalized = query.toLowerCase();

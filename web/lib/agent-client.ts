@@ -1,12 +1,11 @@
 "use client";
 
 import { createParser, type EventSourceMessage } from "eventsource-parser";
-import { useAgentStore, type WindowKind, type RoomKind, type VerbPayload, type ConfirmIntent } from "./store";
+import { useAgentStore, type WindowKind, type RoomKind } from "./store";
 import { callRoomTool } from "./room-tools";
 import { buildSnapshot } from "./agent/snapshot";
 import { addChat } from "./kg-client";
 import { canvasActionForEvent } from "./agent/canvas-reducer";
-import type { MountPoint } from "./agent/types";
 
 /* IDs of chat messages already persisted so retries (eg. duplicate
  * `reply.done` events from an upstream proxy) don't write twice. */
@@ -74,9 +73,7 @@ export type AgentEvent =
       room: RoomKind;
       slug?: string;
       payload?: Record<string, unknown>;
-      mount?: MountPoint;
     }
-  | { type: "ui.verb"; verb: VerbPayload["verb"]; args: Record<string, unknown> }
   | {
       type: "ui.card";
       card: {
@@ -115,15 +112,6 @@ export type AgentEvent =
       question: string;
       options: string[];
     }
-  | {
-      type: "ui.confirm";
-      intent: ConfirmIntent;
-    }
-  | {
-      type: "ui.confirm.resolved";
-      id: string;
-      approved: boolean;
-    }
   | { type: "speak.chunk"; text: string }
   | { type: "agent.status"; status: string }
   | { type: "dock"; state: "idle" | "listening" | "thinking" | "speaking" | "hidden" }
@@ -144,14 +132,12 @@ export function applyAgentEvent(evt: AgentEvent): void {
   const canvasAction = canvasActionForEvent(evt);
   if (canvasAction) {
     s.dispatchCanvas(canvasAction);
-    if (s.uiMode === "chat" && canvasAction.type === "open") {
+    if (canvasAction.type === "open") {
       s.attachChatCard(canvasAction.kind, canvasAction.payload);
     }
   }
   switch (evt.type) {
     case "ui.room":
-      if (evt.slug) s.setRoomSlug(evt.slug);
-      else s.setRoomSlug(null);
       break;
     case "ui.tool": {
       // In-window tools work in BOTH modes.
@@ -159,19 +145,6 @@ export function applyAgentEvent(evt: AgentEvent): void {
       void callRoomTool(evt.room, evt.tool, evt.args ?? {});
       break;
     }
-    case "ui.confirm": {
-      // Stage a confirm gate.
-      s.stageConfirm(evt.intent);
-      break;
-    }
-    case "ui.confirm.resolved": {
-      // Resolve a pending confirm gate.
-      s.resolveConfirm(evt.id, evt.approved);
-      break;
-    }
-    case "ui.verb":
-      s.emitVerb({ verb: evt.verb, args: evt.args, at: Date.now() });
-      break;
     case "ui.card":
       s.pushCard({
         id: evt.card.id,
@@ -193,12 +166,8 @@ export function applyAgentEvent(evt: AgentEvent): void {
       s.setDock(evt.state);
       break;
     case "reply.start":
-      // Clear any stale agentReply from the previous turn. The chat-
-      // history slot for the AGENT is created lazily in reply.chunk
-      // below so tools-only turns (no text) don't leave empty agent
-      // bubbles. The USER message is recorded here so windowed-mode
-      // input (CommandBar / VoiceBridge) lands in the transcript
-      // identically to chat-mode input.
+      // Create the agent history slot lazily in reply.chunk so tool-only
+      // turns don't leave empty bubbles.
       s.startReply(evt.query);
       if (evt.query.trim().length > 0) {
         const last = useAgentStore.getState().chatMessages.at(-1);
@@ -235,26 +204,11 @@ export function applyAgentEvent(evt: AgentEvent): void {
       void persistChatTurn(state.userId);
       break;
     }
-    case "agent.delegate":
-      // Mirror into the recent-actions ring for UI access.
-      s.pushAction({
-        t: Date.now(),
-        tool: `delegate_${evt.to}`,
-        args: { intent: evt.intent },
-        ok: true,
-      });
-      break;
     case "agent.tool.start":
-      s.pushAction({
-        t: Date.now(),
-        tool: evt.name,
-        args: evt.args,
-        ok: true,
-      });
-      if (s.uiMode === "chat") s.startChatToolTrace(evt.name, evt.args);
+      s.startChatToolTrace(evt.name, evt.args);
       break;
     case "agent.tool.done":
-      if (s.uiMode === "chat") s.finishChatToolTrace(evt.name, evt.ok);
+      s.finishChatToolTrace(evt.name, evt.ok);
       break;
     case "agent.tool.retry":
       // Sidecar / inspector can read this from the event stream.
@@ -303,7 +257,7 @@ async function consumeSSE(
 
 /** Send a user query to the orchestrator, posting a fresh canvas
  *  snapshot so the agent has eyes. Throws `AgentFallback` if the route
- *  is unreachable or returns 503 (no key). The CommandBar catches that
+ *  is unreachable or returns 503 (no key). The chat input catches that
  *  and runs `routeIntent()` locally so the demo still works. */
 export async function sendQuery(
   query: string,

@@ -15,7 +15,7 @@ export function EmptyState({ onPick }: { onPick: (query: string) => void }) {
           what would you like to work through?
         </h2>
         <p className="mx-auto mt-2 max-w-[38ch] text-[13px] leading-relaxed text-ink-60">
-          Ask in your own words. Notes, workflows, and tools will appear as you need them.
+          Ask about your work — I&apos;ll search your graph, show what needs you, and suggest what to automate.
         </p>
       </div>
       <ul className="flex flex-wrap justify-center gap-2">

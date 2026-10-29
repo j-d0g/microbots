@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
         //
         // Emit reply.start unconditionally so the client clears any
         // stale `agentReply` from the previous turn — otherwise tools-
-        // only turns leave the windowed-mode dock narrating an outdated
+        // only turns leave chat without an agent message
         // reply while the canvas mutates. The chat-history slot is
         // created lazily on first reply.chunk in agent-client.ts so
         // tools-only turns don't leave empty agent bubbles.
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
         }
 
         /* Recovery for gemini-2.5-flash-lite leaked tool-call syntax.
-         * If the model produced text like `open_window(kind='profile')`
+         * If the model produced text like `open_window(kind='graph')`
          * but never actually invoked the tool, parse the leaked text
          * and synthesize the UI events so the canvas still mutates.
          * See `web/lib/agent/leaked-tool-call.ts` for scope + rationale. */

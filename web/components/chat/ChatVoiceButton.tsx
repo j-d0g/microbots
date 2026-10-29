@@ -11,9 +11,8 @@ type VoiceHandle = {
   toggleLive?: () => void;
 };
 
-export function VoiceDot() {
+export function ChatVoiceButton() {
   const dock = useAgentStore((s) => s.dock);
-  const quietMode = useAgentStore((s) => s.quietMode);
   const [, force] = useState(0);
   const active = dock === "listening";
   const speaking = dock === "speaking";
@@ -73,7 +72,7 @@ export function VoiceDot() {
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      data-testid="voice-dot"
+      data-testid="chat-voice-dot"
       data-state={dock}
       className={cn(
         "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
@@ -87,8 +86,7 @@ export function VoiceDot() {
           "block h-2.5 w-2.5 rounded-full transition-all duration-[160ms]",
           active && "scale-110 bg-accent-indigo breathing",
           speaking && "bg-accent-indigo breathing",
-          !active && !speaking && !quietMode && "bg-ink-90",
-          !active && !speaking && quietMode && "border border-accent-indigo bg-transparent",
+          !active && !speaking && "bg-ink-90",
         )}
       />
       {active && (

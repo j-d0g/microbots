@@ -30,22 +30,6 @@ async function isReachable(
   }
 }
 
-/** Dismiss the onboarding overlay if it appears. */
-async function dismissOnboarding(page: import("@playwright/test").Page) {
-  const skip = page.getByTestId("skip-onboarding");
-  // Give it a short window to appear; if it doesn't, move on.
-  try {
-    await skip.click({ timeout: 5_000 });
-    // Wait for the overlay to animate away
-    await page.getByTestId("onboarding-overlay").waitFor({
-      state: "hidden",
-      timeout: 3_000,
-    });
-  } catch {
-    // Overlay didn't appear — that's fine
-  }
-}
-
 /* ------------------------------------------------------------------ */
 /*  Test 1 — Backend API health                                       */
 /* ------------------------------------------------------------------ */
@@ -171,7 +155,7 @@ test.describe("Backend write round-trip", () => {
 /* ------------------------------------------------------------------ */
 
 test.describe("Frontend loads and shows chat UI", () => {
-  test("page loads with expected title and dock", async ({
+  test("page loads directly into chat", async ({
     page,
     request,
   }) => {
@@ -179,36 +163,10 @@ test.describe("Frontend loads and shows chat UI", () => {
     test.skip(!alive, "Frontend is not running on :3000 — skipping");
 
     await page.goto("/");
-    await dismissOnboarding(page);
     await expect(page).toHaveTitle(/microbots/i);
-
-    // The dock bar is always visible on load
-    const dock = page.locator('nav[aria-label="agent dock"]');
-    await expect(dock).toBeVisible({ timeout: 10_000 });
-  });
-
-  test("chat panel appears when chat mode is activated", async ({
-    page,
-    request,
-  }) => {
-    const alive = await isReachable(request, FRONTEND);
-    test.skip(!alive, "Frontend is not running on :3000 — skipping");
-
-    await page.goto("/");
-    await dismissOnboarding(page);
-
-    // Click the chat-mode button in the dock
-    const chatBtn = page.getByTestId("dock-chat-mode");
-    await expect(chatBtn).toBeVisible({ timeout: 10_000 });
-    await chatBtn.click();
-
-    // The chat panel should now be visible
     const chatPanel = page.getByTestId("chat-panel");
     await expect(chatPanel).toBeVisible({ timeout: 10_000 });
-
-    // The chat input should exist
-    const chatInput = page.getByTestId("chat-input");
-    await expect(chatInput).toBeVisible();
+    await expect(page.getByTestId("chat-input")).toBeVisible();
   });
 });
 
@@ -225,12 +183,6 @@ test.describe("Chat send flow", () => {
     test.skip(!alive, "Frontend is not running on :3000 — skipping");
 
     await page.goto("/");
-    await dismissOnboarding(page);
-
-    // Activate chat mode
-    const chatBtn = page.getByTestId("dock-chat-mode");
-    await expect(chatBtn).toBeVisible({ timeout: 10_000 });
-    await chatBtn.click();
 
     const chatInput = page.getByTestId("chat-input");
     await expect(chatInput).toBeVisible({ timeout: 10_000 });

@@ -14,14 +14,11 @@ interface SkillEntry {
 const SKILLS: SkillEntry[] = [
   {
     triggers: [
-      "save_workflow", "run_workflow", "deploy", "shadow", "promote",
-      "save it", "run it", "deploy it", "how does deploy work",
+      "save_workflow", "save it", "workflow", "how does deploy work",
     ],
     content: `## deploying a workflow
-1. save_workflow(name, code) — stages confirm gate. voice: "yes"/"save" → confirm, "no"/"hold" → cancel.
-2. run_workflow(name, args?) — also confirm-gated. streams stdout/stderr.
-3. shadow deploy (future): after save confirms, service spins up in shadow mode.
-rules: never execute save_workflow or run_workflow without a confirm gate. 60s timeout → auto-cancel.`,
+Use save_workflow(name, code) to persist a named workflow. The workflows card
+shows saved workflows; do not claim that saving executes or deploys one.`,
   },
   {
     triggers: [
@@ -29,10 +26,11 @@ rules: never execute save_workflow or run_workflow without a confirm gate. 60s t
       "re-auth", "link", "my integrations", "token", "api key",
     ],
     content: `## composio credentials
-- "connect X" → open_window(kind="settings"). settings shows integrations with status badges.
+- "connect X" → open the integrations card and use its connect flow.
+- System health and user identity are available at /settings.
 - OAuth: popup flow. API-key: inline form. tokens managed server-side by Composio.
 - snapshot.integrations shows live status — agent can check without a tool call.
-- if connection drops, agent can suggest "want me to open settings?"`,
+- if a connection drops, direct the user to the integrations card.`,
   },
 ];
 

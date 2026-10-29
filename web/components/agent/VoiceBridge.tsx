@@ -150,7 +150,7 @@ export function VoiceBridge() {
   const pttRef = useRef(ptt);
   pttRef.current = ptt;
 
-  // Expose for VoiceDot — the dot still wants pointer-driven hold-to-talk.
+  // The chat microphone uses pointer-driven hold-to-talk.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handle = {

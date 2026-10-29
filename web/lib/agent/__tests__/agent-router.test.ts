@@ -24,7 +24,7 @@ describe("matchLocalIntent", () => {
     for await (const event of routeIntent("asdf")) events.push(event);
     expect(events).toContainEqual({
       type: "reply.chunk",
-      text: "local mode — try: graph, memories, workflows, skills, wiki, integrations",
+      text: "local mode — try: graph, memories, workflows, skills, or integrations",
     });
   });
 });

@@ -25,11 +25,8 @@ function request(query: string, snapshot: ReturnType<typeof buildSnapshot>) {
 function resetStore() {
   useAgentStore.setState({
     windows: [],
-    uiMode: "windowed",
-    chatRoom: "chat",
-    room: "chat",
-    recentActions: [],
-    canvasT0: 0,
+    chatRoom: "graph",
+    room: "graph",
     chatCanvasOpen: false,
     chatMessages: [],
   });
@@ -48,10 +45,7 @@ describe("scripted orchestrator model", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("[]", { status: 200 })));
     expect(await (await GET()).json()).toEqual({ live: true });
 
-    const response = await POST(request("morning brief", buildSnapshot({
-      query: "",
-      viewport: { w: 1440, h: 900 },
-    })));
+    const response = await POST(request("morning brief", buildSnapshot({ query: "" })));
     expect(response.status).toBe(200);
     const events = readEvents(await response.text());
     const canvasActions = events
@@ -80,7 +74,7 @@ describe("scripted orchestrator model", () => {
 
     resetStore();
     for (const event of events) applyAgentEvent(event);
-    const morning = buildSnapshot({ viewport: { w: 1440, h: 900 } });
+    const morning = buildSnapshot();
     expect(morning.windows.map((window) => window.kind)).toEqual(["memories", "workflows"]);
     expect(morning.windows.find((window) => window.kind === "workflows")?.payload)
       .toEqual({ focus: "Bug Triage" });
@@ -230,7 +224,6 @@ describe("chat message event attachments", () => {
 
   it("lazily creates a streaming message and updates deduplicated cards and tool traces", () => {
     resetStore();
-    useAgentStore.setState({ uiMode: "chat" });
     applyAgentEvent({
       type: "ui.canvas",
       action: { type: "open", kind: "memories", payload: { query: "first" } },
@@ -264,16 +257,19 @@ describe("chat message event attachments", () => {
     expect(message.tools?.[0].ms).toEqual(expect.any(Number));
   });
 
-  it("does not attach cards or tool traces in windowed mode", () => {
+  it("attaches cards and tool traces to the chat message", () => {
     resetStore();
-    useAgentStore.setState({ uiMode: "windowed" });
     applyAgentEvent({
       type: "ui.canvas",
       action: { type: "open", kind: "memories" },
     });
     applyAgentEvent({ type: "agent.tool.start", name: "open_window", args: {} });
     applyAgentEvent({ type: "agent.tool.done", name: "open_window", ok: true });
-    expect(useAgentStore.getState().chatMessages).toEqual([]);
+    expect(useAgentStore.getState().chatMessages[0]).toMatchObject({
+      role: "agent",
+      cards: [{ kind: "memories" }],
+      tools: [{ name: "open_window", ok: true }],
+    });
   });
 
   it("does not create a message when a tool finishes without an active stream", () => {
@@ -295,10 +291,10 @@ describe("chat message event attachments", () => {
   it("opens and closes the conditional chat canvas", () => {
     resetStore();
     expect(useAgentStore.getState().chatCanvasOpen).toBe(false);
-    useAgentStore.getState().openChatCanvas("settings");
+    useAgentStore.getState().openChatCanvas("workflows");
     expect(useAgentStore.getState()).toMatchObject({
       chatCanvasOpen: true,
-      chatRoom: "settings",
+      chatRoom: "workflows",
     });
     useAgentStore.getState().closeChatCanvas();
     expect(useAgentStore.getState().chatCanvasOpen).toBe(false);

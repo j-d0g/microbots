@@ -24,7 +24,6 @@ export function GraphRoom({
   const composioConfigured = useAgentStore(
     (state) => state.backendHealth?.composioConfigured ?? false,
   );
-  const openWindow = useAgentStore((state) => state.openWindow);
   const { graph, loading, loadError, refresh } = useKgGraph(
     userId,
     composioConfigured,
@@ -93,7 +92,7 @@ export function GraphRoom({
           loading={loading}
           loadError={loadError}
           nodeCount={graph.nodes.length}
-          onOpenSettings={() => openWindow("settings")}
+          onOpenSettings={() => window.location.assign("/settings")}
           onRefresh={refresh}
         />
 

@@ -9,8 +9,8 @@ when a specific domain comes up.
 
 | Trigger | File | Summary |
 |---|---|---|
-| `save_workflow`, `run_workflow`, deploy, "how does deploy work" | `deploying-a-workflow.md` | save → confirm → shadow deploy lifecycle |
-| `settings`, OAuth, "connect X", credentials, re-auth | `composio-credentials.md` | OAuth flows, token locations, re-auth steps |
+| `save_workflow`, "save it", workflow | `deploying-a-workflow.md` | Persisting a named workflow |
+| OAuth, "connect X", credentials, re-auth | `composio-credentials.md` | OAuth flows, token locations, re-auth steps |
 
 ## Retrieval rules
 

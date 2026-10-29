@@ -20,7 +20,6 @@ const PR_REVIEW_REPLIES: Record<(typeof PR_REVIEW_OPTIONS)[number], string> = {
 };
 
 const WINDOW_KINDS = [
-  "profile",
   "integrations",
   "integration_detail",
   "entities",
@@ -28,12 +27,8 @@ const WINDOW_KINDS = [
   "memories",
   "skills",
   "workflows",
-  "wiki",
-  "chats_summary",
-  "chat",
   "graph",
   "ask_user",
-  "settings",
   "composio_connect",
 ] as const;
 
@@ -164,7 +159,7 @@ export function scriptedResponse(query: string): {
       text: "here's your graph.",
     };
   }
-  const showMatch = normalized.match(/\b(?:show|open)\s+(?:me\s+)?(?:the\s+)?(memories|memory|workflows?|skills|wiki|entities|entity|integrations?|settings|profile)\b/);
+  const showMatch = normalized.match(/\b(?:show|open)\s+(?:me\s+)?(?:the\s+)?(memories|memory|workflows?|skills|entities|entity|integrations?)\b/);
   const kind = showMatch ? normalizeKind(showMatch[1]) : undefined;
   if (kind && WINDOW_KINDS.includes(kind as typeof WINDOW_KINDS[number])) {
     return {
@@ -236,7 +231,5 @@ function normalizeKind(kind: string): string {
   if (kind === "entity") return "entities";
   if (kind === "memory") return "memories";
   if (kind === "workflow") return "workflows";
-  if (kind === "chat") return "chat";
-  if (kind === "chats") return "chats_summary";
   return kind;
 }

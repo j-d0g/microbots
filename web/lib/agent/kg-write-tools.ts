@@ -4,13 +4,12 @@
  *
  * Each tool calls the corresponding backend REST API via the typed
  * helpers in `backend.ts`, emits a `ui.tool.open` event so the relevant
- * window updates in the browser, and records the action in the
- * server-side snapshot via `applyAndEmit`.
+ * inline card updates in the browser.
  */
 
 import { tool } from "ai";
 import { z } from "zod";
-import { applyToolToSnapshot } from "./server-snapshot";
+import { toolResult } from "./server-snapshot";
 import {
   addMemory,
   upsertEntity,
@@ -36,8 +35,7 @@ function applyAndEmit(
 ): string {
   ctx.emit({ type: "agent.tool.start", name: toolName, args });
   for (const e of uiEvents) ctx.emit(e);
-  const result = applyToolToSnapshot(ctx.snapshot, toolName, args);
-  ctx.snapshot = result.snapshot;
+  const result = toolResult(toolName, args);
   ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok ?? true });
   return result.message;
 }
@@ -200,12 +198,8 @@ export function kgWriteTools(ctx: AgentToolCtx) {
       }),
       execute: async (args) => {
         try {
-          const result = await addChat(args as Parameters<typeof addChat>[0]);
-          const payload = { ...args, ...result, status: "done" };
-          const events: AgentEvent[] = [
-            { type: "ui.tool.open", kind: "chats_summary" as WindowKind, payload },
-          ];
-          return applyAndEmit(ctx, "add_chat", args, events);
+          await addChat(args as Parameters<typeof addChat>[0]);
+          return applyAndEmit(ctx, "add_chat", args, []);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           ctx.emit({ type: "agent.tool.start", name: "add_chat", args });
@@ -226,12 +220,8 @@ export function kgWriteTools(ctx: AgentToolCtx) {
       execute: async ({ path, content, rationale }) => {
         const args = { path, content, rationale };
         try {
-          const result = await writeWikiPage(path, { content, rationale });
-          const payload = { ...args, ...result, status: "done" };
-          const events: AgentEvent[] = [
-            { type: "ui.tool.open", kind: "wiki" as WindowKind, payload },
-          ];
-          return applyAndEmit(ctx, "write_wiki_page", args, events);
+          await writeWikiPage(path, { content, rationale });
+          return applyAndEmit(ctx, "write_wiki_page", args, []);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           ctx.emit({ type: "agent.tool.start", name: "write_wiki_page", args });
@@ -253,12 +243,8 @@ export function kgWriteTools(ctx: AgentToolCtx) {
       }),
       execute: async (args) => {
         try {
-          const result = await updateUser(args);
-          const payload = { ...args, ...result, status: "done" };
-          const events: AgentEvent[] = [
-            { type: "ui.tool.open", kind: "profile" as WindowKind, payload },
-          ];
-          return applyAndEmit(ctx, "update_user", args, events);
+          await updateUser(args);
+          return applyAndEmit(ctx, "update_user", args, []);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           ctx.emit({ type: "agent.tool.start", name: "update_user", args });

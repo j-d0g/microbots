@@ -6,12 +6,11 @@ import {
   useRef,
   useState,
   type FormEvent,
-  type KeyboardEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { AgentFallback, applyAgentEvent, sendQuery } from "@/lib/agent-client";
 import { routeIntent } from "@/lib/agent-router";
 import { useAgentStore } from "@/lib/store";
-import { useWebSpeech } from "@/lib/voice";
 import { ChatHeader } from "./ChatHeader";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage, PendingMessage } from "./ChatMessage";
@@ -23,14 +22,12 @@ export function ChatPanel() {
   const clearChatHistory = useAgentStore((state) => state.clearChatHistory);
   const dock = useAgentStore((state) => state.dock);
   const agentStatus = useAgentStore((state) => state.agentStatus);
-  const toggleUiMode = useAgentStore((state) => state.toggleUiMode);
   const reply = useAgentStore((state) => state.agentReply);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pendingAnswerRef = useRef<string | null>(null);
-  const { supported: voiceSupported, listening, start, stop } = useWebSpeech();
 
   useEffect(() => {
     const element = scrollRef.current;
@@ -46,6 +43,24 @@ export function ChatPanel() {
     textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
   }, [input]);
+
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "/") return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+      ) {
+        return;
+      }
+      event.preventDefault();
+      inputRef.current?.focus();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const submit = useCallback(
     async (query: string) => {
@@ -110,7 +125,7 @@ export function ChatPanel() {
   );
 
   const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter" && !event.shiftKey && !event.altKey) {
         event.preventDefault();
         handleSubmit();
@@ -124,11 +139,7 @@ export function ChatPanel() {
       data-testid="chat-panel"
       className="flex h-full w-full flex-col bg-paper-0"
     >
-      <ChatHeader
-        onToggleMode={toggleUiMode}
-        onClear={clearChatHistory}
-        canClear={messages.length > 0}
-      />
+      <ChatHeader onClear={clearChatHistory} canClear={messages.length > 0} />
       <div
         ref={scrollRef}
         data-testid="chat-message-list"
@@ -160,13 +171,8 @@ export function ChatPanel() {
         input={input}
         setInput={setInput}
         busy={busy}
-        listening={listening}
-        voiceSupported={voiceSupported}
-        startVoice={start}
-        stopVoice={stop}
         onSubmit={handleSubmit}
         onKeyDown={handleKeyDown}
-        dock={dock}
         agentStatus={agentStatus}
       />
     </aside>
