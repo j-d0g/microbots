@@ -13,6 +13,7 @@ import { MemoriesWindow } from "@/components/windows/MemoriesWindow";
 import { SkillsWindow } from "@/components/windows/SkillsWindow";
 import { WorkflowsWindow } from "@/components/windows/WorkflowsWindow";
 import { ComposioConnectWindow } from "@/components/windows/ComposioConnectWindow";
+import { TodayWindow } from "@/components/windows/TodayWindow";
 import { WINDOW_LABEL } from "@/components/windows/registry";
 import { cn } from "@/lib/cn";
 
@@ -29,6 +30,7 @@ const ROOM_COMPONENTS: Record<
   memories: MemoriesWindow,
   skills: SkillsWindow,
   workflows: WorkflowsWindow,
+  today: TodayWindow,
   composio_connect: ComposioConnectWindow,
 };
 

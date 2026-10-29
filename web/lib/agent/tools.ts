@@ -8,6 +8,7 @@ import {
   getKgSkills,
   getKgUser,
   getKgWorkflows,
+  getToday,
   searchKg,
   upsertEntity,
   upsertWorkflow,
@@ -38,6 +39,7 @@ export const AGENT_TOOL_DESCRIPTIONS = {
   remember: "Save a useful fact or preference as a memory.",
   upsert_entity: "Create or update a person, project, tool, or other entity.",
   save_workflow: "Create or update a workflow in the knowledge graph.",
+  today: "Read what needs attention, suggested automations, and recent chats; open the Today card.",
 } as const;
 
 export function toolPromptSection(): string {
@@ -206,6 +208,26 @@ export function createAgentTools(ctx: AgentToolCtx) {
       },
     }),
 
+    today: tool({
+      description: AGENT_TOOL_DESCRIPTIONS.today,
+      inputSchema: z.object({
+        focus: z.enum(["needs_you", "suggestions"]).optional(),
+      }),
+      execute: async ({ focus }) => {
+        const result = await tracked(ctx, "today", focus ? { focus } : {}, () =>
+          getToday(ctx.userId),
+        );
+        if (result.ok) {
+          ctx.emit({
+            type: "ui.tool.open",
+            kind: "today",
+            payload: { ...result.result, ...(focus ? { focus } : {}) },
+          });
+        }
+        return result;
+      },
+    }),
+
     ask_user: tool({
       description: AGENT_TOOL_DESCRIPTIONS.ask_user,
       inputSchema: z.object({
@@ -243,7 +265,18 @@ export function createAgentTools(ctx: AgentToolCtx) {
           ctx.emit({
             type: "ui.tool.open",
             kind: "memories",
-            payload: { text, ...result.result, status: "done" },
+            payload: {
+              query: text,
+              scope: "memories",
+              count: 1,
+              results: [{
+                kind: "memories",
+                id: result.result.id,
+                snippet: text,
+                score: 1,
+              }],
+              status: "done",
+            },
           });
         }
         return result;

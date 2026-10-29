@@ -9,21 +9,6 @@ import { matchLocalIntent } from "@/lib/agent-router";
 type ScriptedToolCall = { name: string; input: Record<string, unknown> };
 type ToolResult = { name: string; output: unknown };
 
-const PR_REVIEW_OPTIONS = [
-  "Draft review suggestions",
-  "Ask before each review",
-  "Keep reviews manual",
-] as const;
-
-const PR_REVIEW_REPLIES: Record<(typeof PR_REVIEW_OPTIONS)[number], string> = {
-  "Draft review suggestions":
-    "I’ll draft review suggestions. Nothing has been automated yet in this demo.",
-  "Ask before each review":
-    "I’ll ask before each review. Nothing has been automated yet in this demo.",
-  "Keep reviews manual":
-    "I’ll keep reviews manual. Nothing has been automated yet in this demo.",
-};
-
 function lastUserText(prompt: LanguageModelV3Prompt): string {
   const user = [...prompt].reverse().find((message) => message.role === "user");
   const text = user?.content
@@ -73,7 +58,6 @@ function latestResult(results: ToolResult[], name: string): Record<string, unkno
 function searchResponse(
   query: string,
   results: ToolResult[],
-  morningBrief: boolean,
 ): { toolCalls: ScriptedToolCall[]; text: string } | null {
   const output = latestResult(results, "search");
   if (!output) return null;
@@ -89,13 +73,6 @@ function searchResponse(
     return {
       toolCalls: [],
       text: `I couldn't find anything about ${query} in your graph. Try asking about deploys or people.`,
-    };
-  }
-
-  if (morningBrief && !results.some((result) => result.name === "show")) {
-    return {
-      toolCalls: [{ name: "show", input: { kind: "workflows", focus: "Bug Triage" } }],
-      text: "",
     };
   }
 
@@ -120,7 +97,7 @@ function searchResponse(
     const text = neighbors.length
       ? `${name} is connected in the knowledge graph to ${neighborText}.`
       : `The graph has no connections listed for ${name} yet.`;
-    return { toolCalls: [], text: morningBrief ? `${text} Bug Triage is ready for a closer look.` : text };
+    return { toolCalls: [], text };
   }
 
   const description = typeof top.snippet === "string" ? top.snippet : "";
@@ -133,9 +110,7 @@ function searchResponse(
     : "I found a matching item in your graph.";
   return {
     toolCalls: [],
-    text: morningBrief
-      ? `${resultText} Bug Triage is ready for a closer look.`
-      : resultText,
+    text: resultText,
   };
 }
 
@@ -156,20 +131,53 @@ export function scriptedResponse(
 
   const askResult = latestResult(previousResults, "ask_user");
   if (askResult) {
+    return { toolCalls: [], text: "Thanks, that helps me understand what you prefer." };
+  }
+
+  const rememberResult = latestResult(previousResults, "remember");
+  if (rememberResult) {
     return {
       toolCalls: [],
-      text: "I can help make the repetitive parts of PR reviews easier; nothing has been automated yet.",
+      text: rememberResult.ok === true ? "saved." : "I couldn't save that just now.",
     };
   }
 
-  const reviewAnswer = PR_REVIEW_OPTIONS.find(
-    (option) => option.toLowerCase() === normalized,
-  );
-  if (reviewAnswer) {
-    return { toolCalls: [], text: PR_REVIEW_REPLIES[reviewAnswer] };
+  const todayResult = latestResult(previousResults, "today");
+  if (todayResult) {
+    if (todayResult.ok !== true) {
+      return { toolCalls: [], text: "I couldn't load today's summary just now." };
+    }
+    const data = asRecord(todayResult.result);
+    const needsYou = Array.isArray(data?.needs_you) ? data.needs_you : [];
+    const suggestions = Array.isArray(data?.suggestions)
+      ? data.suggestions.map(asRecord).filter((item): item is Record<string, unknown> => item !== null)
+        .filter((item) => item.status === "open" || item.status === "suggested")
+      : [];
+    if (morningBrief) {
+      const needNoun = needsYou.length === 1 ? "thing needs" : "things need";
+      const automationNoun = suggestions.length === 1 ? "automation is" : "automations are";
+      return {
+        toolCalls: [],
+        text: `${needsYou.length} ${needNoun} you and ${suggestions.length} ${automationNoun} worth a look.`,
+      };
+    }
+    if (/what (?:should|can) i automate/.test(normalized)) {
+      const top = suggestions[0];
+      if (!top) return { toolCalls: [], text: "I don't see any open automation suggestions right now." };
+      const title = typeof top.title === "string" ? top.title : "This suggestion";
+      const signals = Array.isArray(top.evidence) ? top.evidence.length : 0;
+      return {
+        toolCalls: [],
+        text: `${title} is worth a look, based on ${signals} ${signals === 1 ? "signal" : "signals"}.`,
+      };
+    }
+    return {
+      toolCalls: [],
+      text: `${needsYou.length} ${needsYou.length === 1 ? "thing needs" : "things need"} your attention today.`,
+    };
   }
 
-  const priorSearch = searchResponse(query, previousResults, morningBrief);
+  const priorSearch = searchResponse(query, previousResults);
   if (priorSearch) return priorSearch;
 
   const priorShow = latestResult(previousResults, "show");
@@ -204,25 +212,12 @@ export function scriptedResponse(
   ) {
     return {
       toolCalls: [],
-      text: "I can search your graph, show focused cards, remember facts, and help shape workflows. Try “morning brief”, “what’s connected to Linear?”, “who is Bob?”, or “tell me about deploys”.",
+      text: "I can search your graph, show focused cards, remember facts, and help shape workflows. Try “what needs me today?”, “what’s connected to Linear?”, “who is Bob?”, or “what should I automate?”.",
     };
   }
 
   if (/^(?:close|clear|reset|close everything|clear (?:the )?(?:canvas|screen))$/i.test(normalized)) {
     return { toolCalls: [{ name: "close", input: {} }], text: "" };
-  }
-
-  if (/\bshould i automate pr reviews?\b|\bautomate pr reviews?\b/.test(normalized)) {
-    return {
-      toolCalls: [{
-        name: "ask_user",
-        input: {
-          question: "How should I help with PR reviews?",
-          options: PR_REVIEW_OPTIONS,
-        },
-      }],
-      text: "",
-    };
   }
 
   const focusMatch = normalized.match(/\bfocus(?: on)?\s+(.+?)\??$/);
@@ -263,7 +258,29 @@ export function scriptedResponse(
 
   if (morningBrief) {
     return {
-      toolCalls: [{ name: "search", input: { query: "production deploy", scope: "all" } }],
+      toolCalls: [{ name: "today", input: {} }],
+      text: "",
+    };
+  }
+
+  if (/what needs me today/.test(normalized)) {
+    return {
+      toolCalls: [{ name: "today", input: { focus: "needs_you" } }],
+      text: "",
+    };
+  }
+
+  if (/what (?:should|can) i automate/.test(normalized)) {
+    return {
+      toolCalls: [{ name: "today", input: { focus: "suggestions" } }],
+      text: "",
+    };
+  }
+
+  const rememberMatch = query.trim().match(/^remember\s+(?:that\s+)?(.+)$/i);
+  if (rememberMatch) {
+    return {
+      toolCalls: [{ name: "remember", input: { text: rememberMatch[1].trim() } }],
       text: "",
     };
   }
@@ -281,9 +298,9 @@ export function scriptedResponse(
     };
   }
 
-  if (/\b(?:tell me about|what do you know about|who is|who's|explain)\b/.test(normalized)) {
+  if (/\b(?:tell me about|what do you know about|who is|who's|who owns|explain)\b/.test(normalized)) {
     const searchTermMatch = normalized.match(
-      /^(?:who is|who's|tell me about|what do you know about|explain)\s+(.+?)[?!.]*$/,
+      /^(?:who is|who's|who owns|tell me about|what do you know about|explain)\s+(.+?)[?!.]*$/,
     );
     const searchTerm = searchTermMatch?.[1].replace(/\bdeploys\b/g, "deploy");
     return {

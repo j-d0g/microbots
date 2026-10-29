@@ -1,10 +1,10 @@
 "use client";
 
 const SUGGESTIONS = [
-  "morning brief",
+  "what needs me today?",
   "what's connected to Linear?",
-  "show me the Bug Triage workflow",
-  "should I automate PR reviews?",
+  "who is Bob?",
+  "what should I automate?",
 ];
 
 export function EmptyState({ onPick }: { onPick: (query: string) => void }) {

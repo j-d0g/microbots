@@ -30,6 +30,7 @@ export type WindowKind =
   | "memories"
   | "skills"
   | "workflows"
+  | "today"
   | "composio_connect";
 
 export type RoomKind = WindowKind;

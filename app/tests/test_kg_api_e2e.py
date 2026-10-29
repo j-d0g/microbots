@@ -13,9 +13,11 @@ import asyncio
 import os
 import time
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
+from surrealdb import RecordID
 
 # Ensure SurrealDB env vars are set for the local dev instance.
 os.environ.setdefault("SURREAL_URL", "ws://localhost:8000/rpc")
@@ -946,3 +948,224 @@ class TestRoundTripWiki:
         if isinstance(data, list):
             data = data[0] if data else {}
         assert data.get("content") == content or content in str(data)
+
+
+class TestToday:
+    async def test_today_surfaces_relevant_candidates_with_evidence(
+        self, client: httpx.AsyncClient
+    ):
+        pr_id = RecordID("automation_candidate", "pr_review_summaries")
+        linear_id = RecordID("automation_candidate", "linear_bug_triage")
+        github_chat = RecordID("chat", "github_pr_schema")
+        linear_chat = RecordID("chat", "linear_ticket_triage")
+        bob_memory = RecordID("memory", "bob_reviewer")
+        from app.services.surreal import session
+
+        try:
+            async with session() as db:
+                for record_id, payload in [
+                    (
+                        github_chat,
+                        {
+                            "title": "PR schema review",
+                            "content": "Bob reviewed the graph schema.",
+                            "source_type": "github_pr",
+                            "summary": "Bob reviewed the graph schema.",
+                        },
+                    ),
+                    (
+                        linear_chat,
+                        {
+                            "title": "Linear bug triage",
+                            "content": "A bug was reported in #bugs.",
+                            "source_type": "linear_ticket",
+                            "summary": "A bug was reported in #bugs.",
+                        },
+                    ),
+                    (
+                        bob_memory,
+                        {
+                            "content": "Bob is the primary code reviewer.",
+                            "memory_type": "fact",
+                            "confidence": 0.9,
+                        },
+                    ),
+                ]:
+                    await db.query("UPSERT $id MERGE $payload", {
+                        "id": record_id,
+                        "payload": payload,
+                    })
+                for record_id, title, story, action, axes in [
+                    (
+                        pr_id,
+                        "Draft PR review summaries for Bob",
+                        "Bob is the primary reviewer.",
+                        "Draft a concise review summary.",
+                        {"kind": "automation", "risk_tier": 2},
+                    ),
+                    (
+                        linear_id,
+                        "Auto-file Linear tickets from #bugs",
+                        "Bug reports in Slack recur.",
+                        "Draft Linear tickets for review.",
+                        {"kind": "automation", "risk_tier": 2},
+                    ),
+                ]:
+                    await db.query("UPSERT $id MERGE $payload", {
+                        "id": record_id,
+                        "payload": {
+                            "title": title,
+                            "story": story,
+                            "suggested_action": action,
+                            "signal_axes": axes,
+                        },
+                    })
+                for edge, source, target in [
+                    ("candidate_evidence_chat", pr_id, github_chat),
+                    ("candidate_evidence_memory", pr_id, bob_memory),
+                    ("candidate_evidence_chat", linear_id, linear_chat),
+                ]:
+                    await db.query(
+                        f"DELETE {edge} WHERE in = $source AND out = $target",
+                        {"source": source, "target": target},
+                    )
+                    await db.query(
+                        f"RELATE $source->{edge}->$target",
+                        {"source": source, "target": target},
+                    )
+
+            response = await client.get("/api/kg/today", params={"user_id": "default"})
+            assert response.status_code == 200
+            data = response.json()
+            assert set(data) == {"needs_you", "suggestions", "recent"}
+            suggestions = {row["id"]: row for row in data["suggestions"]}
+            pr = suggestions[str(pr_id)]
+            linear = suggestions[str(linear_id)]
+            assert pr["signal_axes"]["risk_tier"] >= 2
+            assert {item["id"] for item in pr["evidence"]} >= {
+                str(github_chat),
+                str(bob_memory),
+            }
+            assert any(item["id"] == str(linear_chat) for item in linear["evidence"])
+            assert all(
+                not (
+                    (row["signal_axes"].get("risk_tier") == 1)
+                    and row["signal_axes"].get("kind") not in {
+                        "question",
+                        "automation",
+                        "workflow_promotion",
+                    }
+                )
+                for row in [*data["needs_you"], *data["suggestions"]]
+            )
+            assert len(data["recent"]) <= 5
+            assert all("title" in row and "source_type" in row for row in data["recent"])
+            timestamps = [
+                datetime.fromisoformat(row["occurred_at"].replace("Z", "+00:00"))
+                for row in data["recent"]
+                if row.get("occurred_at")
+            ]
+            assert timestamps == sorted(timestamps, reverse=True)
+        finally:
+            async with session() as db:
+                await db.query(
+                    "DELETE candidate_evidence_chat WHERE in IN [$pr, $linear]",
+                    {"pr": pr_id, "linear": linear_id},
+                )
+                await db.query(
+                    "DELETE candidate_evidence_memory WHERE in = $pr",
+                    {"pr": pr_id},
+                )
+                for record_id in [pr_id, linear_id, github_chat, linear_chat, bob_memory]:
+                    await db.query("DELETE $id", {"id": record_id})
+
+    async def test_today_prioritizes_soon_candidates_and_surfaces_questions(
+        self, client: httpx.AsyncClient
+    ):
+        question_id = RecordID("automation_candidate", _uid("today_question"))
+        soon_id = RecordID("automation_candidate", _uid("today_soon"))
+        later_id = RecordID("automation_candidate", _uid("today_later"))
+        hygiene_id = RecordID("automation_candidate", _uid("today_hygiene"))
+        records = [
+            (question_id, {"kind": "question", "risk_tier": 2}, None),
+            (soon_id, {"kind": "automation", "risk_tier": 2}, datetime.now(timezone.utc) + timedelta(days=2)),
+            (later_id, {"kind": "automation", "risk_tier": 2}, datetime.now(timezone.utc) + timedelta(days=14)),
+            (hygiene_id, {"kind": "hygiene", "risk_tier": 1}, datetime.now(timezone.utc) + timedelta(days=1)),
+        ]
+        from app.services.surreal import session
+
+        try:
+            async with session() as db:
+                for record_id, axes, deadline in records:
+                    await db.query(
+                        "UPSERT $id CONTENT $candidate",
+                        {
+                            "id": record_id,
+                            "candidate": {
+                                "title": str(record_id),
+                                "story": "Test candidate.",
+                                "suggested_action": "Review this candidate.",
+                                "signal_axes": axes,
+                                **({"time_sensitive_until": deadline} if deadline else {}),
+                            },
+                        },
+                    )
+            response = await client.get("/api/kg/today")
+            assert response.status_code == 200
+            data = response.json()
+            needs_ids = {row["id"] for row in data["needs_you"]}
+            assert str(question_id) in needs_ids
+            assert str(soon_id) in needs_ids
+            assert str(later_id) not in needs_ids
+            assert str(hygiene_id) not in {
+                row["id"] for row in [*data["needs_you"], *data["suggestions"]]
+            }
+            suggestion_ids = [row["id"] for row in data["suggestions"]]
+            assert suggestion_ids.index(str(soon_id)) < suggestion_ids.index(str(later_id))
+        finally:
+            async with session() as db:
+                for record_id, _, _ in records:
+                    await db.query("DELETE $id", {"id": record_id})
+
+    async def test_candidate_status_update_and_undo(self, client: httpx.AsyncClient):
+        candidate_id = _uid("today_candidate")
+        record = RecordID("automation_candidate", candidate_id)
+        from app.services.surreal import session
+
+        async with session() as db:
+            await db.query(
+                "UPSERT $id CONTENT $candidate",
+                {
+                    "id": record,
+                    "candidate": {
+                        "title": "Test candidate",
+                        "story": "Test story",
+                        "suggested_action": "Review it",
+                        "signal_axes": {"kind": "automation", "risk_tier": 2},
+                    },
+                },
+            )
+        try:
+            accepted = await client.post(
+                f"/api/kg/candidates/{record}",
+                json={"status": "accepted"},
+            )
+            assert accepted.status_code == 200
+            assert accepted.json()["status"] == "accepted"
+            assert accepted.json()["updated_at"]
+            today = await client.get("/api/kg/today")
+            accepted_row = next(
+                row for row in today.json()["suggestions"]
+                if row["id"] == str(record)
+            )
+            assert accepted_row["status"] == "accepted"
+
+            undone = await client.post(
+                f"/api/kg/candidates/{record}",
+                json={"status": "open"},
+            )
+            assert undone.status_code == 200
+            assert undone.json()["status"] == "open"
+        finally:
+            async with session() as db:
+                await db.query("DELETE $id", {"id": record})

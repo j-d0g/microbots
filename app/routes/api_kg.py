@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -14,6 +15,27 @@ from app.services import kg_queries as Q
 from app.services.surreal import jsonify, q, q_one, session
 
 router = APIRouter(prefix="/kg", tags=["knowledge-graph"])
+
+
+def _parse_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
+        except ValueError:
+            return None
+    return None
+
+
+def _is_hygiene_candidate(candidate: dict[str, Any]) -> bool:
+    axes = candidate.get("signal_axes") or {}
+    return axes.get("risk_tier") == 1 and axes.get("kind") not in {
+        "question",
+        "automation",
+        "workflow_promotion",
+    }
 
 
 def _name_match_distance(name: str, query: str) -> int | None:
@@ -234,6 +256,99 @@ async def chats_list(
 async def chats_summary() -> list[dict[str, Any]]:
     async with session() as s:
         return await q(s, Q.Q_CHATS_SUMMARY)
+
+
+@router.get("/today")
+async def today(user_id: Optional[str] = Query(None)) -> dict[str, list[dict[str, Any]]]:
+    async with session() as s:
+        candidates = await q(s, Q.Q_TODAY_CANDIDATES)
+        candidate_ids = [
+            RecordID("automation_candidate", _record_key(row["id"]).partition(":")[2])
+            for row in candidates
+        ]
+        evidence_by_candidate: dict[str, list[dict[str, str]]] = {}
+        if candidate_ids:
+            evidence_queries = (
+                (Q.Q_TODAY_CHAT_EVIDENCE, "chat", lambda row: row.get("summary") or row.get("title") or ""),
+                (Q.Q_TODAY_ENTITY_EVIDENCE, "entity", lambda row: row.get("description") or row.get("name") or ""),
+                (Q.Q_TODAY_MEMORY_EVIDENCE, "memory", lambda row: row.get("content") or ""),
+            )
+            for query, evidence_type, text_for in evidence_queries:
+                for row in await q(s, query, {"ids": candidate_ids}):
+                    candidate_key = _record_key(row["candidate_id"])
+                    evidence_by_candidate.setdefault(candidate_key, []).append({
+                        "type": evidence_type,
+                        "id": _record_key(row["id"]),
+                        "text": text_for(row).strip()[:180],
+                    })
+
+        now = datetime.now(timezone.utc)
+        soon = now + timedelta(days=7)
+        shaped = []
+        for row in candidates:
+            candidate = dict(row)
+            candidate_id = _record_key(candidate["id"])
+            candidate["id"] = candidate_id
+            candidate["evidence"] = evidence_by_candidate.get(candidate_id, [])
+            shaped.append(candidate)
+
+        def due_at(candidate: dict[str, Any]) -> datetime | None:
+            return _parse_datetime(candidate.get("time_sensitive_until"))
+
+        def suggestion_order(candidate: dict[str, Any]) -> tuple[int, datetime, str]:
+            due = due_at(candidate)
+            return (
+                0 if due is not None and due <= soon else 1,
+                due or datetime.max.replace(tzinfo=timezone.utc),
+                candidate.get("title", ""),
+            )
+
+        eligible = [row for row in shaped if not _is_hygiene_candidate(row)]
+        suggestions = [
+            row for row in eligible
+            if (row.get("signal_axes") or {}).get("risk_tier", 0) >= 2
+        ]
+        suggestions.sort(key=suggestion_order)
+        needs_you = [
+            row for row in eligible
+            if row.get("status") in {"open", "suggested"}
+            and (
+                (row.get("signal_axes") or {}).get("kind") == "question"
+                or (due_at(row) is not None and due_at(row) <= soon)
+            )
+        ]
+        recent = await q(s, Q.Q_TODAY_RECENT)
+        return {
+            "needs_you": needs_you,
+            "suggestions": suggestions,
+            "recent": recent,
+        }
+
+
+class CandidateStatusBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["open", "accepted", "dismissed"]
+
+
+@router.post("/candidates/{candidate_id}")
+async def update_candidate_status(
+    candidate_id: str,
+    body: CandidateStatusBody,
+) -> dict[str, Any]:
+    table, separator, record_key = candidate_id.partition(":")
+    if not separator or table != "automation_candidate" or not record_key:
+        raise HTTPException(status_code=404, detail="automation candidate not found")
+    async with session() as s:
+        row = await q_one(s, """
+            UPDATE $id SET status = $status, updated_at = time::now()
+            RETURN AFTER
+        """, {
+            "id": RecordID(table, record_key),
+            "status": body.status,
+        })
+    if not row:
+        raise HTTPException(status_code=404, detail="automation candidate not found")
+    return row
 
 
 @router.get("/user")
