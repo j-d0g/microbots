@@ -419,149 +419,73 @@ export interface SpeakOpts {
 /** Speak `text` using the configured provider. Returns a stop fn. */
 export async function speak(text: string, opts: SpeakOpts = {}): Promise<() => void> {
   cancelSpeak();
+  if (typeof window === "undefined" || !text.trim()) return () => {};
   const gen = ++speakGen;
-  let done = false;
-  const noop = () => {};
   const isCurrent = () => gen === speakGen;
+  let done = false;
   const finish = () => {
     if (done) return;
     done = true;
     opts.onEnd?.();
   };
-
-  if (typeof window === "undefined" || !text.trim()) return noop;
-
-  let browserStarted = false;
-  const speakInBrowser = (): (() => void) => {
-    if (!isCurrent() || browserStarted) return noop;
-    browserStarted = true;
-    if (!("speechSynthesis" in window)) {
-      console.warn("[voice] No TTS available");
-      finish();
-      return noop;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.98;
-    utterance.pitch = 1;
-    utterance.onstart = () => {
-      if (isCurrent()) opts.onStart?.();
-    };
-    const browserStop = () => {
-      if (stopCurrent === browserStop) stopCurrent = null;
-      finish();
-    };
-    utterance.onend = browserStop;
-    utterance.onerror = browserStop;
-
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-    stopCurrent = browserStop;
-    return () => cancelSpeak();
-  };
+  stopCurrent = finish;
 
   const cfg = await loadVoiceConfig();
-  if (!isCurrent()) return noop;
-
-  if (cfg.tts === "openai") {
+  if (cfg.tts === "openai" && isCurrent()) {
+    let audio: HTMLAudioElement | null = null;
+    let url = "";
+    const release = () => {
+      audio?.pause();
+      if (url) URL.revokeObjectURL(url);
+      audio = null;
+      url = "";
+    };
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      if (!isCurrent()) return noop;
-
-      if (!res.ok) {
-        const errorText = await res.text().catch(() => "unknown error");
-        if (!isCurrent()) return noop;
-        throw new Error(`tts ${res.status}: ${errorText}`);
-      }
-
+      if (!res.ok) throw new Error(`tts ${res.status}`);
       const blob = await res.blob();
-      if (!isCurrent()) return noop;
-      if (blob.size === 0) {
-        throw new Error("Empty audio response");
-      }
-
-      const url = URL.createObjectURL(blob);
-      let audio: HTMLAudioElement;
-      try {
-        audio = new Audio(url);
-      } catch (err) {
-        URL.revokeObjectURL(url);
-        throw err;
-      }
-      let revoked = false;
-      const releaseAudio = () => {
-        audio.onended = null;
-        audio.onerror = null;
-        try {
-          audio.pause();
-          audio.currentTime = 0;
-        } catch {
-          /* ignore */
-        }
-        if (!revoked) {
-          URL.revokeObjectURL(url);
-          revoked = true;
-        }
-      };
-      const stopAudio = () => {
-        releaseAudio();
-        if (stopCurrent === stopAudio) stopCurrent = null;
+      if (!isCurrent()) return () => {};
+      url = URL.createObjectURL(blob);
+      audio = new Audio(url);
+      const stop = () => {
+        release();
         finish();
       };
-      stopCurrent = stopAudio;
-
-      audio.onplay = () => {
-        if (isCurrent()) opts.onStart?.();
-      };
-
-      audio.onended = () => {
-        releaseAudio();
-        if (stopCurrent === stopAudio) stopCurrent = null;
-        finish();
-      };
-
-      audio.onerror = () => {
-        if (!isCurrent()) {
-          releaseAudio();
-          return;
-        }
-        console.warn("[voice] OpenAI TTS playback failed");
-        releaseAudio();
-        if (stopCurrent === stopAudio) stopCurrent = null;
-        speakInBrowser();
-      };
-
-      try {
-        await audio.play();
-        if (!isCurrent()) return noop;
-        return () => cancelSpeak();
-      } catch (err) {
-        if (!isCurrent()) return noop;
-        releaseAudio();
-        if (stopCurrent === stopAudio) stopCurrent = null;
-        if (!browserStarted) {
-          console.warn("[voice] OpenAI TTS playback failed; using browser voice", err);
-        }
-        return browserStarted ? () => cancelSpeak() : speakInBrowser();
-      }
+      audio.onplay = () => opts.onStart?.();
+      audio.onended = stop;
+      audio.onerror = stop;
+      stopCurrent = stop;
+      await audio.play();
+      return cancelSpeak;
     } catch (err) {
-      if (!isCurrent()) return noop;
+      release();
+      if (!isCurrent()) return () => {};
       console.warn("[voice] OpenAI TTS failed; using browser voice", err);
+      stopCurrent = finish;
     }
   }
 
-  return speakInBrowser();
+  if (!isCurrent()) return () => {};
+  if (!("speechSynthesis" in window)) {
+    finish();
+    return () => {};
+  }
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.98;
+  utterance.onstart = () => opts.onStart?.();
+  utterance.onend = finish;
+  utterance.onerror = finish;
+  window.speechSynthesis.speak(utterance);
+  return cancelSpeak;
 }
 
 export function cancelSpeak(): void {
   speakGen++;
-  if (typeof window !== "undefined") {
-    window.speechSynthesis?.cancel();
-  }
+  if (typeof window !== "undefined") window.speechSynthesis?.cancel();
   const stop = stopCurrent;
   stopCurrent = null;
   stop?.();
