@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -12,6 +13,14 @@ from app.services import kg_queries as Q
 from app.services.surreal import q, q_one, session
 
 router = APIRouter(prefix="/kg", tags=["knowledge-graph"])
+
+
+def _name_match_distance(name: str, query: str) -> int | None:
+    query_tokens = set(re.findall(r"[a-z0-9]+", query.casefold()))
+    name_tokens = set(re.findall(r"[a-z0-9]+", name.casefold()))
+    if query_tokens and query_tokens <= name_tokens:
+        return len(name_tokens - query_tokens)
+    return None
 
 
 @router.get("/integrations")
@@ -93,6 +102,9 @@ async def search_knowledge_graph(
                     "name": row.get("name", ""),
                     "snippet": row.get("description") or row.get("name", ""),
                     "score": 0.5,
+                    "_name_match_distance": _name_match_distance(
+                        row.get("name", ""), term
+                    ),
                 })
         if scope in ("workflows", "all"):
             for row in await q(s, Q.Q_SEARCH_WORKFLOWS, params):
@@ -103,10 +115,15 @@ async def search_knowledge_graph(
                     "name": row.get("name", ""),
                     "snippet": row.get("description", ""),
                     "score": 0.5,
+                    "_name_match_distance": _name_match_distance(
+                        row.get("name", ""), term
+                    ),
                 })
         if scope == "all":
             for row in await q(s, Q.Q_SEARCH_INTEGRATIONS, params):
-                connections = row.get("connections") or []
+                connections = (row.get("connections") or []) + (
+                    row.get("incoming_connections") or []
+                )
                 results.append({
                     "kind": "integrations",
                     "id": str(row.get("slug", "")),
@@ -118,9 +135,22 @@ async def search_knowledge_graph(
                         for connection in connections
                     ),
                     "score": 0.9,
+                    "_name_match_distance": _name_match_distance(
+                        row.get("name", ""), term
+                    ),
                 })
 
-    results.sort(key=lambda result: (-result["score"], result["kind"], result["id"]))
+    results.sort(
+        key=lambda result: (
+            result.get("_name_match_distance") is None,
+            result.get("_name_match_distance") or 0,
+            -result["score"],
+            result["kind"],
+            result["id"],
+        )
+    )
+    for result in results:
+        result.pop("_name_match_distance", None)
     return {"query": term, "scope": scope, "count": len(results), "results": results}
 
 

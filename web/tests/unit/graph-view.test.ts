@@ -185,6 +185,7 @@ describe("graph view helpers", () => {
         "entity:alice",
         "memory:linear",
         "skill:triage_incoming_bug",
+        "workflow:bug_triage",
       ]),
     );
     expect(view.nodes.map((node) => node.id)).toContain("memory:linear");
@@ -216,11 +217,10 @@ describe("graph view helpers", () => {
         "entity:alice",
         "memory:linear",
         "skill:triage_incoming_bug",
+        "workflow:bug_triage",
       ]),
     );
-    expect(view.nodes.map((node) => node.id)).not.toContain(
-      "workflow:bug_triage",
-    );
+    expect(view.nodes.map((node) => node.id)).toContain("workflow:bug_triage");
   });
 
   it("returns co-used edges with weights and scales their widths", () => {
@@ -386,7 +386,7 @@ describe("graph view helpers", () => {
       pathIds: new Set(),
     });
     expect(nodeOpacity("entity:alice", focused, new Set())).toBe(1);
-    expect(nodeOpacity("workflow:bug_triage", focused, new Set())).toBe(0.1);
+    expect(nodeOpacity("workflow:bug_triage", focused, new Set())).toBe(1);
     expect(
       nodeOpacity(
         "workflow:bug_triage",

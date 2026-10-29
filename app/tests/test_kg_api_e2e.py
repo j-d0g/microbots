@@ -63,7 +63,7 @@ async def _do_cleanup() -> None:
 
         async with session() as db:
             for table in [
-                "memory", "entity", "skill", "workflow", "chat",
+                "memory", "entity", "skill", "workflow", "chat", "integration",
                 "wiki_page", "wiki_page_revision",
             ]:
                 await db.query(
@@ -72,6 +72,7 @@ async def _do_cleanup() -> None:
                 )
             for edge_table in [
                 "chat_yields", "memory_about", "appears_in",
+                "co_used_with",
                 "skill_uses", "workflow_contains_skill",
                 "chat_from", "chat_mentions",
             ]:
@@ -130,6 +131,133 @@ class TestMemoryEndpoints:
         data = response.json()
         assert data["scope"] == "memories"
         assert any(item["snippet"] == content for item in data["results"])
+
+    async def test_integration_search_includes_incoming_co_used_with_edges(
+        self, client: httpx.AsyncClient
+    ):
+        left = _uid("integration_left")
+        right = _uid("integration_right")
+        from app.services.surreal import session
+
+        async with session() as db:
+            await db.query(
+                f"UPSERT integration:{left} CONTENT {{ slug: $slug, name: $name }}",
+                {"slug": left, "name": left},
+            )
+            await db.query(
+                f"UPSERT integration:{right} CONTENT {{ slug: $slug, name: $name }}",
+                {"slug": right, "name": right},
+            )
+            await db.query(
+                f"RELATE integration:{left}->co_used_with->integration:{right} "
+                "CONTENT { frequency: 1 }"
+            )
+
+        try:
+            response = await client.get(
+                "/api/kg/search",
+                params={"query": right, "scope": "all"},
+            )
+            assert response.status_code == 200
+            hit = next(
+                item for item in response.json()["results"]
+                if item["kind"] == "integrations"
+            )
+            assert any(connection["slug"] == left for connection in hit["connections"])
+        finally:
+            async with session() as db:
+                await db.query(
+                    f"DELETE co_used_with WHERE in = integration:{left} "
+                    f"OR out = integration:{left}"
+                )
+                await db.query(f"DELETE integration:{left}")
+                await db.query(f"DELETE integration:{right}")
+
+    async def test_search_prioritizes_named_hits_over_high_confidence_memories(
+        self, client: httpx.AsyncClient
+    ):
+        entity_query = _uid("named_entity")
+        workflow_query = _uid("named_workflow")
+        entity_name = f"Person {entity_query}"
+        workflow_entity_name = f"Updated {workflow_query} runbook with full pipeline"
+        workflow_name = f"Workflow {workflow_query}"
+        entity_memory = f"High-confidence note about {entity_query}"
+        workflow_memory = f"High-confidence note about {workflow_query}"
+        workflow_slug = _uid("named_workflow_slug")
+
+        try:
+            entity = await client.post(
+                "/api/kg/entities",
+                json={
+                    "name": entity_name,
+                    "entity_type": "person",
+                    "description": "A search ranking test entity.",
+                },
+            )
+            assert entity.status_code == 201
+            memory = await client.post(
+                "/api/kg/memories",
+                json={"content": entity_memory, "confidence": 1.0},
+            )
+            assert memory.status_code == 201
+            workflow_entity = await client.post(
+                "/api/kg/entities",
+                json={
+                    "name": workflow_entity_name,
+                    "entity_type": "document",
+                    "description": "A longer named entity hit.",
+                },
+            )
+            assert workflow_entity.status_code == 201
+
+            workflow = await client.post(
+                "/api/kg/workflows",
+                json={
+                    "slug": workflow_slug,
+                    "name": workflow_name,
+                    "description": "A search ranking test workflow.",
+                },
+            )
+            assert workflow.status_code == 201
+            memory = await client.post(
+                "/api/kg/memories",
+                json={"content": workflow_memory, "confidence": 1.0},
+            )
+            assert memory.status_code == 201
+
+            entity_results = await client.get(
+                "/api/kg/search",
+                params={"query": entity_query, "scope": "all"},
+            )
+            workflow_results = await client.get(
+                "/api/kg/search",
+                params={"query": workflow_query, "scope": "all"},
+            )
+            assert entity_results.json()["results"][0]["kind"] == "entities"
+            assert entity_results.json()["results"][0]["focus"] == entity.json()["id"]
+            assert workflow_results.json()["results"][0]["kind"] == "workflows"
+            assert workflow_results.json()["results"][0]["focus"] == workflow_slug
+        finally:
+            from app.services.surreal import session
+
+            async with session() as db:
+                await db.query("DELETE entity WHERE name = $name", {"name": entity_name})
+                await db.query(
+                    "DELETE entity WHERE name = $name",
+                    {"name": workflow_entity_name},
+                )
+                await db.query(
+                    "DELETE workflow WHERE slug = $slug",
+                    {"slug": workflow_slug},
+                )
+                await db.query(
+                    "DELETE memory WHERE content = $content",
+                    {"content": entity_memory},
+                )
+                await db.query(
+                    "DELETE memory WHERE content = $content",
+                    {"content": workflow_memory},
+                )
 
     async def test_missing_content_returns_422(self, client: httpx.AsyncClient):
         r = await client.post("/api/kg/memories", json={"memory_type": "fact"})

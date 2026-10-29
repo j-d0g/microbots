@@ -125,7 +125,12 @@ function searchResponse(
 
   const description = typeof top.snippet === "string" ? top.snippet : "";
   const name = typeof top.name === "string" ? `${top.name}: ` : "";
-  const resultText = description ? `I found ${name}${description}` : "I found a matching item in your graph.";
+  const firstSentence = description.split(/(?<=[.!?])\s/, 1)[0];
+  const resultText = description
+    ? topKind === "entities"
+      ? `${name}${firstSentence}`
+      : `I found ${name}${firstSentence}`
+    : "I found a matching item in your graph.";
   return {
     toolCalls: [],
     text: morningBrief
@@ -169,6 +174,26 @@ export function scriptedResponse(
 
   const priorShow = latestResult(previousResults, "show");
   if (priorShow) {
+    if (
+      priorShow.kind === "graph" &&
+      Array.isArray(priorShow.neighbors)
+    ) {
+      const names = priorShow.neighbors.filter(
+        (name): name is string => typeof name === "string",
+      );
+      const focus = typeof priorShow.focus === "string" ? priorShow.focus : "That integration";
+      const visible = names.slice(0, 3);
+      const more = names.length - visible.length;
+      const list = visible.length > 1
+        ? more > 0
+          ? visible.join(", ")
+          : `${visible.slice(0, -1).join(", ")} and ${visible.at(-1)}`
+        : visible[0] ?? "no connected items";
+      return {
+        toolCalls: [],
+        text: `${focus[0].toUpperCase()}${focus.slice(1)} connects to ${list}${more > 0 ? ` and ${more} more` : ""}.`,
+      };
+    }
     const kind = typeof priorShow.kind === "string" ? priorShow.kind : "card";
     return { toolCalls: [], text: `Here's the ${kind} card.` };
   }
@@ -248,7 +273,10 @@ export function scriptedResponse(
   );
   if (integrationMatch) {
     return {
-      toolCalls: [{ name: "search", input: { query: integrationMatch[1], scope: "all" } }],
+      toolCalls: [{
+        name: "show",
+        input: { kind: "graph", focus: integrationMatch[1] },
+      }],
       text: "",
     };
   }

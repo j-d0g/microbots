@@ -2,10 +2,18 @@ import { tool } from "ai";
 import { z } from "zod";
 import {
   addMemory,
+  getKgEntities,
+  getKgIntegrations,
+  getKgMemories,
+  getKgSkills,
+  getKgUser,
+  getKgWorkflows,
   searchKg,
   upsertEntity,
   upsertWorkflow,
 } from "@/lib/api/backend";
+import { toGraph } from "@/lib/api/kg-to-graph";
+import { buildAdjacency, resolveNodeRef } from "@/components/graph/graph-view";
 import type { AgentEvent } from "@/lib/agent-client";
 import { applyCanvasToSnapshot } from "./server-snapshot";
 import { canvasActionForEvent } from "./canvas-reducer";
@@ -90,6 +98,39 @@ function slugify(value: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
+async function integrationNeighbors(focus: string, userId?: string | null) {
+  const [user, integrations, entities, memories, skills, workflows] =
+    await Promise.all([
+      getKgUser(userId).catch(() => null),
+      getKgIntegrations(userId).catch(() => []),
+      getKgEntities(undefined, userId).catch(() => []),
+      getKgMemories({ by: "confidence", limit: 30 }, userId).catch(() => []),
+      getKgSkills({ minStrength: 1 }, userId).catch(() => []),
+      getKgWorkflows(userId).catch(() => []),
+    ]);
+  const graph = toGraph({
+    user,
+    integrations,
+    entities,
+    memories,
+    skills,
+    workflows,
+    connections: [],
+  });
+  const focusId = resolveNodeRef(graph.nodes, focus);
+  if (!focusId) return [];
+  const adjacency = buildAdjacency(graph.links);
+  const layerOrder = ["integration", "entity", "skill", "workflow", "memory"];
+  return [...(adjacency.get(focusId) ?? [])]
+    .map((id) => graph.nodes.find((node) => node.id === id))
+    .filter((node) => node && node.layer !== "user")
+    .sort((a, b) =>
+      layerOrder.indexOf(a!.layer) - layerOrder.indexOf(b!.layer) ||
+      a!.label.localeCompare(b!.label),
+    )
+    .map((node) => node!.label);
+}
+
 export function createAgentTools(ctx: AgentToolCtx) {
   return {
     show: tool({
@@ -99,6 +140,10 @@ export function createAgentTools(ctx: AgentToolCtx) {
         focus: z.string().optional().describe("node, entity, or workflow to focus"),
       }),
       execute: async ({ kind, focus }) => {
+        const neighbors =
+          kind === "graph" && focus
+            ? await integrationNeighbors(focus, ctx.userId)
+            : undefined;
         ctx.emit({
           type: "ui.canvas",
           action: {
@@ -108,7 +153,12 @@ export function createAgentTools(ctx: AgentToolCtx) {
             openedBy: "agent",
           },
         });
-        return { ok: true, kind, ...(focus ? { focus } : {}) };
+        return {
+          ok: true,
+          kind,
+          ...(focus ? { focus } : {}),
+          ...(neighbors ? { neighbors } : {}),
+        };
       },
     }),
 
@@ -134,14 +184,19 @@ export function createAgentTools(ctx: AgentToolCtx) {
         );
         if (result.ok && result.result.results.length > 0) {
           const top = result.result.results[0];
+          const cardKind =
+            top.kind === "entities" ? "entity_detail" : top.kind;
+          const cardResults = top.kind === "memories"
+            ? result.result.results.filter((item) => item.kind === "memories")
+            : result.result.results;
           ctx.emit({
             type: "ui.tool.open",
-            kind: top.kind,
+            kind: cardKind,
             payload: {
               query,
               scope,
-              count: result.result.count,
-              results: result.result.results,
+              count: cardResults.length,
+              results: cardResults,
               focus: top.focus,
               status: "done",
             },

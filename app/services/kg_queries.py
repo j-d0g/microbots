@@ -87,7 +87,8 @@ LIMIT $limit
 
 Q_SEARCH_INTEGRATIONS = """
 SELECT slug, name,
-    (SELECT out.slug AS slug, out.name AS name FROM co_used_with WHERE in = $parent.id) AS connections
+    (SELECT out.slug AS slug, out.name AS name FROM co_used_with WHERE in = $parent.id) AS connections,
+    (SELECT in.slug AS slug, in.name AS name FROM co_used_with WHERE out = $parent.id) AS incoming_connections
 FROM integration
 WHERE string::contains(string::lowercase(name), string::lowercase($query))
     OR string::contains(string::lowercase(slug), string::lowercase($query))

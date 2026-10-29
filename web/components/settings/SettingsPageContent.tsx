@@ -56,6 +56,7 @@ export function SettingsPageContent() {
     try {
       const h = await backend.getHealth();
       setBackendHealth({
+        apiOk: true,
         surrealOk: !!h.surreal?.ok,
         composioOk: !!h.composio?.ok,
         composioConfigured: !!h.composio?.configured,
@@ -63,6 +64,7 @@ export function SettingsPageContent() {
       });
     } catch {
       setBackendHealth({
+        apiOk: false,
         surrealOk: false,
         composioOk: false,
         composioConfigured: false,

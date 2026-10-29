@@ -68,6 +68,7 @@ export function StoreBridge() {
         const h = await backend.getHealth();
         if (cancelled) return;
         setBackendHealth({
+          apiOk: true,
           surrealOk: !!h.surreal?.ok,
           composioOk: !!h.composio?.ok,
           composioConfigured: !!h.composio?.configured,
@@ -76,6 +77,7 @@ export function StoreBridge() {
       } catch {
         if (cancelled) return;
         setBackendHealth({
+          apiOk: false,
           surrealOk: false,
           composioOk: false,
           composioConfigured: false,

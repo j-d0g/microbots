@@ -144,34 +144,104 @@ describe("scripted orchestrator model", () => {
       .toContain("Deploy Pipeline");
   });
 
-  it("answers about Linear from neighbors returned by the backend", async () => {
+  it("opens the focused Linear graph and answers from its visible neighbors", async () => {
     vi.stubEnv("OPENROUTER_API_KEY", "");
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-      query: "Linear",
-      scope: "all",
-      count: 1,
-      results: [{
-        kind: "integrations",
-        id: "integration:linear",
-        name: "Linear",
-        focus: "Linear",
-        snippet: "Issue tracking",
-        score: 0.9,
-        connections: [{ slug: "notion", name: "Notion" }, { slug: "github", name: "GitHub" }],
-      }],
-    })));
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/integrations")) {
+        return Response.json([
+          { slug: "linear", name: "Linear", co_used_with_slugs: [
+            { out: { slug: "notion" } },
+          ] },
+          { slug: "slack", name: "Slack", co_used_with_slugs: [
+            { out: { slug: "linear" } },
+          ] },
+          { slug: "github", name: "GitHub", co_used_with_slugs: [
+            { out: { slug: "linear" } },
+          ] },
+          { slug: "notion", name: "Notion" },
+        ]);
+      }
+      if (path.endsWith("/entities")) {
+        return Response.json([{ id: "entity:bob", name: "Bob", integration_slugs: ["linear"] }]);
+      }
+      if (path.endsWith("/skills")) {
+        return Response.json([{
+          id: "skill:triage", slug: "triage", name: "Triage",
+          strength: 1, steps: [], integrations: ["linear"],
+        }]);
+      }
+      if (path.endsWith("/workflows")) {
+        return Response.json([{
+          id: "workflow:bug-triage", slug: "bug-triage", name: "Bug Triage",
+          skill_chain: [{ skill_slug: "triage", step_order: 1 }],
+        }]);
+      }
+      return Response.json([]);
+    }));
     const response = await POST(
       request("what's connected to Linear?", buildSnapshot()),
     );
     const events = readEvents(await response.text());
-
     expect(events.filter((event) => event.type === "reply.chunk")
       .map((event) => event.type === "reply.chunk" ? event.text : "").join(""))
-      .toContain("Notion and GitHub");
+      .toContain("GitHub, Notion, Slack and 3 more.");
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "ui.canvas",
+      action: expect.objectContaining({
+        type: "open",
+        kind: "graph",
+        payload: { focus: "linear" },
+      }),
+    }));
+  });
+
+  it("routes entity hits to entity detail and answers with one description sentence", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      query: "bob",
+      scope: "all",
+      count: 1,
+      results: [{
+        kind: "entities",
+        id: "entity:bob",
+        focus: "entity:bob",
+        name: "Bob",
+        snippet: "Bob is the primary code reviewer. He owns review assignments.",
+        score: 0.9,
+      }],
+    })));
+    const response = await POST(request("who is Bob?", buildSnapshot()));
+    const events = readEvents(await response.text());
     expect(events).toContainEqual(expect.objectContaining({
       type: "ui.tool.open",
-      kind: "integrations",
-      payload: expect.objectContaining({ query: "linear" }),
+      kind: "entity_detail",
+      payload: expect.objectContaining({ focus: "entity:bob" }),
+    }));
+    expect(events.filter((event) => event.type === "reply.chunk")
+      .map((event) => event.type === "reply.chunk" ? event.text : "").join(""))
+      .toBe("Bob: Bob is the primary code reviewer.");
+  });
+
+  it("keeps non-memory hits out of memory card results", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      query: "context",
+      scope: "all",
+      count: 2,
+      results: [
+        { kind: "memories", id: "memory:1", snippet: "Run the deploy check.", score: 0.9 },
+        { kind: "integrations", id: "integration:slack", name: "Slack", score: 0.8 },
+      ],
+    })));
+    const response = await POST(request("find context", buildSnapshot()));
+    const events = readEvents(await response.text());
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "ui.tool.open",
+      kind: "memories",
+      payload: expect.objectContaining({
+        results: [expect.objectContaining({ kind: "memories" })],
+      }),
     }));
   });
 });
@@ -196,20 +266,19 @@ describe("scripted response mappings", () => {
     expect(brief.text).toBe("");
   });
 
-  it("searches real integration neighbors before answering", () => {
+  it("shows the focused integration graph and describes its neighbors", () => {
     expect(scriptedResponse("what's connected to Linear?").toolCalls).toEqual([
-      { name: "search", input: { query: "linear", scope: "all" } },
+      { name: "show", input: { kind: "graph", focus: "linear" } },
     ]);
     expect(scriptedResponse("what's connected to Linear?", [{
-      name: "search",
-      output: { ok: true, result: { results: [
-        { kind: "memories", snippet: "Linear tickets are created before PRs.", score: 0.92 },
-        {
-          kind: "integrations", name: "Linear", score: 0.9,
-          connections: [{ name: "GitHub" }, { name: "Notion" }],
-        },
-      ] } },
-    }]).text).toContain("GitHub and Notion");
+      name: "show",
+      output: {
+        ok: true,
+        kind: "graph",
+        focus: "linear",
+        neighbors: ["Slack", "GitHub", "Notion", "Bob"],
+      },
+    }]).text).toContain("Slack, GitHub, Notion and 1 more.");
   });
 
   it.each([
