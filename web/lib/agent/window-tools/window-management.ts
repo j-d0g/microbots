@@ -1,15 +1,15 @@
 /**
  * Comprehensive window management tool registry.
  *
- * Handles all window positioning, pinning, swapping, and arrangement operations.
+ * Handles window positioning, pinning, and arrangement operations.
  * These tools provide fine-grained control over the window layout system,
  * allowing the UI agent to manipulate window positions, z-index, pin states,
  * and apply various layout presets.
  *
  * Tool categories:
- *   - POSITION & ARRANGEMENT: move, arrange, swap
+ *   - POSITION & ARRANGEMENT: move, arrange
  *   - PINNING: pin/unpin/toggle, list pinned
- *   - FOCUS & Z-INDEX: bring to front, send to back, get focused
+ *   - FOCUS & Z-INDEX: bring to front, get focused
  *   - SIZE & RESIZE: resize, maximize, minimize
  *   - MULTI-WINDOW OPS: close all except, cascade, tile
  *   - STATE: read layout state, read window list
@@ -45,9 +45,6 @@ const MOUNT_POINT = z.enum([
   "pip-br",
   "pip-tr",
 ]);
-
-/** Centre stage arrangement options */
-const CENTRE_ARRANGEMENT = z.enum(["solo", "split-2", "split-3", "grid-4"]);
 
 /** Window kind schema */
 const WINDOW_KIND = z.enum([
@@ -173,53 +170,6 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         }], {
           message: `Arranged ${ctx.snapshot.windows.length} windows using ${preset} preset.`,
         });
-      },
-    }),
-
-    /**
-     * Set centre stage arrangement.
-     * Options: solo, split-2, split-3, grid-4
-     */
-    winman_set_centre_arrangement: tool({
-      description:
-        "Set the centre stage arrangement. solo = 1 window, split-2 = 2 side-by-side, split-3 = 1 half + 2 stacked, grid-4 = 2×2 grid. Determines how many windows occupy center stage.",
-      inputSchema: z.object({
-        arrangement: CENTRE_ARRANGEMENT,
-      }),
-      execute: async ({ arrangement }) => {
-        return applyAndEmit(ctx, "winman_set_centre_arrangement", { arrangement }, [], {
-          ok: false,
-          message: "Centre-stage arrangements are unsupported by the canvas reducer.",
-        });
-      },
-    }),
-
-    /**
-     * Swap positions of two windows.
-     */
-    winman_swap_positions: tool({
-      description:
-        "Swap the positions (mount points and rects) of two windows. Specify each window by id or kind.",
-      inputSchema: z.object({
-        window1_id: z.string().optional(),
-        window1_kind: WINDOW_KIND.optional(),
-        window2_id: z.string().optional(),
-        window2_kind: WINDOW_KIND.optional(),
-      }),
-      execute: async ({ window1_id, window1_kind, window2_id, window2_kind }) => {
-        const w1 = findWindow(ctx.snapshot, window1_id, window1_kind);
-        const w2 = findWindow(ctx.snapshot, window2_id, window2_kind);
-
-        return applyAndEmit(
-          ctx,
-          "winman_swap_positions",
-          { window1_id: w1?.id ?? window1_id, window1_kind, window2_id: w2?.id ?? window2_id, window2_kind },
-          [],
-          {
-            ok: false,
-            message: "Swapping window positions is unsupported by the canvas reducer.",
-          },
-        );
       },
     }),
 
@@ -369,24 +319,6 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         }];
 
         return applyAndEmit(ctx, "winman_bring_to_front", { id: target.id }, events);
-      },
-    }),
-
-    /**
-     * Send window to lowest z-index (back).
-     */
-    winman_send_to_back: tool({
-      description:
-        "Send a window to the back by setting it to the lowest z-index. Use id or kind to identify the window.",
-      inputSchema: z.object({
-        id: z.string().optional(),
-        kind: WINDOW_KIND.optional(),
-      }),
-      execute: async ({ id, kind }) => {
-        return applyAndEmit(ctx, "winman_send_to_back", { id, kind }, [], {
-          ok: false,
-          message: "Sending a window to the back is unsupported by the canvas reducer.",
-        });
       },
     }),
 

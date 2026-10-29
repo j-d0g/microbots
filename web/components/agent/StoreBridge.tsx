@@ -7,7 +7,7 @@ import * as backend from "@/lib/api/backend";
 import { hydrateChatHistory } from "@/lib/chat-persistence";
 
 /* Every window can be the target of a window-management `ui.tool`
- * event (`pin_window`, `unpin_window`, `toggle_pin`, `send_to_back`)
+ * event (`pin_window`, `unpin_window`, `toggle_pin`)
  * because the orchestrator emits those into `target.kind`. Rather
  * than make every window component duplicate the same handler set,
  * we register a shared meta tool bag for every WindowKind here.
@@ -70,7 +70,7 @@ export function StoreBridge() {
 
   /* Meta window-management tools registered for every WindowKind so
    * any centre-staged window can receive `pin_window` / `unpin_window`
-   * / `toggle_pin` / `send_to_back` from the orchestrator (those
+   * / `toggle_pin` from the orchestrator (those
    * events are dispatched to `target.kind` by `window-management.ts`,
    * which can be any of the ~14 kinds). */
   useEffect(() => {
@@ -110,24 +110,6 @@ export function StoreBridge() {
             } else {
               useAgentStore.getState().pinWindow(id);
             }
-          },
-        },
-        {
-          name: "send_to_back",
-          description:
-            "Demote the targeted window to the lowest z-index in the stack.",
-          args: { id: "string" },
-          run: (args) => {
-            const id = typeof args.id === "string" ? args.id : "";
-            if (!id) return;
-            const wins = useAgentStore.getState().windows;
-            if (!wins.some((w) => w.id === id)) return;
-            const minZ = Math.min(0, ...wins.map((w) => w.zIndex)) - 1;
-            useAgentStore.setState({
-              windows: wins.map((w) =>
-                w.id === id ? { ...w, zIndex: minZ } : w,
-              ),
-            });
           },
         },
       ]),
