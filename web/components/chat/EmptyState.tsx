@@ -11,10 +11,7 @@ export function EmptyState({ onPick }: { onPick: (query: string) => void }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-7 px-5 py-10 text-center">
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-35">
-          a calm place to start
-        </p>
-        <h2 className="mt-3 text-[24px] font-medium leading-snug tracking-tight text-ink-90">
+        <h2 className="text-[24px] font-medium leading-snug tracking-tight text-ink-90">
           what would you like to work through?
         </h2>
         <p className="mx-auto mt-2 max-w-[38ch] text-[13px] leading-relaxed text-ink-60">

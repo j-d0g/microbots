@@ -28,11 +28,6 @@ export function ChatMessage({
         >
           {isUser ? "you" : "agent"}
         </span>
-        {message.room && (
-          <span className="font-mono text-[10px] tracking-wider text-ink-35">
-            · {message.room}
-          </span>
-        )}
         <span className="ml-auto font-mono text-[10px] tabular-nums text-ink-35">
           {formatTs(message.ts)}
         </span>
@@ -52,7 +47,9 @@ export function ChatMessage({
                 <X size={10} className="text-confidence-low" />
               )}
               {trace.name.replaceAll("_", " ")}
-              {trace.ms !== undefined && <span className="text-ink-35">{trace.ms}ms</span>}
+              {trace.ms !== undefined && trace.ms >= 50 && (
+                <span className="text-ink-35">{trace.ms}ms</span>
+              )}
             </span>
           ))}
         </div>

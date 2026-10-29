@@ -473,7 +473,10 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     }));
   },
   finishChatToolTrace: (name, ok) => {
-    const message = get().getOrCreateStreamingAgentMessage();
+    const message = [...get().chatMessages].reverse().find(
+      (current) => current.role === "agent" && current.status === "streaming",
+    );
+    if (!message) return;
     const finishedAt = Date.now();
     set((s) => ({
       chatMessages: s.chatMessages.map((current) => {

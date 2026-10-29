@@ -5,6 +5,7 @@ import { GET, POST } from "@/app/api/agent/orchestrate/route";
 import { buildSnapshot } from "@/lib/agent/snapshot";
 import { useAgentStore } from "@/lib/store";
 import { scriptedResponse } from "@/lib/agent/providers/scripted";
+import { memoryCardSearchDisplay } from "@/components/chat/cards/memory-card-data";
 
 function readEvents(body: string): AgentEvent[] {
   return body
@@ -70,8 +71,12 @@ describe("scripted orchestrator model", () => {
     expect(events.filter((event) => event.type === "reply.chunk").map((event) =>
       event.type === "reply.chunk" ? event.text : "",
     ).join("")).toBe(
-      "Your notes mention Alice Chen, the #deployments convention, and creating Linear tickets before PRs. Your workflow list includes Bug Triage and PR Review Cycle, so either is ready for a closer look.",
+      "Your notes say to post in #deployments before and after every production deploy. Bug Triage is ready for a closer look.",
     );
+    expect(scriptedResponse("morning brief").toolCalls[0]).toEqual({
+      name: "search_memory",
+      input: { query: "production deploy" },
+    });
 
     resetStore();
     for (const event of events) applyAgentEvent(event);
@@ -126,12 +131,12 @@ describe("scripted response mappings", () => {
       "open_window",
       "open_window",
     ]);
-    expect(brief.toolCalls[0].input.query).toBe("#deployments");
+    expect(brief.toolCalls[0].input.query).toBe("production deploy");
     expect(brief.toolCalls[1].input).toEqual({ kind: "memories" });
     expect(brief.toolCalls[2].input).toEqual({ kind: "workflows", focus: "Bug Triage" });
-    expect(brief.text).toContain("Alice Chen");
+    expect(brief.text).toContain("production deploy");
     expect(brief.text).toContain("#deployments");
-    expect(brief.text).toContain("PR Review Cycle");
+    expect(brief.text).toContain("Bug Triage");
   });
 
   it("opens a focused graph for integration connections", () => {
@@ -220,6 +225,22 @@ describe("chat message event attachments", () => {
     expect(useAgentStore.getState().chatMessages).toEqual([]);
   });
 
+  it("does not create a message when a tool finishes without an active stream", () => {
+    resetStore();
+    const completedMessage = {
+      id: "agent-finished",
+      role: "agent" as const,
+      text: "A completed reply.",
+      ts: 1,
+      status: "done" as const,
+    };
+    useAgentStore.setState({ chatMessages: [completedMessage] });
+
+    useAgentStore.getState().finishChatToolTrace("open_window", true);
+
+    expect(useAgentStore.getState().chatMessages).toEqual([completedMessage]);
+  });
+
   it("opens and closes the conditional chat canvas", () => {
     resetStore();
     expect(useAgentStore.getState().chatCanvasOpen).toBe(false);
@@ -230,5 +251,30 @@ describe("chat message event attachments", () => {
     });
     useAgentStore.getState().closeChatCanvas();
     expect(useAgentStore.getState().chatCanvasOpen).toBe(false);
+  });
+});
+
+describe("memory card search results", () => {
+  it("uses the first three result snippets and preserves the match count", () => {
+    expect(memoryCardSearchDisplay({
+      query: "production deploy",
+      count: 4,
+      results: [
+        { snippet: "first" },
+        { snippet: "second" },
+        { snippet: "third" },
+        { snippet: "fourth" },
+      ],
+    })).toEqual({
+      query: "production deploy",
+      count: 4,
+      snippets: ["first", "second", "third"],
+    });
+  });
+
+  it("distinguishes an empty search from an absent results payload", () => {
+    expect(memoryCardSearchDisplay({ query: "nothing", count: 0, results: [] }))
+      .toEqual({ query: "nothing", count: 0, snippets: [] });
+    expect(memoryCardSearchDisplay({ query: "nothing" })).toBeNull();
   });
 });

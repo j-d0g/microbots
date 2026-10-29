@@ -19,6 +19,7 @@ import {
 import { useAgentStore, type ChatCard } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import { cn } from "@/lib/cn";
+import { memoryCardSearchDisplay } from "./memory-card-data";
 
 export function InlineCard({ card }: { card: ChatCard }) {
   switch (card.kind) {
@@ -89,6 +90,37 @@ function GraphCard({ card }: { card: ChatCard }) {
 }
 
 function MemoryCard({ card }: { card: ChatCard }) {
+  const search = memoryCardSearchDisplay(card.payload);
+  return (
+    <CardShell card={card} title="memories">
+      {search ? (
+        <>
+          <p className="mb-2 font-mono text-[10px] text-ink-35">
+            “{search.query}” · {search.count} matches
+          </p>
+          {search.snippets.length ? (
+            <ul className="space-y-2">
+              {search.snippets.map((snippet, index) => (
+                <li
+                  key={`${index}-${snippet}`}
+                  className="border-l border-accent-indigo/30 pl-2 text-[12px] leading-relaxed text-ink-60"
+                >
+                  {snippet}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyResource label={`No memories match “${search.query}”.`} />
+          )}
+        </>
+      ) : (
+        <TopMemories />
+      )}
+    </CardShell>
+  );
+}
+
+function TopMemories() {
   const userId = useAgentStore((state) => state.userId);
   const fetcher = useCallback(
     (signal: AbortSignal) => getMemories({ by: "confidence", limit: 3 }, userId, signal),
@@ -96,18 +128,16 @@ function MemoryCard({ card }: { card: ChatCard }) {
   );
   const { data, loading } = useKgResource(fetcher);
   return (
-    <CardShell card={card} title="memories">
-      {loading && !data ? <Loading /> : (
-        <ul className="space-y-2">
-          {(data ?? []).slice(0, 3).map((memory) => (
-            <li key={memory.id} className="border-l border-accent-indigo/30 pl-2 text-[12px] leading-relaxed text-ink-60">
-              {memory.content}
-            </li>
-          ))}
-          {!data?.length && <EmptyResource label="No memories to show." />}
-        </ul>
-      )}
-    </CardShell>
+    loading && !data ? <Loading /> : (
+      <ul className="space-y-2">
+        {(data ?? []).slice(0, 3).map((memory) => (
+          <li key={memory.id} className="border-l border-accent-indigo/30 pl-2 text-[12px] leading-relaxed text-ink-60">
+            {memory.content}
+          </li>
+        ))}
+        {!data?.length && <EmptyResource label="No memories to show." />}
+      </ul>
+    )
   );
 }
 
@@ -262,7 +292,7 @@ function AskUserInlineCard({ card }: { card: ChatCard }) {
 }
 
 function GenericCard({ card }: { card: ChatCard }) {
-  const summary = WINDOW_REGISTRY[card.kind].summary(useAgentStore.getState());
+  const summary = useAgentStore((state) => WINDOW_REGISTRY[card.kind].summary(state));
   return (
     <CardShell card={card} title={WINDOW_REGISTRY[card.kind].title}>
       <p className="text-[12px] leading-relaxed text-ink-60">{summary}</p>

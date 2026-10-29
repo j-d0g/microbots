@@ -58,11 +58,11 @@ export function scriptedResponse(query: string): {
   if (/\bmorning brief\b|\bbrief\b/.test(normalized)) {
     return {
       toolCalls: [
-        { name: "search_memory", input: { query: "#deployments" } },
+        { name: "search_memory", input: { query: "production deploy" } },
         { name: "open_window", input: { kind: "memories" } },
         { name: "open_window", input: { kind: "workflows", focus: "Bug Triage" } },
       ],
-      text: "Your notes mention Alice Chen, the #deployments convention, and creating Linear tickets before PRs. Your workflow list includes Bug Triage and PR Review Cycle, so either is ready for a closer look.",
+      text: "Your notes say to post in #deployments before and after every production deploy. Bug Triage is ready for a closer look.",
     };
   }
   const integrationMatch = normalized.match(
