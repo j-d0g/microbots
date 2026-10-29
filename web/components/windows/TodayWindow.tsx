@@ -18,6 +18,22 @@ export function todaySectionsForFocus(
   };
 }
 
+export function relativeTime(value?: string): string {
+  if (!value) return "now";
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "now";
+  const elapsed = Math.max(0, Date.now() - timestamp);
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  const weeks = Math.floor(days / 7);
+  return `${weeks}w`;
+}
+
 export function replaceCandidate(
   today: TodayResponse,
   id: string,
@@ -138,8 +154,30 @@ function TodayContent({
           <ul className="space-y-2">
             {needsYou.map((candidate) => (
               <li key={candidate.id} className="border-l border-confidence-low/40 pl-2">
-                <h3 className="text-[12px] font-medium text-ink-90">{candidate.title}</h3>
-                <p className="text-[10px] leading-relaxed text-ink-60">{candidate.story}</p>
+                {candidate.status === "accepted" || candidate.status === "dismissed" ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[12px] text-ink-60">{candidate.title}</span>
+                    <span className="flex shrink-0 items-center gap-2 font-mono text-[9px] uppercase text-ink-35">
+                      {candidate.status}
+                      <button type="button" onClick={() => void decide(candidate, "open")} className="text-accent-indigo hover:underline">
+                        undo
+                      </button>
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-[12px] font-medium text-ink-90">{candidate.title}</h3>
+                        <p className="text-[10px] leading-relaxed text-ink-60">{candidate.story}</p>
+                      </div>
+                      <div className="flex shrink-0 gap-2 font-mono text-[9px] uppercase">
+                        <button type="button" onClick={() => void decide(candidate, "accepted")} className="text-accent-indigo hover:underline">accept</button>
+                        <button type="button" onClick={() => void decide(candidate, "dismissed")} className="text-ink-35 hover:underline">dismiss</button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </li>
             ))}
           </ul>
@@ -193,7 +231,9 @@ function TodayContent({
             {recent.slice(0, 5).map((chat) => (
               <li key={chat.id} className="flex items-baseline justify-between gap-2 text-[10px]">
                 <span className="truncate text-ink-60">{chat.title}</span>
-                <span className="shrink-0 font-mono text-[8px] text-ink-35">{chat.source_type}</span>
+                <span className="shrink-0 font-mono text-[8px] text-ink-35">
+                  {chat.source_type.split(/[_:]/)[0]} · {relativeTime(chat.occurred_at)}
+                </span>
               </li>
             ))}
           </ul>

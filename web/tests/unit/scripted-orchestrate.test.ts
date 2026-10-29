@@ -116,7 +116,7 @@ describe("scripted orchestrator model", () => {
     }));
     expect(events.filter((event) => event.type === "reply.chunk").map((event) =>
       event.type === "reply.chunk" ? event.text : "",
-    ).join("")).toBe("1 thing needs you and 2 automations are worth a look.");
+    ).join("")).toBe("1 thing needs you; 2 automations are worth a look.");
     expect(scriptedResponse("morning brief").toolCalls).toEqual([
       { name: "today", input: {} },
     ]);
@@ -173,7 +173,7 @@ describe("scripted orchestrator model", () => {
     }));
     expect(events.filter((event) => event.type === "reply.chunk")
       .map((event) => event.type === "reply.chunk" ? event.text : "").join(""))
-      .toBe("saved.");
+      .toBe("Saved.");
   });
 
   it("opens the top deploy workflow card and answers from its search result", async () => {
@@ -395,6 +395,48 @@ describe("scripted response mappings", () => {
     }]).text).toBe("Draft PR review summaries for Bob is worth a look, based on 2 signals.");
   });
 
+  it("uses capitalized singular and empty-state morning brief copy", () => {
+    expect(scriptedResponse("morning brief", [{
+      name: "today",
+      output: {
+        ok: true,
+        result: {
+          needs_you: [],
+          suggestions: [{ status: "open" }, { status: "open" }],
+        },
+      },
+    }]).text).toBe("Nothing needs you right now; 2 automations are worth a look.");
+    expect(scriptedResponse("morning brief", [{
+      name: "today",
+      output: {
+        ok: true,
+        result: {
+          needs_you: [],
+          suggestions: [{ status: "open" }],
+        },
+      },
+    }]).text).toBe("Nothing needs you right now; 1 automation is worth a look.");
+    expect(scriptedResponse("what needs me today?", [{
+      name: "today",
+      output: { ok: true, result: { needs_you: [], suggestions: [] } },
+    }]).text).toBe("Nothing needs you right now.");
+  });
+
+  it("answers a memory search with the found sentence", () => {
+    expect(scriptedResponse("who owns the release checklist?", [{
+      name: "search",
+      output: {
+        ok: true,
+        result: {
+          results: [{
+            kind: "memories",
+            snippet: "Carol owns the release checklist",
+          }],
+        },
+      },
+    }]).text).toBe("Carol owns the release checklist.");
+  });
+
   it("routes remember that statements to the real memory tool and says saved", () => {
     expect(scriptedResponse("remember that Carol owns the release checklist").toolCalls)
       .toEqual([{
@@ -404,7 +446,7 @@ describe("scripted response mappings", () => {
     expect(scriptedResponse("remember that Carol owns the release checklist", [{
       name: "remember",
       output: { ok: true, result: { id: "memory:carol_release" } },
-    }]).text).toBe("saved.");
+    }]).text).toBe("Saved.");
   });
 
   it("returns four demo prompts for capability questions", () => {

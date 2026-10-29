@@ -1087,7 +1087,11 @@ class TestToday:
         later_id = RecordID("automation_candidate", _uid("today_later"))
         hygiene_id = RecordID("automation_candidate", _uid("today_hygiene"))
         records = [
-            (question_id, {"kind": "question", "risk_tier": 2}, None),
+            (
+                question_id,
+                {"kind": "question", "risk_tier": 1},
+                datetime.now(timezone.utc) + timedelta(days=3),
+            ),
             (soon_id, {"kind": "automation", "risk_tier": 2}, datetime.now(timezone.utc) + timedelta(days=2)),
             (later_id, {"kind": "automation", "risk_tier": 2}, datetime.now(timezone.utc) + timedelta(days=14)),
             (hygiene_id, {"kind": "hygiene", "risk_tier": 1}, datetime.now(timezone.utc) + timedelta(days=1)),
@@ -1125,6 +1129,62 @@ class TestToday:
         finally:
             async with session() as db:
                 for record_id, _, _ in records:
+                    await db.query("DELETE $id", {"id": record_id})
+
+    async def test_today_excludes_ui_chats_and_uses_recent_text_fallbacks(
+        self, client: httpx.AsyncClient
+    ):
+        ui_chat = RecordID("chat", _uid("today_ui_chat"))
+        summary_chat = RecordID("chat", _uid("today_summary_chat"))
+        content_chat = RecordID("chat", _uid("today_content_chat"))
+        from app.services.surreal import session
+
+        timestamp = datetime.now(timezone.utc) + timedelta(days=30)
+        try:
+            async with session() as db:
+                for record_id, payload in [
+                    (
+                        ui_chat,
+                        {
+                            "title": "Own app chat",
+                            "source_type": "ui_chat",
+                            "content": "Do not show",
+                            "occurred_at": timestamp,
+                        },
+                    ),
+                    (
+                        summary_chat,
+                        {
+                            "summary": "Slack incident summary",
+                            "source_type": "slack_thread",
+                            "content": "Incident content",
+                            "occurred_at": timestamp - timedelta(minutes=1),
+                        },
+                    ),
+                    (
+                        content_chat,
+                        {
+                            "source_type": "github_pr",
+                            "content": "x" * 100,
+                            "occurred_at": timestamp - timedelta(minutes=2),
+                        },
+                    ),
+                ]:
+                    await db.query("UPSERT $id MERGE $payload", {
+                        "id": record_id,
+                        "payload": payload,
+                    })
+
+            response = await client.get("/api/kg/today")
+            assert response.status_code == 200
+            recent = response.json()["recent"]
+            by_id = {row["id"]: row for row in recent}
+            assert str(ui_chat) not in by_id
+            assert by_id[str(summary_chat)]["title"] == "Slack incident summary"
+            assert by_id[str(content_chat)]["title"] == "x" * 80
+        finally:
+            async with session() as db:
+                for record_id in [ui_chat, summary_chat, content_chat]:
                     await db.query("DELETE $id", {"id": record_id})
 
     async def test_candidate_status_update_and_undo(self, client: httpx.AsyncClient):

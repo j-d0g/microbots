@@ -44,7 +44,11 @@ export function InlineCard({
     case "skills":
       return <SkillCard card={card} />;
     case "today":
-      return <TodayCard card={card} />;
+      return (
+        <CardShell card={card} title="today">
+          <TodayCard card={card} />
+        </CardShell>
+      );
     case "ask_user":
       return <AskUserInlineCard card={card} onSubmitAnswer={onSubmitAnswer} />;
     default:

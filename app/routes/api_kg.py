@@ -318,6 +318,14 @@ async def today(user_id: Optional[str] = Query(None)) -> dict[str, list[dict[str
             )
         ]
         recent = await q(s, Q.Q_TODAY_RECENT)
+        for chat in recent:
+            chat["title"] = (
+                chat.get("title")
+                or chat.get("summary")
+                or (chat.get("content") or "")[:80]
+            )
+            chat.pop("summary", None)
+            chat.pop("content", None)
         return {
             "needs_you": needs_you,
             "suggestions": suggestions,

@@ -103,9 +103,17 @@ function searchResponse(
   const description = typeof top.snippet === "string" ? top.snippet : "";
   const name = typeof top.name === "string" ? `${top.name}: ` : "";
   const firstSentence = description.split(/(?<=[.!?])\s/, 1)[0];
+  const capitalizedSentence = firstSentence
+    ? `${firstSentence[0].toUpperCase()}${firstSentence.slice(1)}`
+    : "";
+  const memorySentence = capitalizedSentence
+    ? `${capitalizedSentence.replace(/[.!?]*$/, "")}.`
+    : "";
   const resultText = description
     ? topKind === "entities"
-      ? `${name}${firstSentence}`
+      ? `${name}${capitalizedSentence}`
+      : topKind === "memories"
+        ? memorySentence
       : `I found ${name}${firstSentence}`
     : "I found a matching item in your graph.";
   return {
@@ -138,7 +146,7 @@ export function scriptedResponse(
   if (rememberResult) {
     return {
       toolCalls: [],
-      text: rememberResult.ok === true ? "saved." : "I couldn't save that just now.",
+      text: rememberResult.ok === true ? "Saved." : "I couldn't save that just now.",
     };
   }
 
@@ -154,11 +162,15 @@ export function scriptedResponse(
         .filter((item) => item.status === "open" || item.status === "suggested")
       : [];
     if (morningBrief) {
-      const needNoun = needsYou.length === 1 ? "thing needs" : "things need";
-      const automationNoun = suggestions.length === 1 ? "automation is" : "automations are";
+      const needsText = needsYou.length === 0
+        ? "Nothing needs you right now"
+        : `${needsYou.length} ${needsYou.length === 1 ? "thing needs" : "things need"} you`;
+      const automationText = `${suggestions.length} ${
+        suggestions.length === 1 ? "automation is" : "automations are"
+      } worth a look`;
       return {
         toolCalls: [],
-        text: `${needsYou.length} ${needNoun} you and ${suggestions.length} ${automationNoun} worth a look.`,
+        text: `${needsText}; ${automationText}.`,
       };
     }
     if (/what (?:should|can) i automate/.test(normalized)) {
@@ -173,7 +185,9 @@ export function scriptedResponse(
     }
     return {
       toolCalls: [],
-      text: `${needsYou.length} ${needsYou.length === 1 ? "thing needs" : "things need"} your attention today.`,
+      text: needsYou.length === 0
+        ? "Nothing needs you right now."
+        : `${needsYou.length} ${needsYou.length === 1 ? "thing needs" : "things need"} your attention today.`,
     };
   }
 

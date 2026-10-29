@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  relativeTime,
   setCandidateStatus,
   todaySectionsForFocus,
 } from "@/components/windows/TodayWindow";
@@ -97,5 +98,13 @@ describe("Today focus sections", () => {
       suggestions: focusedToday.suggestions,
       recent: [],
     });
+  });
+});
+
+describe("Today recent items", () => {
+  it("formats relative time compactly", () => {
+    expect(relativeTime(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()))
+      .toBe("2d");
+    expect(relativeTime("not a date")).toBe("now");
   });
 });

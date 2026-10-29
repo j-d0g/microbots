@@ -190,8 +190,9 @@ WHERE in IN $ids
 """
 
 Q_TODAY_RECENT = """
-SELECT id, title, source_type, occurred_at ?? created_at AS occurred_at
+SELECT id, title, summary, content, source_type, occurred_at ?? created_at AS occurred_at
 FROM chat
+WHERE source_type != 'ui_chat'
 ORDER BY occurred_at DESC
 LIMIT 5
 """

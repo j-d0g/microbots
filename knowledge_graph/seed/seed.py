@@ -2,7 +2,7 @@
 import asyncio
 import os
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from surrealdb import AsyncSurreal
@@ -58,6 +58,18 @@ async def _seed_automation_candidates(db: AsyncSurreal) -> None:
                 ("candidate_evidence_chat", "chat:linear_ticket_triage"),
             ],
         },
+        {
+            "id": "automation_candidate:deploy_runbook_owner",
+            "title": "Deploy runbook looks out of date — who owns it now?",
+            "story": "The deploy runbook and recent incident notes need a current owner.",
+            "suggested_action": "Confirm the current owner of the deploy runbook.",
+            "signal_axes": {"kind": "question", "risk_tier": 1},
+            "time_sensitive_until": datetime.now(timezone.utc) + timedelta(days=3),
+            "evidence": [
+                ("candidate_evidence_chat", "chat:slack_deploy_incident"),
+                ("candidate_evidence_chat", "chat:notion_deploy_runbook"),
+            ],
+        },
     ]
     for candidate in candidates:
         record_id = candidate["id"]
@@ -68,6 +80,8 @@ async def _seed_automation_candidates(db: AsyncSurreal) -> None:
                 "story": candidate["story"],
                 "suggested_action": candidate["suggested_action"],
                 "signal_axes": candidate["signal_axes"],
+                **({"time_sensitive_until": candidate["time_sensitive_until"]}
+                   if "time_sensitive_until" in candidate else {}),
             }},
         )
         for edge_table, evidence_id in candidate["evidence"]:
