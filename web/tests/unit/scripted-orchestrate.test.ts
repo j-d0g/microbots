@@ -202,10 +202,13 @@ describe("scripted response mappings", () => {
     ]);
     expect(scriptedResponse("what's connected to Linear?", [{
       name: "search",
-      output: { ok: true, result: { results: [{
-        kind: "integrations", name: "Linear",
-        connections: [{ name: "GitHub" }, { name: "Notion" }],
-      }] } },
+      output: { ok: true, result: { results: [
+        { kind: "memories", snippet: "Linear tickets are created before PRs.", score: 0.92 },
+        {
+          kind: "integrations", name: "Linear", score: 0.9,
+          connections: [{ name: "GitHub" }, { name: "Notion" }],
+        },
+      ] } },
     }]).text).toContain("GitHub and Notion");
   });
 
@@ -250,6 +253,18 @@ describe("scripted response mappings", () => {
   it("searches instead of clearing on a non-command phrase", () => {
     expect(scriptedResponse("help me clear my head about deploys").toolCalls).toEqual([
       { name: "search", input: { query: "help me clear my head about deploys", scope: "all" } },
+    ]);
+  });
+
+  it("searches for the name in a who-is question", () => {
+    expect(scriptedResponse("who is Bob?").toolCalls).toEqual([
+      { name: "search", input: { query: "bob", scope: "all" } },
+    ]);
+  });
+
+  it("searches for the topic in a tell-me-about question", () => {
+    expect(scriptedResponse("tell me about deploys").toolCalls).toEqual([
+      { name: "search", input: { query: "deploy", scope: "all" } },
     ]);
   });
 

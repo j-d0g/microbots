@@ -99,7 +99,11 @@ function searchResponse(
     };
   }
 
-  const top = hits[0];
+  const asksForIntegrationConnections =
+    /\b(?:what(?:'s| is) connected to|connections to|show me the connections for)\b/i.test(query);
+  const top = asksForIntegrationConnections
+    ? hits.find((hit) => hit.kind === "integrations") ?? hits[0]
+    : hits[0];
   const topKind = top.kind;
   if (topKind === "integrations") {
     const neighbors = Array.isArray(top.connections)
@@ -250,17 +254,23 @@ export function scriptedResponse(
   }
 
   if (/\b(?:tell me about|what do you know about|who is|who's|explain)\b/.test(normalized)) {
+    const searchTermMatch = normalized.match(
+      /^(?:who is|who's|tell me about|what do you know about|explain)\s+(.+?)[?!.]*$/,
+    );
+    const searchTerm = searchTermMatch?.[1].replace(/\bdeploys\b/g, "deploy");
     return {
-      toolCalls: [{ name: "search", input: { query, scope: "all" } }],
+      toolCalls: [{
+        name: "search",
+        input: { query: searchTerm ?? query, scope: "all" },
+      }],
       text: "",
     };
   }
 
-  if (/\bclear my head\b/.test(normalized)) {
-    return { toolCalls: [{ name: "search", input: { query, scope: "all" } }], text: "" };
-  }
-
-  const kinds = matchLocalIntent(query);
+  const isDirectCardRequest =
+    /^(?:(?:please\s+)?(?:show|open|view|display|list|draw)|focus(?:\s+on)?)\b/.test(normalized) ||
+    normalized.trim().split(/\s+/).length <= 2;
+  const kinds = isDirectCardRequest ? matchLocalIntent(query) : [];
   if (kinds.length > 0) {
     return {
       toolCalls: [{
