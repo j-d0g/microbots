@@ -15,7 +15,12 @@ The Python API and seeded SurrealDB are started from the repository root with `m
 
 ## Local behavior
 
-Without `OPENROUTER_API_KEY`, commands use the deterministic local room router. Browser speech is the fallback when voice-provider credentials are absent. Composio connection controls show an unconfigured state unless `COMPOSIO_API_KEY` is set.
+With `OPENAI_API_KEY`, click the voice dot for a full-duplex GPT-Live
+conversation (Esc or click again to end); GPT-Live delegates requests to the
+microbots agent, which runs the same tools as typed input. `.` hold-to-talk
+remains OpenAI STT/TTS; without a key, browser speech is the fallback. Without
+`OPENROUTER_API_KEY`, commands use the deterministic local room router. Composio
+connection controls show an unconfigured state unless `COMPOSIO_API_KEY` is set.
 
 ## Checks
 

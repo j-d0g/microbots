@@ -21,6 +21,7 @@ export type TtsProvider = "openai" | "browser";
 interface VoiceConfig {
   stt: SttProvider;
   tts: TtsProvider;
+  live: boolean;
 }
 
 let cachedConfig: VoiceConfig | null = null;
@@ -37,7 +38,7 @@ export async function loadVoiceConfig(): Promise<VoiceConfig> {
       cachedConfig = data;
       return data;
     } catch {
-      cachedConfig = { stt: "browser", tts: "browser" };
+      cachedConfig = { stt: "browser", tts: "browser", live: false };
       return cachedConfig;
     } finally {
       inflight = null;
@@ -48,7 +49,7 @@ export async function loadVoiceConfig(): Promise<VoiceConfig> {
 
 export function useVoiceConfig(): VoiceConfig {
   const [cfg, setCfg] = useState<VoiceConfig>(
-    cachedConfig ?? { stt: "browser", tts: "browser" },
+    cachedConfig ?? { stt: "browser", tts: "browser", live: false },
   );
   useEffect(() => {
     let alive = true;

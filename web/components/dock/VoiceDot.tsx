@@ -7,6 +7,8 @@ import { cn } from "@/lib/cn";
 type VoiceHandle = {
   onPress: () => void | Promise<void>;
   onRelease: () => void | Promise<void>;
+  live?: boolean;
+  toggleLive?: () => void;
 };
 
 export function VoiceDot() {
@@ -18,8 +20,13 @@ export function VoiceDot() {
   const pressedRef = useRef(false);
 
   useEffect(() => {
+    const refresh = () => force((n) => n + 1);
     const timer = window.setTimeout(() => force((n) => n + 1), 80);
-    return () => window.clearTimeout(timer);
+    window.addEventListener("voice-handle-change", refresh);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("voice-handle-change", refresh);
+    };
   }, []);
 
   const handle: VoiceHandle | undefined =
@@ -30,6 +37,10 @@ export function VoiceDot() {
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLButtonElement>) => {
       event.preventDefault();
+      if (handle?.live) {
+        handle.toggleLive?.();
+        return;
+      }
       if (pressedRef.current) return;
       pressedRef.current = true;
       event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -40,6 +51,7 @@ export function VoiceDot() {
 
   const onPointerUp = useCallback(
     (event: PointerEvent<HTMLButtonElement>) => {
+      if (handle?.live) return;
       event.preventDefault();
       if (!pressedRef.current) return;
       pressedRef.current = false;
@@ -56,7 +68,7 @@ export function VoiceDot() {
   return (
     <button
       type="button"
-      aria-label="hold to talk"
+      aria-label={handle?.live ? "toggle live conversation" : "hold to talk"}
       aria-pressed={active}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}

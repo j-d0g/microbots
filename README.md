@@ -18,7 +18,10 @@ make dev
 
 - The shepherd uses a deterministic local router to open relevant rooms.
 - The knowledge graph is populated from local seed data in SurrealDB.
-- Voice input uses the browser speech fallback.
+- With `OPENAI_API_KEY`, click the voice dot for a full-duplex GPT-Live
+  conversation (Esc or click again to end); GPT-Live delegates requests to the
+  microbots agent, which runs the same tools as typed input.
+- `.` hold-to-talk remains OpenAI STT/TTS; without a key, browser speech is the fallback.
 - OpenRouter, Composio, and voice-provider keys are optional; configure them in `.env` for their live integrations.
 
 ## Development
