@@ -8,6 +8,7 @@ import {
 import { buildSnapshot } from "@/lib/agent/snapshot";
 import { metaTools, createToolCtx } from "@/lib/agent/tools";
 import { windowManagementTools } from "@/lib/agent/window-tools/window-management";
+import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
 import { useAgentStore } from "@/lib/store";
 
 type Step = { tool: string; input: Record<string, unknown> };
@@ -141,6 +142,18 @@ describe("shared canvas reducer contract", () => {
     ]);
     expect(browser.windows.map((window) => window.kind)).toEqual(["memories"]);
     expect(useAgentStore.getState().chatRoom).toBe("memories");
+  });
+
+  it("uses the registry default for new windows and preserves moved mounts on reopen", () => {
+    const id = useAgentStore.getState().openWindow("settings");
+    expect(useAgentStore.getState().windows.find((window) => window.id === id)?.mount)
+      .toBe(WINDOW_REGISTRY.settings.defaultMount);
+
+    useAgentStore.getState().dispatchCanvas({ type: "move", id, mount: "pip-br" });
+    useAgentStore.getState().openWindow("settings");
+
+    expect(useAgentStore.getState().windows.find((window) => window.id === id)?.mount)
+      .toBe("pip-br");
   });
 
   it("deduplicates opens and keeps only the top window when entering chat mode", () => {

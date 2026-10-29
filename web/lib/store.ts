@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
 import {
   applyCanvasAction,
   findCanvasWindow,
@@ -560,10 +561,15 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   openWindow: (kind, opts) => {
     const now = typeof performance !== "undefined" ? performance.now() : Date.now();
     const payload = opts?.payload;
+    const mount =
+      opts?.mount ??
+      (get().windows.some((window) => window.kind === kind)
+        ? undefined
+        : WINDOW_REGISTRY[kind]?.defaultMount);
     get().dispatchCanvas({
       type: "open",
       kind,
-      ...(opts?.mount ? { mount: opts.mount } : {}),
+      ...(mount ? { mount } : {}),
       payload,
       openedBy: opts?.openedBy ?? (payload?.openedBy as "agent" | "user") ?? "user",
       at: opts?.at ?? now,
