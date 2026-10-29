@@ -20,6 +20,13 @@ dependencies = [
     "uvicorn>=0.46.0",
 ]
 
+[tool.ruff]
+target-version = "py311"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
@@ -31,3 +38,8 @@ markers = [
 ]
 testpaths = ["knowledge_graph/tests", "app/tests"]
 pythonpath = [".", "knowledge_graph"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.3",
+]

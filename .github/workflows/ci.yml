@@ -46,6 +46,7 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
+      - run: uv run ruff check .
       # Service containers can't pass `start` args, so run SurrealDB directly (mirrors docker-compose.yml).
       - name: Start SurrealDB
         run: |
