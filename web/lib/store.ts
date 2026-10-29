@@ -3,16 +3,14 @@
 import { create } from "zustand";
 import { resolveMount, DOCK_PX_H } from "./agent/mount-points";
 import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
-import type { ConversationTurn, IntentSummary } from "./agent/conversation-types";
 
 /**
  * Window kinds, schema-driven (v2).
  *
  * Every kind here corresponds to a concrete `/api/kg/*` endpoint (or a
  * cross-cutting UX primitive: `graph`, `chat`, `ask_user`, `settings`).
- * The legacy harness-flavoured kinds (run_code, save_workflow, …)
- * have been removed because the KG contract has no endpoint backing
- * them; if a code-execution surface returns later, add a new kind
+ * The legacy harness-flavoured kinds have been removed because the KG
+ * contract has no endpoint backing them; if a code-execution surface returns later, add a new kind
  * once the endpoint is part of the contract.
  */
 export type WindowKind =
@@ -43,7 +41,6 @@ export type DockState =
   | "listening"
   | "thinking"
   | "speaking"
-  | "conversing"
   | "hidden";
 
 export type CardKind = "memory" | "entity" | "source" | "diff" | "toast";
@@ -268,9 +265,9 @@ export interface AgentStoreState {
    * key. Composio routes require it; KG read endpoints currently
    * ignore it (single-tenant in v1) but we still attach it as the
    * `X-User-Id` header on every request so the day the backend goes
-   * per-user, no UI changes are needed. Persisted to localStorage by
-   * `StoreBridge`. Null until the user enters one in settings. */
-  userId: string | null;
+   * per-user, no UI changes are needed. Defaults to "default" and is
+   * persisted to localStorage by `StoreBridge`. */
+  userId: string;
   setUserId: (id: string | null) => void;
   /** Live composio connection status mirror — kept fresh by the
    *  IntegrationRoom and a 30s background poll. Surfaced into the
@@ -369,20 +366,6 @@ export interface AgentStoreState {
   roomStates: Partial<Record<RoomKind, RoomState>>;
   setRoomState: (room: RoomKind, state: RoomState) => void;
 
-  /* --- conversation mode --- */
-  conversationMode: boolean;
-  setConversationMode: (enabled: boolean) => void;
-  toggleConversationMode: () => void;
-  isAgentSpeaking: boolean;
-  setIsAgentSpeaking: (speaking: boolean) => void;
-
-  /* --- conversation state (ElevenLabs agent) --- */
-  conversationHistory: ConversationTurn[];
-  currentIntent: IntentSummary | null;
-  setConversationHistory: (history: ConversationTurn[]) => void;
-  setCurrentIntent: (intent: IntentSummary | null) => void;
-  addConversationTurn: (turn: ConversationTurn) => void;
-  clearConversation: () => void;
 }
 
 const MAX_VISIBLE_CARDS = 3;
@@ -466,8 +449,8 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     }),
 
   /* --- backend identity & connectivity --- */
-  userId: null,
-  setUserId: (id) => set({ userId: id }),
+  userId: "default",
+  setUserId: (id) => set({ userId: id?.trim() || "default" }),
   connections: [],
   setConnections: (connections) => set({ connections }),
   toolkits: [],
@@ -488,7 +471,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     // chunks are upserted on `finalizeLastAgentMessage`.
     if (m.text.trim() && m.status !== "streaming") {
       void import("./chat-persistence").then(({ persistChatMessage }) => {
-        const userId = (get() as { userId: string | null }).userId;
+        const userId = (get() as { userId: string }).userId;
         void persistChatMessage(m, userId);
       });
     }
@@ -530,7 +513,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     // replies covered without requiring every caller to opt in.
     if (finalised && (finalised as ChatMessage).text.trim()) {
       void import("./chat-persistence").then(({ persistChatMessage }) => {
-        const userId = (get() as { userId: string | null }).userId;
+        const userId = (get() as { userId: string }).userId;
         void persistChatMessage(finalised as ChatMessage, userId);
       });
     }
@@ -995,31 +978,4 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   setRoomState: (room, state) =>
     set((s) => ({ roomStates: { ...s.roomStates, [room]: state } })),
 
-  /* --- conversation mode --- */
-  conversationMode: false,
-  setConversationMode: (enabled) => set({ conversationMode: enabled }),
-  toggleConversationMode: () =>
-    set((s) => {
-      const next = !s.conversationMode;
-      if (!next) {
-        return { conversationMode: next, dock: "idle" };
-      }
-      return { conversationMode: next };
-    }),
-  isAgentSpeaking: false,
-  setIsAgentSpeaking: (speaking) => set({ isAgentSpeaking: speaking }),
-
-  /* --- conversation state (ElevenLabs agent) --- */
-  conversationHistory: [],
-  currentIntent: null,
-  setConversationHistory: (history) => set({ conversationHistory: history }),
-  setCurrentIntent: (intent) => set({ currentIntent: intent }),
-  addConversationTurn: (turn) =>
-    set((s) => {
-      const MAX_HISTORY = 10;
-      const newHistory = [...s.conversationHistory, turn].slice(-MAX_HISTORY);
-      return { conversationHistory: newHistory };
-    }),
-  clearConversation: () => set({ conversationHistory: [], currentIntent: null }),
 }));
-

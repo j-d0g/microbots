@@ -322,8 +322,7 @@ export function applyAgentEvent(evt: AgentEvent): void {
       break;
     }
     case "agent.delegate":
-      // Mirror into the recent-actions ring so the SnapshotInspector
-      // reflects the delegation; sidecar UI will read this too.
+      // Mirror into the recent-actions ring for UI access.
       s.pushAction({
         t: Date.now(),
         tool: `delegate_${evt.to}`,

@@ -66,8 +66,7 @@ export function EmbeddedRoom() {
   const closeWindow = useAgentStore((s) => s.closeWindow);
 
   // Topmost visible window of the active room kind. The same kind
-  // can appear multiple times across the windowed canvas (e.g. two
-  // run_code windows for two tasks); chat mode collapses that to the
+  // can appear multiple times across the windowed canvas; chat mode collapses that to the
   // most recently focused one.
   const activeWindow = useMemo<WindowState | null>(() => {
     let best: WindowState | null = null;

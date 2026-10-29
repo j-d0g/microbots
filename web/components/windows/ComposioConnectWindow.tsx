@@ -206,6 +206,8 @@ export function ComposioConnectWindow({
   }, [toolkits]);
 
   const activeCount = connections.filter((c) => c.status === "ACTIVE").length;
+  const composioNotConfigured =
+    error?.status === 503 && error.message.toLowerCase().includes("composio");
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -232,7 +234,18 @@ export function ComposioConnectWindow({
       />
 
       <div className="muji-scroll min-h-0 flex-1 overflow-y-auto p-3">
-        {!userId ? (
+        {composioNotConfigured ? (
+          <div
+            role="status"
+            className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"
+          >
+            <Plug size={18} strokeWidth={1.25} className="text-ink-35" />
+            <p className="max-w-[280px] font-mono text-[12px] text-ink-60">
+              Composio not configured — set{" "}
+              <code className="text-ink-90">COMPOSIO_API_KEY</code>
+            </p>
+          </div>
+        ) : !userId ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
             <Plug size={18} strokeWidth={1.25} className="text-ink-35" />
             <p className="max-w-[280px] font-mono text-[12px] text-ink-60">

@@ -5,20 +5,19 @@
  * Composio OAuth + the SurrealDB-backed knowledge graph.
  *
  * Conventions:
- *   - Base URL defaults to the deployed Render instance, overridable
+ *   - Base URL defaults to the local Python API, overridable
  *     via `NEXT_PUBLIC_MICROBOTS_BASE_URL`.
  *   - Every request injects `X-User-Id` if the caller has set one. KG
  *     read endpoints currently ignore this (single-tenant for the
  *     hackathon), but Composio routes require it as the namespace key
  *     and the header is forward-compatible the day KG goes per-user.
- *   - 4xx/5xx bodies are `{ detail: string }`; we surface them as
- *     typed `BackendError(detail, status)` so UI code can render the
- *     server's human message.
+ *   - 4xx/5xx bodies use `{ detail: string }` or `{ error: string }`;
+ *     we surface the message as a typed `BackendError`.
  *
  * Doc reference: docs/api-reference.md.
  */
 
-const DEFAULT_BASE = "https://app-bf31.onrender.com";
+const DEFAULT_BASE = "http://localhost:8001";
 
 /** Resolved at module load. SSR-safe — falls back to the default. */
 export const BASE_URL: string =
@@ -212,8 +211,9 @@ async function api<T>(path: string, opts: ApiOpts = {}): Promise<T> {
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
-      const j = (await res.json()) as { detail?: unknown };
+      const j = (await res.json()) as { detail?: unknown; error?: unknown };
       if (typeof j.detail === "string") detail = j.detail;
+      else if (typeof j.error === "string") detail = j.error;
     } catch {
       /* not JSON — keep default */
     }
@@ -468,8 +468,7 @@ export function getHealth(): Promise<HealthResponse> {
   return api<HealthResponse>("/api/health");
 }
 
-/** Cheap probe — wakes the free-tier Render dyno. Resolves to `void`
- *  even on failure so the caller doesn't block UI on cold starts. */
+/** Cheap health probe that never blocks the UI on failure. */
 export async function warmUp(): Promise<void> {
   try {
     await fetch(`${BASE_URL}/health`, { method: "GET" });

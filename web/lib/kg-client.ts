@@ -27,7 +27,7 @@ import { BackendError } from "./api/backend";
 
 /* ============================== base ============================== */
 
-const DEFAULT_BASE = "https://app-bf31.onrender.com";
+const DEFAULT_BASE = "http://localhost:8001";
 
 /** Resolved at module load. SSR-safe. */
 export const KG_BASE_URL: string =

@@ -7,7 +7,7 @@
  * the agent just made:
  *
  *   agent · how's slack looking?
- *          · run_code(py) · search_memory(slack) · done
+ *          · search_memory(slack) · done
  *
  * Driven by `recentActions` from the store (populated by agent.tool.start
  * / agent.tool.done SSE events). Raw tool names, arg values dimmed.

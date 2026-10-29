@@ -4,9 +4,8 @@
  * SettingsRoom — minimal scope for the live windowed UI.
  *
  *   1. user_id     — single source of truth for the Composio namespace
- *                    + X-User-Id header. Persisted to localStorage by
- *                    StoreBridge. Required before integrations or graph
- *                    can do anything useful.
+ *                    + X-User-Id header. Defaults to "default" and can
+ *                    be changed here.
  *   2. backend     — read-only health row (surreal + composio status,
  *                    last-checked timestamp + manual refresh).
  *

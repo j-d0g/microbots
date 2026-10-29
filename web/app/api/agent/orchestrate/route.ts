@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
         /* Surface centre-stage selection + tool-bag size to the
          * browser as a status string. This makes "is the in-window
          * tool wired up?" trivially observable in the
-         * ConversationDebugger panel and in the dock status. */
+         * client status surfaces. */
         const d = result.diagnostics;
         emit({
           type: "agent.status",

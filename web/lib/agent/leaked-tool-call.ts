@@ -2,7 +2,7 @@
  * Recovery for leaked tool-call syntax in streamed model text.
  *
  * Gemini-2.5-flash-lite (our policy-locked production model — see
- * `web/agent-evals/AGENTS.md`) intermittently emits a tool call as
+ * the tool-call protocol intermittently emits a tool call as
  * plain text instead of using the structured tool-call channel. When
  * that happens, the stream looks like:
  *

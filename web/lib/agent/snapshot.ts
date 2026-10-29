@@ -188,7 +188,7 @@ export function recordAction(record: Omit<ToolCallRecord, "t"> & { t?: number })
 }
 
 /** Estimate how many tokens the snapshot will consume for the agent.
- *  Heuristic: ~4 chars per token. Useful for the SnapshotInspector
+ *  Heuristic: ~4 chars per token. Useful for compact status summaries.
  *  budget readout. Not exact — Gemini's tokenizer differs. */
 export function estimateTokens(snapshot: CanvasSnapshot): number {
   const json = JSON.stringify({

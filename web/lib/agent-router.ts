@@ -1,25 +1,69 @@
 "use client";
 
 import type { AgentEvent } from "./agent-client";
+import type { RoomKind } from "./store";
 
-/**
- * Fallback when the orchestrate route is unavailable (no API key).
- * Shows a single toast telling the user to configure the key.
- * Replaces the previous scripted SCRIPTS fallback array.
- */
-export async function* routeIntent(_q: string): AsyncGenerator<AgentEvent> {
-  yield { type: "dock", state: "thinking" } as AgentEvent;
-  await new Promise((r) => setTimeout(r, 200));
-  yield {
-    type: "ui.card",
-    card: {
-      id: `toast-no-key-${Date.now()}`,
-      kind: "toast",
-      data: {
-        text: "agent unavailable — set OPENROUTER_API_KEY in .env.local to enable the live agent.",
-      },
-      ttl: 6000,
-    },
-  } as AgentEvent;
-  yield { type: "dock", state: "idle" } as AgentEvent;
+const INTENTS: ReadonlyArray<{
+  keywords: readonly string[];
+  rooms: readonly RoomKind[];
+}> = [
+  { keywords: ["graph", "map", "knowledge"], rooms: ["graph"] },
+  { keywords: ["memor"], rooms: ["memories"] },
+  {
+    keywords: ["workflow", "playbook", "automation", "bug triage", "deploy", "pr review"],
+    rooms: ["workflows"],
+  },
+  { keywords: ["skill"], rooms: ["skills"] },
+  { keywords: ["wiki", "docs", "notes"], rooms: ["wiki"] },
+  {
+    keywords: ["integration", "connect", "stack", "slack", "github", "linear", "gmail", "notion"],
+    rooms: ["integrations"],
+  },
+  {
+    keywords: ["entit", "people", "contact", "team", "members"],
+    rooms: ["entities"],
+  },
+  {
+    keywords: ["chat", "conversation", "messages"],
+    rooms: ["chats_summary"],
+  },
+  {
+    keywords: ["profile", "about me", "who am i"],
+    rooms: ["profile"],
+  },
+  { keywords: ["setting"], rooms: ["settings"] },
+  {
+    keywords: ["brief", "today", "morning"],
+    rooms: ["memories", "workflows"],
+  },
+];
+
+const LOCAL_MODE_REPLY =
+  "local mode (no OPENROUTER_API_KEY): I can open graph, memories, workflows, skills, wiki, integrations, entities, chats, profile, settings.";
+
+export function matchLocalIntent(query: string): RoomKind[] {
+  const normalized = query.toLowerCase();
+  const rooms = new Set<RoomKind>();
+
+  for (const intent of INTENTS) {
+    if (intent.keywords.some((keyword) => normalized.includes(keyword))) {
+      for (const room of intent.rooms) rooms.add(room);
+    }
+  }
+
+  return [...rooms];
+}
+
+export async function* routeIntent(query: string): AsyncGenerator<AgentEvent> {
+  const rooms = matchLocalIntent(query);
+  const reply = rooms.length
+    ? `opening ${rooms.map((room) => room.replace(/_/g, " ")).join(" and ")} (local mode)`
+    : LOCAL_MODE_REPLY;
+
+  yield { type: "dock", state: "thinking" };
+  yield { type: "reply.start", query };
+  for (const room of rooms) yield { type: "ui.room", room };
+  yield { type: "reply.chunk", text: reply };
+  yield { type: "reply.done" };
+  yield { type: "dock", state: "idle" };
 }

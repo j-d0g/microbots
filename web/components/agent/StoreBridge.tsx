@@ -44,8 +44,8 @@ const CONNECTIONS_POLL_MS = 30_000;
  *  - Hydrates `userId` from localStorage on first mount and keeps the
  *    browser tab in sync via a `storage` event listener so settings
  *    edits in another tab propagate.
- *  - Fires a one-shot `warmUp()` on mount to wake the Render free-tier
- *    backend before the user touches anything.
+ *  - Fires a one-shot `warmUp()` on mount so the local API is ready
+ *    before the user touches anything.
  *  - Polls /api/health every 30 s so the snapshot agent + settings
  *    badge always reflect live degraded mode.
  *  - Polls /api/composio/connections every 30 s while a userId is set,
@@ -138,13 +138,15 @@ export function StoreBridge() {
     if (typeof window === "undefined") return;
     try {
       const stored = localStorage.getItem(USER_ID_STORAGE_KEY);
-      if (stored && stored.trim()) setUserId(stored.trim());
+      const userId = stored?.trim() || "default";
+      if (stored !== userId) localStorage.setItem(USER_ID_STORAGE_KEY, userId);
+      setUserId(userId);
     } catch {
       /* private browsing — ignore */
     }
     const onStorage = (ev: StorageEvent) => {
       if (ev.key !== USER_ID_STORAGE_KEY) return;
-      const next = ev.newValue?.trim() || null;
+      const next = ev.newValue?.trim() || "default";
       setUserId(next);
     };
     window.addEventListener("storage", onStorage);

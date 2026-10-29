@@ -86,9 +86,6 @@ export function VoiceBridge() {
 
   /* ---------- `.` hold-to-talk (installed once) --------------------- */
   useEffect(() => {
-    // Don't activate when in conversation mode
-    const isConversationMode = () => useAgentStore.getState().conversationMode;
-
     let pressed = false;
 
     const isTyping = (target: EventTarget | null) => {
@@ -104,7 +101,6 @@ export function VoiceBridge() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "." || e.repeat) return;
       if (isTyping(e.target)) return;
-      if (isConversationMode()) return; // Pause in conversation mode
       e.preventDefault();
       if (!pressed) {
         pressed = true;
@@ -153,23 +149,11 @@ export function VoiceBridge() {
    * thing that re-arms playback. */
   useEffect(() => {
     let lastDock: string | null = useAgentStore.getState().dock;
-    let lastConvMode: boolean = useAgentStore.getState().conversationMode;
     let stop: (() => void) | null = null;
     let lastSpokenQuery: string | null = null;
     let speaking = false;
 
     const unsub = useAgentStore.subscribe((s) => {
-      /* If conversation mode just turned on, kill any in-flight browser
-       * TTS immediately so the reply that was mid-read-back doesn't
-       * keep playing under the ElevenLabs voice. */
-      if (s.conversationMode && !lastConvMode) {
-        stop?.();
-        stop = null;
-        cancelSpeak();
-        speaking = false;
-      }
-      lastConvMode = s.conversationMode;
-
       const next = s.dock;
       const prev = lastDock;
       lastDock = next;
@@ -180,12 +164,6 @@ export function VoiceBridge() {
           speaking = false;
           return;
         }
-        /* In conversation mode ElevenLabs owns the voice channel and
-         * streams TTS for the reply directly. Skipping the browser
-         * read-back here prevents the two voices overlapping on
-         * every agent turn. Same gate as the `.` hold-to-talk hook
-         * above — conversation mode takes full control of audio. */
-        if (s.conversationMode) return;
         const reply = s.agentReply;
         const query = s.lastQuery;
         if (!reply || !reply.trim()) return;

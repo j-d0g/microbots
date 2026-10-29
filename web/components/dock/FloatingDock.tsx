@@ -34,14 +34,12 @@ export function FloatingDock() {
   const hasReply = reply.trim().length > 0;
   const hasTranscript = transcript.trim().length > 0;
 
-  const narrationKind: "speaking" | "listening" | "conversing" | null =
+  const narrationKind: "speaking" | "listening" | null =
     hasReply && (dock === "speaking" || dock === "thinking" || dock === "idle")
       ? "speaking"
       : dock === "listening" && hasTranscript
         ? "listening"
-        : dock === "conversing"
-          ? "conversing"
-          : null;
+        : null;
 
   const narrationText =
     narrationKind === "speaking"
@@ -180,8 +178,6 @@ function dockHint(dock: DockState): string {
       return "thinking...";
     case "speaking":
       return "speaking...";
-    case "conversing":
-      return "conversing...";
     case "hidden":
       return "";
     default:
