@@ -43,30 +43,21 @@ const ROOM_COMPONENTS: Record<
   composio_connect: ComposioConnectWindow,
 };
 
-/**
- * Single-window pane for chat mode.
- *
- * The agent (and the user, via tabs) are constrained to one focal
- * window at a time. We pick the topmost non-minimised window of the
- * active `chatRoom` kind and render the same component used in the
- * windowed Stage Manager — so visual fidelity stays 1:1 across modes.
- *
- * If no real window exists yet (e.g. a tab was clicked before any
- * agent traffic landed), we still render the component with a
- * lightweight dummy payload so the user sees representative content.
- *
- * Header chrome is intentionally muted — a focus dot, the room label,
- * and a soft close affordance — to match the `CentreFrame` aesthetic
- * without competing with the chat panel on the left.
- */
+const ROOMS: WindowKind[] = [
+  "graph",
+  "memories",
+  "workflows",
+  "skills",
+  "wiki",
+  "settings",
+];
+
 export function EmbeddedRoom() {
   const chatRoom = useAgentStore((s) => s.chatRoom);
   const windows = useAgentStore((s) => s.windows);
-  const closeWindow = useAgentStore((s) => s.closeWindow);
+  const openChatCanvas = useAgentStore((s) => s.openChatCanvas);
+  const closeChatCanvas = useAgentStore((s) => s.closeChatCanvas);
 
-  // Topmost visible window of the active room kind. The same kind
-  // can appear multiple times across the windowed canvas; chat mode collapses that to the
-  // most recently focused one.
   const activeWindow = useMemo<WindowState | null>(() => {
     let best: WindowState | null = null;
     for (const w of windows) {
@@ -85,14 +76,10 @@ export function EmbeddedRoom() {
       <EmbeddedHeader
         kind={chatRoom}
         isAgentOpened={isAgentOpened}
-        canClose={Boolean(activeWindow)}
-        onClose={activeWindow ? () => closeWindow(activeWindow.id) : undefined}
+        onClose={closeChatCanvas}
+        onPick={openChatCanvas}
       />
 
-      {/* Body. Rooms set their own padding via the WindowFrame in
-          windowed mode; here we apply equivalent padding ourselves so
-          the layouts stay visually identical. The graph room manages
-          its own canvas overflow. */}
       <div
         className={cn(
           "muji-scroll relative flex-1 overflow-y-auto overflow-x-hidden",
@@ -117,58 +104,75 @@ export function EmbeddedRoom() {
   );
 }
 
-/* ---------- header ---------- */
-
 function EmbeddedHeader({
   kind,
   isAgentOpened,
-  canClose,
   onClose,
+  onPick,
 }: {
   kind: WindowKind;
   isAgentOpened: boolean;
-  canClose: boolean;
-  onClose?: () => void;
+  onClose: () => void;
+  onPick: (kind: WindowKind) => void;
 }) {
   return (
-    <div className="flex h-9 shrink-0 select-none items-center justify-between border-b border-rule/60 px-5">
-      <div className="flex min-w-0 items-center gap-2">
-        <span
-          aria-hidden
-          className={cn(
-            "h-1.5 w-1.5 shrink-0 rounded-full transition-colors duration-200",
-            "bg-accent-indigo/80",
-          )}
-        />
-        <span
-          className="truncate font-mono text-[10px] uppercase tracking-[0.10em] text-ink-60"
-          data-testid="embedded-room-label"
-        >
-          {WINDOW_LABEL[kind] ?? kind}
-        </span>
-        {isAgentOpened && (
-          <span className="font-mono text-[9px] uppercase tracking-wider text-ink-35">
-            · by agent
+    <header className="shrink-0 border-b border-rule/60">
+      <div className="flex h-10 items-center justify-between px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-indigo/80" />
+          <span
+            className="truncate font-mono text-[10px] uppercase tracking-[0.10em] text-ink-60"
+            data-testid="embedded-room-label"
+          >
+            {WINDOW_LABEL[kind] ?? kind}
           </span>
-        )}
-      </div>
-
-      {canClose && onClose && (
+          {isAgentOpened && (
+            <span className="font-mono text-[9px] uppercase tracking-wider text-ink-35">
+              · by agent
+            </span>
+          )}
+        </div>
         <button
           type="button"
           onClick={onClose}
-          aria-label="close window"
-          title="close window"
+          aria-label="close canvas"
+          title="close canvas"
           data-testid="embedded-room-close"
           className={cn(
-            "flex h-5 w-5 items-center justify-center rounded-sm",
+            "flex h-6 w-6 items-center justify-center rounded-sm",
             "text-ink-35 transition-colors duration-150",
             "hover:bg-paper-2 hover:text-ink-90",
           )}
         >
-          <X size={11} strokeWidth={1.6} />
+          <X size={12} strokeWidth={1.6} />
         </button>
-      )}
-    </div>
+      </div>
+      <nav
+        className="muji-scroll flex gap-4 overflow-x-auto px-4 pb-2"
+        data-testid="chat-room-tabs"
+        role="tablist"
+        aria-label="chat canvas rooms"
+      >
+        {ROOMS.map((room) => (
+          <button
+            key={room}
+            type="button"
+            role="tab"
+            aria-selected={room === kind}
+            data-active={room === kind}
+            data-testid={`chat-tab-${room}`}
+            onClick={() => onPick(room)}
+            className={cn(
+              "shrink-0 border-b pb-1 font-mono text-[9px] uppercase tracking-[0.1em]",
+              room === kind
+                ? "border-accent-indigo text-ink-90"
+                : "border-transparent text-ink-35 hover:text-ink-60",
+            )}
+          >
+            {WINDOW_LABEL[room] ?? room}
+          </button>
+        ))}
+      </nav>
+    </header>
   );
 }

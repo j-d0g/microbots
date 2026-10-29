@@ -54,6 +54,7 @@ export interface WindowSnapshot {
   kind: RoomKind;
   /** For per-instance kinds (e.g. integration windows keyed by slug). */
   slug?: string;
+  payload?: Record<string, unknown>;
   mount: MountPoint;
   rect: RectPct;
   zIndex: number;

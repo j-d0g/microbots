@@ -43,14 +43,74 @@ export function scriptedResponse(query: string): {
   if (/\bclose everything\b|\bclear\b/.test(normalized)) {
     return { toolCalls: [{ name: "clear_canvas", input: {} }], text: "cleared the canvas." };
   }
+  if (/\bshould i automate pr reviews?\b|\bautomate pr reviews?\b/.test(normalized)) {
+    return {
+      toolCalls: [{
+        name: "ask_user",
+        input: {
+          question: "How should I help with PR reviews?",
+          options: ["Draft review suggestions", "Ask before each review", "Keep reviews manual"],
+        },
+      }],
+      text: "I can help make the repetitive parts of PR reviews easier. Would you like me to draft suggestions, ask before each review, or leave the process manual?",
+    };
+  }
   if (/\bmorning brief\b|\bbrief\b/.test(normalized)) {
     return {
       toolCalls: [
+        { name: "search_memory", input: { query: "#deployments" } },
         { name: "open_window", input: { kind: "memories" } },
-        { name: "open_window", input: { kind: "workflows" } },
-        { name: "arrange_windows", input: { layout: "split" } },
+        { name: "open_window", input: { kind: "workflows", focus: "Bug Triage" } },
       ],
-      text: "morning. here's your brief.",
+      text: "Your notes mention Alice Chen, the #deployments convention, and creating Linear tickets before PRs. Your workflow list includes Bug Triage and PR Review Cycle, so either is ready for a closer look.",
+    };
+  }
+  const integrationMatch = normalized.match(
+    /\b(?:what(?:'s| is) connected to|connections to|show me the connections for)\s+(linear|github|notion|perplexity|slack|gmail)\b/,
+  );
+  if (integrationMatch) {
+    const integration = integrationMatch[1];
+    const integrations: Record<string, { name: string; neighbors: string[] }> = {
+      linear: { name: "Linear", neighbors: ["Notion"] },
+      github: { name: "GitHub", neighbors: ["Perplexity", "Linear"] },
+      notion: { name: "Notion", neighbors: [] },
+      perplexity: { name: "Perplexity", neighbors: ["Notion"] },
+      slack: { name: "Slack", neighbors: ["Perplexity", "Linear", "GitHub", "Notion"] },
+      gmail: { name: "Gmail", neighbors: [] },
+    };
+    const { name, neighbors } = integrations[integration];
+    const neighborText = neighbors.length <= 2
+      ? neighbors.join(" and ")
+      : `${neighbors.slice(0, -1).join(", ")}, and ${neighbors[neighbors.length - 1]}`;
+    return {
+      toolCalls: [{ name: "open_window", input: { kind: "graph", focus: name } }],
+      text: neighbors.length
+        ? `${name} is connected in the knowledge graph to ${neighborText}.`
+        : `The seeded graph has no connections listed for ${name} yet.`,
+    };
+  }
+  const workflowMatch = normalized.match(
+    /\b(?:(?:show me|open)(?:\s+the)?\s+)?(bug triage|deploy pipeline|pr review cycle)(?:\s+workflow)?\b/,
+  );
+  if (workflowMatch) {
+    const names: Record<string, { name: string; summary: string }> = {
+      "bug triage": {
+        name: "Bug Triage",
+        summary: "It starts with a Slack report, creates a Linear ticket, then moves through investigation, a fix, and deployment.",
+      },
+      "deploy pipeline": {
+        name: "Deploy Pipeline",
+        summary: "It moves from a Linear ticket through staging, smoke tests, production deployment, and Slack notifications.",
+      },
+      "pr review cycle": {
+        name: "PR Review Cycle",
+        summary: "It covers Linear ticket creation, opening a branch and PR, review by Bob, feedback, and merge.",
+      },
+    };
+    const workflow = names[workflowMatch[1]];
+    return {
+      toolCalls: [{ name: "open_window", input: { kind: "workflows", focus: workflow.name } }],
+      text: workflow.summary,
     };
   }
   const kindPattern = [...WINDOW_KINDS]
@@ -93,7 +153,7 @@ export function scriptedResponse(query: string): {
   }
   return {
     toolCalls: [],
-    text: "scripted mode — try: show me the graph, morning brief, focus memories, close everything",
+    text: "scripted mode — try: morning brief, what's connected to Linear, show me the Bug Triage workflow, should I automate PR reviews?",
   };
 }
 
@@ -121,7 +181,11 @@ export function scriptedModel() {
         ...(text
           ? [
               { type: "text-start" as const, id: "scripted-reply" },
-              { type: "text-delta" as const, id: "scripted-reply", delta: text },
+              ...(text.match(/\S+\s*/g) ?? [text]).map((delta) => ({
+                type: "text-delta" as const,
+                id: "scripted-reply",
+                delta,
+              })),
               { type: "text-end" as const, id: "scripted-reply" },
             ]
           : []),
@@ -134,7 +198,13 @@ export function scriptedModel() {
           usage: usage(),
         },
       ];
-      return { stream: simulateReadableStream({ chunks }) };
+      return {
+        stream: simulateReadableStream({
+          chunks,
+          initialDelayInMs: 500,
+          chunkDelayInMs: 35,
+        }),
+      };
     },
   });
 }

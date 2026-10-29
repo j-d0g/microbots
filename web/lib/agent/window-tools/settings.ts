@@ -67,7 +67,7 @@ export function settingsWindowTools(ctx: AgentToolCtx) {
       execute: async () => {
         const snap = ctx.snapshot;
         const userId = snap.user?.userId ?? null;
-        const uiMode = snap.ui?.mode ?? "windowed";
+        const uiMode = snap.ui?.mode ?? "chat";
         const integrations = snap.integrations ?? [];
         const connectedCount = integrations.filter(
           (i) => i.status === "ACTIVE",
@@ -286,7 +286,7 @@ export function settingsWindowTools(ctx: AgentToolCtx) {
     /** 8. Reset all preferences to defaults */
     settings_reset_preferences: tool({
       description:
-        "Reset all user preferences to their default values. This includes user_id (cleared), ui_mode (windowed), and quiet_mode (off). Does not affect integrations or backend configuration.",
+        "Reset all user preferences to their default values. This includes user_id (cleared), ui_mode (chat), and quiet_mode (off). Does not affect integrations or backend configuration.",
       inputSchema: z.object({
         confirm: z
           .boolean()
@@ -312,7 +312,7 @@ export function settingsWindowTools(ctx: AgentToolCtx) {
           { confirm: true },
           events,
         );
-        return `All preferences reset to defaults. user_id cleared, ui_mode set to windowed, quiet_mode disabled. ${result}`;
+        return `All preferences reset to defaults. user_id cleared, ui_mode set to chat, quiet_mode disabled. ${result}`;
       },
     }),
   };

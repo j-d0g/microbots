@@ -65,6 +65,7 @@ if user wants to create/update data → WRITE tools (add_memory, upsert_entity, 
 if user wants to manipulate the current window → WINDOW-SPECIFIC tools (graph_*, chat_*, entitydetail_*, etc.)
 if user wants to manage window layout → WINDOW MANAGEMENT tools (winman_*)
 if user asks about what's on screen → READ tools first (window-specific reads before writes)
+- open_window(kind, focus?) centres an optional node, entity, or workflow; in chat mode windows appear as inline cards, so prefer one or two focused cards and a short spoken-style answer
 
 ═══ TOOL SELECTION PRINCIPLES ═══
 - prefer specific over generic: use chat_search when in chat, not open_window

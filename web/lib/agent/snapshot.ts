@@ -60,6 +60,7 @@ function snapshotWindow(
     id: win.id,
     kind: win.kind,
     slug: undefined,
+    ...(win.payload ? { payload: win.payload } : {}),
     mount: win.mount,
     rect: win.rect,
     zIndex: win.zIndex,
@@ -109,7 +110,7 @@ export function buildSnapshot(opts?: {
       lastQuery: state.lastQuery || undefined,
       userId: state.userId ?? null,
     },
-    ui: { mode: state.uiMode ?? "windowed" },
+    ui: { mode: state.uiMode ?? "chat" },
     integrations: state.connections.map((c) => ({
       slug: c.slug,
       status: c.status,

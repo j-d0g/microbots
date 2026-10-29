@@ -136,6 +136,21 @@ export interface BackendHealthMirror {
 
 export type UiMode = "windowed" | "chat";
 
+export interface ChatCard {
+  id: string;
+  kind: WindowKind;
+  payload?: Record<string, unknown>;
+}
+
+export interface ToolTrace {
+  id: string;
+  name: string;
+  args?: Record<string, unknown>;
+  ok?: boolean;
+  startedAt: number;
+  ms?: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "agent";
@@ -145,6 +160,8 @@ export interface ChatMessage {
    *  Used to render a small context tag in the message list. */
   room?: RoomKind;
   status?: "streaming" | "done";
+  cards?: ChatCard[];
+  tools?: ToolTrace[];
 }
 
 export interface AgentStoreState {
@@ -202,9 +219,16 @@ export interface AgentStoreState {
   /* --- chat mode --- */
   chatRoom: RoomKind;
   setChatRoom: (room: RoomKind) => void;
+  chatCanvasOpen: boolean;
+  openChatCanvas: (kind: RoomKind, payload?: Record<string, unknown>) => void;
+  closeChatCanvas: () => void;
   chatMessages: ChatMessage[];
   appendChatMessage: (m: ChatMessage) => void;
+  getOrCreateStreamingAgentMessage: () => ChatMessage;
   appendToLastAgentMessage: (chunk: string) => void;
+  attachChatCard: (kind: WindowKind, payload?: Record<string, unknown>) => void;
+  startChatToolTrace: (name: string, args?: Record<string, unknown>) => void;
+  finishChatToolTrace: (name: string, ok: boolean) => void;
   finalizeLastAgentMessage: () => void;
   clearChatHistory: () => void;
 
@@ -306,13 +330,14 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   unpinWindow: (id) => get().dispatchCanvas({ type: "pin", id, pinned: false }),
 
   /* --- ui mode --- */
-  uiMode: "windowed",
+  uiMode: "chat",
   setUiMode: (mode) => {
     const state = get();
     const hasChatWindow = state.windows.some(
       (window) => window.kind === state.chatRoom,
     );
     get().dispatchCanvas({ type: "set_mode", mode });
+    if (mode === "windowed") set({ chatCanvasOpen: false });
     if (mode === "windowed" && !hasChatWindow) {
       queueMicrotask(() => {
         const current = useAgentStore.getState();
@@ -338,6 +363,26 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   /* --- chat mode --- */
   chatRoom: "chat",
   setChatRoom: (room) => set({ chatRoom: room, room }),
+  chatCanvasOpen: false,
+  openChatCanvas: (kind, payload) => {
+    const existing = get().windows.find((window) => window.kind === kind);
+    if (existing) {
+      if (payload) {
+        get().dispatchCanvas({
+          type: "open",
+          kind,
+          payload,
+          openedBy: existing.openedBy,
+        });
+      } else {
+        get().bringToFront(existing.id);
+      }
+    } else {
+      get().openWindow(kind, { payload });
+    }
+    set({ chatRoom: kind, room: kind, chatCanvasOpen: true });
+  },
+  closeChatCanvas: () => set({ chatCanvasOpen: false }),
   chatMessages: [],
   appendChatMessage: (m) => {
     set((s) => ({ chatMessages: [...s.chatMessages, m] }));
@@ -353,23 +398,113 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       });
     }
   },
-  appendToLastAgentMessage: (chunk) =>
-    set((s) => {
-      const list = s.chatMessages;
-      // Find the last agent message; append chunk to it.
-      for (let i = list.length - 1; i >= 0; i--) {
-        if (list[i].role === "agent") {
-          const next = list.slice();
-          next[i] = {
-            ...list[i],
-            text: list[i].text + chunk,
-            status: "streaming",
+  getOrCreateStreamingAgentMessage: () => {
+    const last = get().chatMessages.at(-1);
+    if (last?.role === "agent" && last.status === "streaming") return last;
+    const message: ChatMessage = {
+      id: `agent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      role: "agent",
+      text: "",
+      ts: Date.now(),
+      room: get().chatRoom,
+      status: "streaming",
+    };
+    get().appendChatMessage(message);
+    return message;
+  },
+  appendToLastAgentMessage: (chunk) => {
+    const message = get().getOrCreateStreamingAgentMessage();
+    set((s) => ({
+      chatMessages: s.chatMessages.map((current) =>
+        current.id === message.id
+          ? { ...current, text: current.text + chunk, status: "streaming" }
+          : current,
+      ),
+    }));
+  },
+  attachChatCard: (kind, payload) => {
+    const message = get().getOrCreateStreamingAgentMessage();
+    set((s) => ({
+      chatMessages: s.chatMessages.map((current) => {
+        if (current.id !== message.id) return current;
+        const cards = current.cards ?? [];
+        const existing = cards.find((card) => card.kind === kind);
+        if (existing) {
+          return {
+            ...current,
+            cards: cards.map((card) =>
+              card.kind === kind
+                ? {
+                    ...card,
+                    ...(payload ? { payload } : {}),
+                  }
+                : card,
+            ),
           };
-          return { chatMessages: next };
         }
-      }
-      return s;
-    }),
+        return {
+          ...current,
+          cards: [
+            ...cards,
+            {
+              id: `${message.id}-${kind}`,
+              kind,
+              ...(payload ? { payload } : {}),
+            },
+          ],
+        };
+      }),
+    }));
+  },
+  startChatToolTrace: (name, args) => {
+    const message = get().getOrCreateStreamingAgentMessage();
+    const trace: ToolTrace = {
+      id: `${message.id}-${name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      ...(args ? { args } : {}),
+      startedAt: Date.now(),
+    };
+    set((s) => ({
+      chatMessages: s.chatMessages.map((current) =>
+        current.id === message.id
+          ? { ...current, tools: [...(current.tools ?? []), trace] }
+          : current,
+      ),
+    }));
+  },
+  finishChatToolTrace: (name, ok) => {
+    const message = get().getOrCreateStreamingAgentMessage();
+    const finishedAt = Date.now();
+    set((s) => ({
+      chatMessages: s.chatMessages.map((current) => {
+        if (current.id !== message.id) return current;
+        const traces = [...(current.tools ?? [])];
+        let index = traces.length - 1;
+        while (
+          index >= 0 &&
+          (traces[index].name !== name || traces[index].ok !== undefined)
+        ) {
+          index -= 1;
+        }
+        if (index >= 0) {
+          traces[index] = {
+            ...traces[index],
+            ok,
+            ms: Math.max(0, finishedAt - traces[index].startedAt),
+          };
+        } else {
+          traces.push({
+            id: `${message.id}-${name}-${finishedAt}`,
+            name,
+            ok,
+            startedAt: finishedAt,
+            ms: 0,
+          });
+        }
+        return { ...current, tools: traces };
+      }),
+    }));
+  },
   finalizeLastAgentMessage: () => {
     let finalised: ChatMessage | null = null;
     set((s) => {

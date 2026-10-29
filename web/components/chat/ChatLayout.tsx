@@ -1,58 +1,51 @@
 "use client";
 
 import { useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChatPanel } from "./ChatPanel";
 import { EmbeddedRoom } from "./EmbeddedRoom";
 import { useAgentStore } from "@/lib/store";
 
-/**
- * Chat mode: split view.
- *
- * - Left: persistent chat panel (history + input + voice).
- * - Right: a single embedded window of the active `chatRoom` kind,
- *   rendered with the same component as the windowed Stage Manager.
- *
- * The agent picks the room via `ui.room` / `ui.tool.open` and in chat
- * mode we surface the most-recent window of that kind on the right.
- * Resize/arrange events are no-ops here — chat mode is "one focal
- * window at a time, by design" — but in-window tools (`ui.tool`)
- * still fire so the agent can drive content inside the room.
- *
- * On wide viewports the chat panel is a fixed-width column; on narrow
- * viewports the layout stacks vertically (chat on top, room below).
- */
 export function ChatLayout() {
-  const chatRoom = useAgentStore((s) => s.chatRoom);
+  const chatCanvasOpen = useAgentStore((s) => s.chatCanvasOpen);
+  const closeChatCanvas = useAgentStore((s) => s.closeChatCanvas);
 
-  /* Bootstrap: ensure the active chatRoom is backed by a real window
-   * the moment chat mode mounts. Without this the right pane would
-   * fall back to a dummy payload that disappears as soon as any agent
-   * traffic lands; seeding the windows array up-front means the
-   * rendering path is identical from frame zero. The seed payload is
-   * the same dummy data the room tabs use. */
   useEffect(() => {
-    const s = useAgentStore.getState();
-    const existing = s.windows.find((w) => w.kind === chatRoom);
-    if (existing) {
-      s.bringToFront(existing.id);
-      return;
-    }
-    s.openWindow(chatRoom);
-    // chatRoom is intentionally the only dependency — re-running on
-    // window-array changes would loop.
-  }, [chatRoom]);
+    if (!chatCanvasOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeChatCanvas();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [chatCanvasOpen, closeChatCanvas]);
 
   return (
     <div
-      className="fixed inset-0 flex flex-col bg-paper-0 md:flex-row"
+      className="fixed inset-0 flex bg-paper-0"
       data-testid="chat-layout"
     >
-      <div className="h-1/2 w-full shrink-0 md:h-full md:w-[max(360px,35vw)]">
-        <ChatPanel />
-      </div>
-      <div className="min-h-0 min-w-0 flex-1">
-        <EmbeddedRoom />
-      </div>
+      <main className="flex min-h-0 min-w-0 flex-1 justify-center">
+        <div className="h-full w-full max-w-[720px]">
+          <ChatPanel />
+        </div>
+      </main>
+      <AnimatePresence>
+        {chatCanvasOpen && (
+          <motion.aside
+            key="chat-canvas"
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 24 }}
+            transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+            className="fixed inset-0 z-40 h-full w-full bg-paper-0 shadow-xl md:relative md:inset-auto md:z-auto md:w-[min(44vw,560px)] md:shrink-0 md:border-l md:border-rule"
+            data-testid="chat-canvas"
+          >
+            <EmbeddedRoom />
+          </motion.aside>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
