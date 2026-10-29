@@ -1,6 +1,25 @@
 /** Canonical mount point catalogue and percent-rect resolution. */
 
 import type { MountPoint, RectPct } from "./types";
+import type { WindowKind } from "@/lib/store";
+
+export const DEFAULT_MOUNTS: Record<WindowKind, MountPoint> = {
+  graph: "full",
+  chat: "right-half",
+  ask_user: "center-third",
+  settings: "right-wide",
+  profile: "right-wide",
+  integrations: "left-half",
+  integration_detail: "right-half",
+  entities: "right-half",
+  entity_detail: "center-third",
+  memories: "right-half",
+  skills: "left-half",
+  workflows: "full",
+  wiki: "full",
+  chats_summary: "right-half",
+  composio_connect: "center-third",
+};
 
 /** Pixel size of the picture-in-picture mount. Intentionally fixed;
  *  named-anchor mounts are in % so they scale with the viewport, but

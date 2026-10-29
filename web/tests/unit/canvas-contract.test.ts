@@ -5,6 +5,7 @@ import {
   type CanvasAction,
   type CanvasState,
 } from "@/lib/agent/canvas-reducer";
+import { resolveMount } from "@/lib/agent/mount-points";
 import { buildSnapshot } from "@/lib/agent/snapshot";
 import { metaTools, createToolCtx } from "@/lib/agent/tools";
 import { windowManagementTools } from "@/lib/agent/window-tools/window-management";
@@ -154,6 +155,46 @@ describe("shared canvas reducer contract", () => {
 
     expect(useAgentStore.getState().windows.find((window) => window.id === id)?.mount)
       .toBe("pip-br");
+  });
+
+  it("uses the registry default mount and matching rect in the reducer", () => {
+    const initial: CanvasState = {
+      windows: [],
+      mode: "windowed",
+      viewport: { w: 1440, h: 900 },
+    };
+    const opened = applyCanvasAction(initial, { type: "open", kind: "settings" });
+
+    expect(WINDOW_REGISTRY.settings.defaultMount).toBe("right-wide");
+    expect(opened.windows[0].mount).toBe("right-wide");
+    expect(opened.windows[0].rect).toEqual(
+      resolveMount("right-wide", initial.viewport),
+    );
+  });
+
+  it("keeps default open and saved move state in sync with the server snapshot", async () => {
+    const { browser, events, lastResult } = await runScenario("windowed", [
+      { tool: "open_window", input: { kind: "settings" } },
+      {
+        tool: "winman_move_to_position",
+        input: { kind: "settings", mount: "pip-br" },
+      },
+      { tool: "open_window", input: { kind: "settings" } },
+    ]);
+    const settings = browser.windows.find((window) => window.kind === "settings");
+    const openActions = events
+      .filter((event): event is Extract<AgentEvent, { type: "ui.canvas" }> =>
+        event.type === "ui.canvas" && event.action.type === "open",
+      )
+      .map((event) => event.action);
+
+    expect(settings?.mount).toBe("pip-br");
+    expect(settings?.rect).toEqual(resolveMount("pip-br", { w: 1440, h: 900 }));
+    expect(openActions).toEqual([
+      { type: "open", kind: "settings", openedBy: "agent" },
+      { type: "open", kind: "settings", openedBy: "agent" },
+    ]);
+    expect(lastResult).toBe("Opened settings.");
   });
 
   it("deduplicates opens and keeps only the top window when entering chat mode", () => {

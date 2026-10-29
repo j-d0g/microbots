@@ -121,19 +121,30 @@ export function metaTools(ctx: AgentToolCtx) {
   return {
     open_window: tool({
       description:
-        "Open a window of a given kind. If already open, brings it forward.",
+        "Open a window of a given kind. If already open, brings it forward. Omit mount to use the window's default or saved position.",
       inputSchema: z.object({
         kind: WINDOW_KIND,
-        mount: MOUNT_POINT.optional().default("full"),
+        mount: MOUNT_POINT.optional(),
       }),
       execute: async ({ kind, mount }) => {
         const events: AgentEvent[] = [{
           type: "ui.canvas",
-          action: { type: "open", kind: kind as WindowKind, mount: mount as MountPoint, openedBy: "agent" },
+          action: {
+            type: "open",
+            kind: kind as WindowKind,
+            ...(mount ? { mount: mount as MountPoint } : {}),
+            openedBy: "agent",
+          },
         }];
-        return applyAndEmit(ctx, "open_window", { kind, mount }, events, {
-          message: `Opened ${kind} at ${mount}.`,
-        });
+        return applyAndEmit(
+          ctx,
+          "open_window",
+          { kind, ...(mount ? { mount } : {}) },
+          events,
+          {
+            message: `Opened ${kind}${mount ? ` at ${mount}` : ""}.`,
+          },
+        );
       },
     }),
 

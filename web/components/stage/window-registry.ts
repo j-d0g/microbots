@@ -14,6 +14,7 @@
  */
 
 import type { AgentStoreState, WindowKind, WindowState } from "@/lib/store";
+import { DEFAULT_MOUNTS } from "@/lib/agent/mount-points";
 import type { MountPoint } from "@/lib/agent/types";
 
 export interface WindowModule {
@@ -25,7 +26,7 @@ export interface WindowModule {
   pinnable: boolean;
   /** ≤ 80 chars, factual, present-tense. */
   summary: (state: AgentStoreState, win?: WindowState) => string;
-  defaultMount?: MountPoint;
+  defaultMount: MountPoint;
 }
 
 const truncate = (s: string, max = 80) =>
@@ -37,7 +38,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "graph",
     windowType: "context",
     pinnable: true,
-    defaultMount: "full",
+    defaultMount: DEFAULT_MOUNTS.graph,
     summary: () => truncate(`knowledge graph · context window`),
   },
 
@@ -45,7 +46,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "chat",
     windowType: "context",
     pinnable: true,
-    defaultMount: "right-half",
+    defaultMount: DEFAULT_MOUNTS.chat,
     summary: (state) => {
       const n = state.chatMessages.length;
       if (n === 0) return truncate(`chat · no history yet`);
@@ -59,7 +60,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "ask_user",
     windowType: "tool",
     pinnable: false,
-    defaultMount: "center-third",
+    defaultMount: DEFAULT_MOUNTS.ask_user,
     summary: (_s, win) => {
       const question = (win?.payload?.question as string) ?? "";
       return truncate(`ask_user · "${question}"`);
@@ -70,7 +71,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "settings",
     windowType: "context",
     pinnable: true,
-    defaultMount: "right-wide",
+    defaultMount: DEFAULT_MOUNTS.settings,
     summary: (state) => {
       const userId = state.userId ?? null;
       const conn = state.connections.filter((c) => c.status === "ACTIVE").length;
@@ -84,7 +85,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "profile",
     windowType: "context",
     pinnable: true,
-    defaultMount: "right-wide",
+    defaultMount: DEFAULT_MOUNTS.profile,
     summary: (_s, win) => {
       const name = (win?.payload?.name as string) ?? "";
       const role = (win?.payload?.role as string) ?? "";
@@ -98,7 +99,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "integrations",
     windowType: "context",
     pinnable: true,
-    defaultMount: "left-half",
+    defaultMount: DEFAULT_MOUNTS.integrations,
     summary: (_s, win) => {
       const count = (win?.payload?.count as number) ?? 0;
       return truncate(`integrations · ${count} connected`);
@@ -109,7 +110,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "integration_detail",
     windowType: "context",
     pinnable: true,
-    defaultMount: "right-half",
+    defaultMount: DEFAULT_MOUNTS.integration_detail,
     summary: (_s, win) => {
       const slug = (win?.payload?.slug as string) ?? "?";
       return truncate(`integration · ${slug}`);
@@ -120,7 +121,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "entities",
     windowType: "context",
     pinnable: true,
-    defaultMount: "right-half",
+    defaultMount: DEFAULT_MOUNTS.entities,
     summary: (_s, win) => {
       const type = (win?.payload?.entity_type as string) ?? "all";
       const count = (win?.payload?.count as number) ?? 0;
@@ -132,7 +133,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "entity_detail",
     windowType: "context",
     pinnable: true,
-    defaultMount: "center-third",
+    defaultMount: DEFAULT_MOUNTS.entity_detail,
     summary: (_s, win) => {
       const name = (win?.payload?.name as string) ?? "?";
       const type = (win?.payload?.entity_type as string) ?? "";
@@ -144,7 +145,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "memories",
     windowType: "context",
     pinnable: true,
-    defaultMount: "right-half",
+    defaultMount: DEFAULT_MOUNTS.memories,
     summary: (_s, win) => {
       const by = (win?.payload?.by as string) ?? "confidence";
       const count = (win?.payload?.count as number) ?? 0;
@@ -156,7 +157,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "skills",
     windowType: "context",
     pinnable: true,
-    defaultMount: "left-half",
+    defaultMount: DEFAULT_MOUNTS.skills,
     summary: (_s, win) => {
       const count = (win?.payload?.count as number) ?? 0;
       const min = (win?.payload?.min_strength as number) ?? 1;
@@ -168,7 +169,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "workflows",
     windowType: "context",
     pinnable: true,
-    defaultMount: "full",
+    defaultMount: DEFAULT_MOUNTS.workflows,
     summary: (_s, win) => {
       const count = (win?.payload?.count as number) ?? 0;
       const sel = (win?.payload?.slug as string) ?? null;
@@ -182,7 +183,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "wiki",
     windowType: "context",
     pinnable: true,
-    defaultMount: "full",
+    defaultMount: DEFAULT_MOUNTS.wiki,
     summary: (_s, win) => {
       const path = (win?.payload?.path as string) ?? "";
       return truncate(path ? `wiki · ${path}` : `wiki · index`);
@@ -193,7 +194,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "chats_summary",
     windowType: "context",
     pinnable: true,
-    defaultMount: "right-half",
+    defaultMount: DEFAULT_MOUNTS.chats_summary,
     summary: (_s, win) => {
       const total = (win?.payload?.total as number) ?? 0;
       return truncate(`chats · ${total} signals`);
@@ -204,7 +205,7 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     title: "composio_connect",
     windowType: "context",
     pinnable: true,
-    defaultMount: "center-third",
+    defaultMount: DEFAULT_MOUNTS.composio_connect,
     summary: (state) => {
       const active = state.connections.filter((c) => c.status === "ACTIVE").length;
       const total = state.toolkits.length;
