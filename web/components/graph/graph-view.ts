@@ -3,6 +3,26 @@ import type { GraphFilter, GraphLink, GraphNode } from "./types";
 
 export const LABEL_ZOOM = 1.6;
 
+export const LABEL_PRIORITY = {
+  focused: 8,
+  hovered: 7,
+  user: 6,
+  integration: 5,
+  workflow: 4,
+  skill: 3,
+  entity: 2,
+  memory: 1,
+} as const;
+
+export interface LabelCandidate {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  priority: number;
+}
+
 export type Ring = 0 | 1 | 2 | 3;
 
 export interface ViewState {
@@ -252,11 +272,15 @@ export function shouldLabel(
   node: GraphNode,
   ctx: {
     hoverId: string | null;
+    focusId: string | null;
     focusSet: Set<string> | null;
     pathIds: Set<string>;
     zoom: number;
   },
 ): boolean {
+  if (node.layer === "memory" && ctx.focusSet?.has(node.id)) {
+    return ctx.hoverId === node.id || ctx.focusId === node.id;
+  }
   return (
     node.layer === "user" ||
     node.layer === "integration" ||
@@ -266,6 +290,34 @@ export function shouldLabel(
     ctx.pathIds.has(node.id) ||
     ctx.zoom >= LABEL_ZOOM
   );
+}
+
+export function pickLabels(candidates: LabelCandidate[]): Set<string> {
+  const accepted: LabelCandidate[] = [];
+  const ids = new Set<string>();
+  const ordered = [...candidates].sort(
+    (a, b) =>
+      b.priority - a.priority ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
+
+  for (const candidate of ordered) {
+    const collides = accepted.some(
+      (other) =>
+        candidate.x - 2 < other.x + other.w + 2 &&
+        candidate.x + candidate.w + 2 > other.x - 2 &&
+        candidate.y - 2 < other.y + other.h + 2 &&
+        candidate.y + candidate.h + 2 > other.y - 2,
+    );
+    const alwaysAccept =
+      candidate.priority === LABEL_PRIORITY.focused ||
+      candidate.priority === LABEL_PRIORITY.hovered;
+    if (!collides || alwaysAccept) {
+      accepted.push(candidate);
+      ids.add(candidate.id);
+    }
+  }
+  return ids;
 }
 
 export function labelText(node: GraphNode, hovered: boolean): string {

@@ -13,17 +13,26 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 
-export function AskUserCard({ payload }: { payload?: Record<string, unknown> }) {
+export function AskUserCard({
+  payload,
+  answer,
+  onAnswer,
+}: {
+  payload?: Record<string, unknown>;
+  answer?: string;
+  onAnswer?: (answer: string) => void;
+}) {
   const question = (payload?.question as string) ?? "What would you like to do?";
   const options = (payload?.options as string[]) ?? [];
-  const onAnswer = payload?.onAnswer as ((answer: string) => void) | undefined;
-  const [answered, setAnswered] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const payloadOnAnswer = payload?.onAnswer as ((answer: string) => void) | undefined;
+  const [localAnswer, setLocalAnswer] = useState<string | undefined>();
+  const selected = answer ?? localAnswer;
+  const answered = selected !== undefined;
 
-  const handleSelect = (answer: string) => {
-    setSelected(answer);
-    setAnswered(true);
-    onAnswer?.(answer);
+  const handleSelect = (selection: string) => {
+    setLocalAnswer(selection);
+    onAnswer?.(selection);
+    payloadOnAnswer?.(selection);
   };
 
   return (

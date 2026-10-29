@@ -29,6 +29,7 @@ export function ChatPanel() {
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const pendingAnswerRef = useRef<string | null>(null);
   const { supported: voiceSupported, listening, start, stop } = useWebSpeech();
 
   useEffect(() => {
@@ -82,6 +83,24 @@ export function ChatPanel() {
     [appendChatMessage, busy],
   );
 
+  const submitAnswer = useCallback(
+    (answer: string) => {
+      if (busy) {
+        pendingAnswerRef.current = answer;
+        return;
+      }
+      void submit(answer);
+    },
+    [busy, submit],
+  );
+
+  useEffect(() => {
+    if (busy || pendingAnswerRef.current === null) return;
+    const answer = pendingAnswerRef.current;
+    pendingAnswerRef.current = null;
+    void submit(answer);
+  }, [busy, submit]);
+
   const handleSubmit = useCallback(
     (event?: FormEvent) => {
       event?.preventDefault();
@@ -124,6 +143,7 @@ export function ChatPanel() {
                 <ChatMessage
                   message={message}
                   busy={busy && message.status === "streaming"}
+                  onSubmitAnswer={submitAnswer}
                 />
               </li>
             ))}

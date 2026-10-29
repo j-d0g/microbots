@@ -8,9 +8,11 @@ import type { ChatMessage as ChatMessageData } from "@/lib/store";
 export function ChatMessage({
   message,
   busy,
+  onSubmitAnswer,
 }: {
   message: ChatMessageData;
   busy: boolean;
+  onSubmitAnswer: (answer: string) => void;
 }) {
   const isUser = message.role === "user";
   return (
@@ -54,7 +56,13 @@ export function ChatMessage({
           ))}
         </div>
       )}
-      {message.cards?.map((card) => <InlineCard key={card.id} card={card} />)}
+      {message.cards?.map((card) => (
+        <InlineCard
+          key={card.id}
+          card={card}
+          onSubmitAnswer={onSubmitAnswer}
+        />
+      ))}
       {(message.text || busy) && (
         <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-ink-90">
           {message.text}

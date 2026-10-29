@@ -4,6 +4,21 @@ import type { LanguageModelV3Prompt, LanguageModelV3StreamPart } from "@ai-sdk/p
 
 type ScriptedToolCall = { name: string; input: Record<string, unknown> };
 
+const PR_REVIEW_OPTIONS = [
+  "Draft review suggestions",
+  "Ask before each review",
+  "Keep reviews manual",
+] as const;
+
+const PR_REVIEW_REPLIES: Record<(typeof PR_REVIEW_OPTIONS)[number], string> = {
+  "Draft review suggestions":
+    "I’ll draft review suggestions. Nothing has been automated yet in this demo.",
+  "Ask before each review":
+    "I’ll ask before each review. Nothing has been automated yet in this demo.",
+  "Keep reviews manual":
+    "I’ll keep reviews manual. Nothing has been automated yet in this demo.",
+};
+
 const WINDOW_KINDS = [
   "profile",
   "integrations",
@@ -49,11 +64,17 @@ export function scriptedResponse(query: string): {
         name: "ask_user",
         input: {
           question: "How should I help with PR reviews?",
-          options: ["Draft review suggestions", "Ask before each review", "Keep reviews manual"],
+          options: PR_REVIEW_OPTIONS,
         },
       }],
       text: "I can help make the repetitive parts of PR reviews easier. Would you like me to draft suggestions, ask before each review, or leave the process manual?",
     };
+  }
+  const reviewAnswer = PR_REVIEW_OPTIONS.find(
+    (option) => option.toLowerCase() === normalized.trim(),
+  );
+  if (reviewAnswer) {
+    return { toolCalls: [], text: PR_REVIEW_REPLIES[reviewAnswer] };
   }
   if (/\bmorning brief\b|\bbrief\b/.test(normalized)) {
     return {
