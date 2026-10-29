@@ -15,6 +15,8 @@ import { forceCollide, forceRadial } from "d3-force-3d";
 import {
   coUsedWidth,
   edgeStyle,
+  isLinkDrawn,
+  labelText,
   linkEnds,
   nodeOpacity,
   ringRadii,
@@ -67,6 +69,21 @@ function radiusFor(layer: GraphNode["layer"]) {
       return 4;
     default:
       return 3.2;
+  }
+}
+
+function collisionRadiusFor(layer: GraphNode["layer"]) {
+  switch (layer) {
+    case "user":
+    case "integration":
+    case "workflow":
+      return radiusFor(layer) + 20;
+    case "skill":
+      return radiusFor(layer) + 14;
+    case "entity":
+    case "memory":
+    default:
+      return radiusFor(layer) + 7;
   }
 }
 
@@ -243,7 +260,7 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
     const charge = fg.d3Force("charge") as
       | { strength: (strength: number) => unknown }
       | undefined;
-    charge?.strength(-70);
+    charge?.strength(-120);
     const link = fg.d3Force("link") as
       | {
           distance: (distance: (link: GraphLink) => number) => unknown;
@@ -251,14 +268,24 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
         }
       | undefined;
     link?.distance((edge) => (edge.relation === "from" ? 26 : 60));
-    link?.strength((edge) => (edge.relation === "from" ? 0.7 : 0.08));
+    link?.strength((edge) => {
+      if (edge.relation === "from") return 0.7;
+      if (
+        edge.relation === "uses" ||
+        edge.relation === "appears_in" ||
+        edge.relation?.startsWith("step")
+      ) {
+        return 0.015;
+      }
+      return 0.08;
+    });
     const radial = forceRadial<GraphNode>((node) => radii[node.layer]).strength(
       (node) => (node.layer === "memory" ? 0.08 : 0.7),
     );
     fg.d3Force("radial", radial);
     fg.d3Force(
       "collide",
-      forceCollide<GraphNode>((node) => radiusFor(node.layer) + 8),
+      forceCollide<GraphNode>((node) => collisionRadiusFor(node.layer)),
     );
     appliedForces.current = { data, radii };
     fg.d3ReheatSimulation();
@@ -275,6 +302,21 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
   useLayoutEffect(() => {
     focusSetRef.current = view.focusSet;
   }, [view.focusSet]);
+  const previousSize = useRef({ width, height });
+  useEffect(() => {
+    if (
+      previousSize.current.width === width &&
+      previousSize.current.height === height
+    ) {
+      return;
+    }
+    previousSize.current = { width, height };
+    const timeout = window.setTimeout(
+      () => fit(focusSetRef.current ?? undefined, 440),
+      150,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [fit, height, width]);
   useEffect(() => {
     if (!fitOnFocusChange) return;
     fit(focusSetRef.current ?? undefined, 440);
@@ -342,13 +384,13 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
         ctx.fillStyle = focused
           ? "#1A1A1A"
           : "rgba(91,91,88,0.92)";
-        ctx.fillText(node.label, node.x + radius + 4, node.y);
+        ctx.fillText(labelText(node, hovered), node.x + radius + 4, node.y);
       }
 
       const hiddenMemoryCount = visibleMemoryCounts.get(node.id);
       if (node.layer === "integration" && hiddenMemoryCount) {
-        const badgeX = node.x + radius - 1;
-        const badgeY = node.y - radius + 1;
+        const badgeX = node.x - radius + 1;
+        const badgeY = node.y - radius - 2 / globalScale;
         const badgeRadius =
           (5 + Math.min(String(hiddenMemoryCount).length - 1, 2)) /
           globalScale;
@@ -380,6 +422,7 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
   const drawLink = useCallback(
     (rawLink: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
       const link = rawLink as GraphLink;
+      if (!isLinkDrawn(link, { focusId, hoverId, pathIds })) return;
       const source =
         typeof link.source === "string" ? null : link.source;
       const target =
@@ -441,7 +484,7 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
       }
       ctx.restore();
     },
-    [focusId],
+    [focusId, hoverId, pathIds],
   );
 
   const drawCoUsed = useCallback(

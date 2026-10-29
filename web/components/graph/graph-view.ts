@@ -38,6 +38,25 @@ export function linkEnds(link: GraphLink): [string, string] {
   ];
 }
 
+export function isLinkDrawn(
+  link: GraphLink,
+  context: {
+    focusId: string | null;
+    hoverId: string | null;
+    pathIds: Set<string>;
+  },
+): boolean {
+  if (link.relation !== "appears_in") return true;
+  const [source, target] = linkEnds(link);
+  return (
+    source === context.focusId ||
+    target === context.focusId ||
+    source === context.hoverId ||
+    target === context.hoverId ||
+    (context.pathIds.has(source) && context.pathIds.has(target))
+  );
+}
+
 export function buildAdjacency(links: GraphLink[]): Map<string, Set<string>> {
   const adjacency = new Map<string, Set<string>>();
   for (const link of links) {
@@ -247,6 +266,13 @@ export function shouldLabel(
     ctx.pathIds.has(node.id) ||
     ctx.zoom >= LABEL_ZOOM
   );
+}
+
+export function labelText(node: GraphNode, hovered: boolean): string {
+  if (hovered || node.label.length <= 28) return node.label;
+  const prefix = node.label.slice(0, 27);
+  const wordEnd = prefix.lastIndexOf(" ");
+  return `${wordEnd > 0 ? prefix.slice(0, wordEnd) : prefix}…`;
 }
 
 export function edgeStyle(relation?: string): EdgeStyle {

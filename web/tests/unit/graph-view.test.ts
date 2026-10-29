@@ -7,6 +7,8 @@ import {
   coUsedWidth,
   deriveView,
   edgeStyle,
+  isLinkDrawn,
+  labelText,
   memoryCounts,
   nodeOpacity,
   resolveNodeRef,
@@ -248,6 +250,38 @@ describe("graph view helpers", () => {
       shouldLabel(entity, { ...base, focusSet: new Set([entity.id]) }),
     ).toBe(true);
     expect(shouldLabel(entity, { ...base, zoom: 1.6 })).toBe(true);
+  });
+
+  it("only draws appears_in edges near focus, hover, or a complete path", () => {
+    const link = fixture().links.find(
+      (candidate) => candidate.relation === "appears_in",
+    )!;
+    const none = { focusId: null, hoverId: null, pathIds: new Set<string>() };
+
+    expect(isLinkDrawn(link, none)).toBe(false);
+    expect(isLinkDrawn(link, { ...none, focusId: "entity:alice" })).toBe(true);
+    expect(isLinkDrawn(link, { ...none, hoverId: "int-linear" })).toBe(true);
+    expect(
+      isLinkDrawn(link, {
+        ...none,
+        pathIds: new Set(["entity:alice", "int-linear"]),
+      }),
+    ).toBe(true);
+    expect(
+      isLinkDrawn(link, { ...none, pathIds: new Set(["entity:alice"]) }),
+    ).toBe(false);
+    expect(isLinkDrawn({ ...link, relation: "uses" }, none)).toBe(true);
+  });
+
+  it("truncates non-hovered labels at 28 characters", () => {
+    const node = {
+      ...fixture().nodes[0],
+      label: "User always creates a Linear ticket before opening a GitHub PR",
+    };
+    expect(labelText(node, false)).toBe("User always creates a…");
+    expect(labelText(node, false).length).toBeLessThanOrEqual(28);
+    expect(labelText(node, true)).toBe(node.label);
+    expect(labelText({ ...node, label: "Linear" }, false)).toBe("Linear");
   });
 
   it("resolves node ids, case-insensitive labels, and integration slugs", () => {
