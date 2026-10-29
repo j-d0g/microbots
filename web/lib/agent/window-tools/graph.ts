@@ -10,7 +10,7 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { applyToolToSnapshot } from "../server-snapshot";
+import { toolResult } from "../server-snapshot";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
 import type { AgentToolCtx } from "../tools";
@@ -80,8 +80,7 @@ function applyAndEmit(
 ): string {
   ctx.emit({ type: "agent.tool.start", name: toolName, args });
   for (const e of uiEvents) ctx.emit(e);
-  const result = applyToolToSnapshot(ctx.snapshot, toolName, args);
-  ctx.snapshot = result.snapshot;
+  const result = toolResult(toolName, args);
   ctx.emit({ type: "agent.tool.done", name: toolName, ok: (result.ok ?? true) });
   return result.message;
 }
@@ -262,9 +261,7 @@ export function graphWindowTools(ctx: AgentToolCtx) {
 
         const lines: string[] = [];
         lines.push("Current graph state:");
-        lines.push(`  Window: ${graphWindow.id} (${graphWindow.mount})`);
-        lines.push(`  Focused: ${graphWindow.focused}`);
-        lines.push(`  Z-index: ${graphWindow.zIndex}`);
+        lines.push(`  Window: ${graphWindow.id}`);
 
         return lines.join("\n");
       },

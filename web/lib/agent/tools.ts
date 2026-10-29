@@ -14,11 +14,10 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { applyCanvasToSnapshot, applyToolToSnapshot } from "./server-snapshot";
-import { canvasActionForEvent, LAYOUT_PRESET_NAMES } from "./canvas-reducer";
-import type { LayoutPreset } from "./canvas-reducer";
+import { applyCanvasToSnapshot } from "./server-snapshot";
+import { canvasActionForEvent } from "./canvas-reducer";
 import { getKgWorkflows, getKgMemories } from "@/lib/api/backend";
-import type { CanvasSnapshot, MountPoint } from "./types";
+import type { CanvasSnapshot } from "./types";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
 
@@ -65,10 +64,9 @@ function applyAndEmit(
 ): string {
   ctx.emit({ type: "agent.tool.start", name: toolName, args });
   for (const e of uiEvents) ctx.emit(e);
-  const result = applyToolToSnapshot(ctx.snapshot, toolName, args, resultOptions?.ok);
-  ctx.snapshot = result.snapshot;
-  ctx.emit({ type: "agent.tool.done", name: toolName, ok: (result.ok ?? true) });
-  return resultOptions?.message ?? result.message;
+  const ok = resultOptions?.ok ?? true;
+  ctx.emit({ type: "agent.tool.done", name: toolName, ok });
+  return resultOptions?.message ?? `${toolName} ${ok ? "completed." : "failed."}`;
 }
 
 /* ------------------------------------------------------------------ *
@@ -76,7 +74,6 @@ function applyAndEmit(
  * ------------------------------------------------------------------ */
 
 export const WINDOW_KIND = z.enum([
-  "profile",
   "integrations",
   "integration_detail",
   "entities",
@@ -84,56 +81,30 @@ export const WINDOW_KIND = z.enum([
   "memories",
   "skills",
   "workflows",
-  "wiki",
-  "chats_summary",
-  "chat",
   "graph",
   "ask_user",
-  "settings",
   "composio_connect",
 ]);
 
-export const MOUNT_POINT = z.enum([
-  "full",
-  "left-half",
-  "right-half",
-  "right-wide",
-  "top-half",
-  "bottom-half",
-  "left-third",
-  "center-third",
-  "right-third",
-  "tl",
-  "tr",
-  "bl",
-  "br",
-  "pip-br",
-  "pip-tr",
-]);
-
-export const LAYOUT_PRESET = z.enum(LAYOUT_PRESET_NAMES);
-
 /* ------------------------------------------------------------------ *
- *  Meta tools (window management)
+ *  Meta tools (chat canvas)
  * ------------------------------------------------------------------ */
 
 export function metaTools(ctx: AgentToolCtx) {
   return {
     open_window: tool({
       description:
-        "Open a window of a given kind. If already open, brings it forward. Omit mount to use the window's default or saved position. Optional focus centres a node, entity, or workflow.",
+        "Open a card of a given kind. If already open, brings it forward. Optional focus centres a node, entity, or workflow.",
       inputSchema: z.object({
         kind: WINDOW_KIND,
-        mount: MOUNT_POINT.optional(),
         focus: z.string().optional().describe("node, entity or workflow to centre on"),
       }),
-      execute: async ({ kind, mount, focus }) => {
+      execute: async ({ kind, focus }) => {
         const events: AgentEvent[] = [{
           type: "ui.canvas",
           action: {
             type: "open",
             kind: kind as WindowKind,
-            ...(mount ? { mount: mount as MountPoint } : {}),
             ...(focus ? { payload: { focus } } : {}),
             openedBy: "agent",
           },
@@ -141,11 +112,9 @@ export function metaTools(ctx: AgentToolCtx) {
         return applyAndEmit(
           ctx,
           "open_window",
-          { kind, ...(mount ? { mount } : {}), ...(focus ? { focus } : {}) },
+          { kind, ...(focus ? { focus } : {}) },
           events,
-          {
-            message: `Opened ${kind}${mount ? ` at ${mount}` : ""}.`,
-          },
+          { message: `Opened ${kind}.` },
         );
       },
     }),
@@ -192,20 +161,6 @@ export function metaTools(ctx: AgentToolCtx) {
       },
     }),
 
-    arrange_windows: tool({
-      description:
-        "Tile every open window using a named preset. Rare — stage-manager auto-positions. Presets: focus | split | grid | stack-right | spotlight | theater | reading | triptych.",
-      inputSchema: z.object({ layout: LAYOUT_PRESET }),
-      execute: async ({ layout }) => {
-        return applyAndEmit(ctx, "arrange_windows", { layout }, [{
-          type: "ui.canvas",
-          action: { type: "arrange", layout: layout as LayoutPreset },
-        }], {
-          message: `Arranged ${ctx.snapshot.windows.length} windows as ${layout}.`,
-        });
-      },
-    }),
-
     clear_canvas: tool({
       description:
         "Close every open window. Use sparingly — only when the user explicitly asks for a clean slate.",
@@ -233,7 +188,7 @@ export function v1WorkTools(ctx: AgentToolCtx) {
     toolName: string,
     args: Record<string, unknown>,
     payload: Record<string, unknown>,
-    kind: WindowKind = toolName as WindowKind,
+    kind: WindowKind = "workflows",
   ): string {
     const events: AgentEvent[] = [
       {
@@ -248,39 +203,28 @@ export function v1WorkTools(ctx: AgentToolCtx) {
   return {
     save_workflow: tool({
       description:
-        "Save code as a named workflow. Confirm-gated — stages a confirm before executing. Opens save_workflow window.",
+        "Save code as a named workflow in the knowledge graph. Opens the workflows card.",
       inputSchema: z.object({
         name: z.string().min(1),
         code: z.string().min(1),
         overwrite: z.boolean().optional(),
       }),
       execute: async ({ name, code, overwrite }) => {
-        ctx.emit({
-          type: "ui.confirm",
-          intent: {
-            id: `confirm-${Date.now()}`,
-            toolName: "save_workflow",
-            description: `Save workflow "${name}" (${code.length} bytes)?`,
-            stagedAt: Date.now(),
-            args: { name, code, overwrite },
-          },
-        });
         const payload = {
           name,
           code,
           overwrite: overwrite ?? false,
-          url: `https://microbots.dev/wf/${name}`,
           saved_to: name,
           bytes: code.length,
-          status: "confirm_pending",
+          status: "done",
         };
-        return emitToolWindow("save_workflow", { name, code, overwrite }, payload);
+        return emitToolWindow("save_workflow", { name, code, overwrite }, payload, "workflows");
       },
     }),
 
     view_workflow: tool({
       description:
-        "View a saved workflow's source code. Opens view_workflow window.",
+        "View a saved workflow and its steps in the workflows card.",
       inputSchema: z.object({
         name: z.string().min(1),
       }),
@@ -314,40 +258,9 @@ export function v1WorkTools(ctx: AgentToolCtx) {
       },
     }),
 
-    run_workflow: tool({
-      description:
-        "Run a saved workflow by name. Confirm-gated. Opens run_workflow window.",
-      inputSchema: z.object({
-        name: z.string().min(1),
-        args: z.record(z.string(), z.unknown()).optional(),
-      }),
-      execute: async ({ name, args: runArgs }) => {
-        ctx.emit({
-          type: "ui.confirm",
-          intent: {
-            id: `confirm-${Date.now()}`,
-            toolName: "run_workflow",
-            description: `Run workflow "${name}"?`,
-            stagedAt: Date.now(),
-            args: { name, args: runArgs },
-          },
-        });
-        const payload = {
-          name,
-          args: runArgs ?? {},
-          result: { ok: true },
-          stdout: `Running ${name}...\nDone.`,
-          stderr: "",
-          error: null,
-          status: "confirm_pending",
-        };
-        return emitToolWindow("run_workflow", { name, args: runArgs }, payload);
-      },
-    }),
-
     list_workflows: tool({
       description:
-        "List all saved workflows. Opens list_workflows window.",
+        "List all saved workflows in the workflows card.",
       inputSchema: z.object({}),
       execute: async () => {
         let workflows: { slug: string; name: string; description: string }[] = [];
@@ -369,27 +282,6 @@ export function v1WorkTools(ctx: AgentToolCtx) {
           workflows,
         };
         return emitToolWindow("list_workflows", {}, payload);
-      },
-    }),
-
-    // TODO: find_examples currently returns local template data. Wire to a
-    // backend endpoint (e.g. example gallery / template registry) when one exists.
-    find_examples: tool({
-      description:
-        "Search example workflows by query. Opens find_examples window.",
-      inputSchema: z.object({
-        query: z.string().min(1),
-      }),
-      execute: async ({ query }) => {
-        const payload = {
-          query,
-          count: 2,
-          matches: [
-            { id: "ex-slack-summary", title: "Slack Channel Summary", description: "Summarize a Slack channel daily", tags: ["slack", "summary"], code: "# example" },
-            { id: "ex-github-pr", title: "GitHub PR Review", description: "Auto-review GitHub PRs", tags: ["github", "review"], code: "# example" },
-          ],
-        };
-        return emitToolWindow("find_examples", { query }, payload);
       },
     }),
 
@@ -431,7 +323,7 @@ export function v1WorkTools(ctx: AgentToolCtx) {
 
     ask_user: tool({
       description:
-        "Ask the user a question with optional multiple-choice options. Opens a modal focus card. Use when you need clarification or a decision.",
+        "Ask the user a question with optional multiple-choice options. Use when you need clarification or a decision.",
       inputSchema: z.object({
         question: z.string().min(1),
         options: z.array(z.string()).max(4).optional(),

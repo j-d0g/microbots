@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SettingsRoom — minimal scope for the live windowed UI.
+ * Settings page for user identity and backend health.
  *
  *   1. user_id     — single source of truth for the Composio namespace
  *                    + X-User-Id header. Defaults to "default" and can
@@ -9,31 +9,19 @@
  *   2. backend     — read-only health row (surreal + composio status,
  *                    last-checked timestamp + manual refresh).
  *
- * Agent tools registered via `registerTools("settings", ...)`:
- *   - set_user_id({ user_id })
- *   - clear_user_id()
- *   - refresh_health()
- *
- * Everything else from the previous dummy-data SettingsRoom (members,
- * org, schedule, voice, memory, danger zone) was scoped out — the agent
- * doesn't surface those rooms in windowed mode and the seed data was
- * misleading.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { Hairline } from "@/components/primitives/Hairline";
 import { Chip } from "@/components/primitives/Chip";
-import { RoomStateOverlay } from "@/components/rooms/RoomStateOverlay";
 import { useAgentStore } from "@/lib/store";
-import { registerTools } from "@/lib/room-tools";
 import * as backend from "@/lib/api/backend";
 import { cn } from "@/lib/cn";
 
 const USER_ID_RE = /^[a-zA-Z0-9_-]+$/;
 const STORAGE_KEY = "microbots:userId";
 
-export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
-  const roomState = useAgentStore((s) => s.roomStates.settings);
+export function SettingsPageContent() {
   const userId = useAgentStore((s) => s.userId);
   const setUserId = useAgentStore((s) => s.setUserId);
   const backendHealth = useAgentStore((s) => s.backendHealth);
@@ -117,45 +105,6 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
     setError(null);
   }, [persistUserId]);
 
-  /* ---- agent tools ---- */
-  useEffect(() => {
-    return registerTools("settings", [
-      {
-        name: "set_user_id",
-        description:
-          "Persist the Composio namespace key + X-User-Id header for every backend call.",
-        args: { user_id: "3–64 chars [a-zA-Z0-9_-]" },
-        run: (args) => {
-          const next = String(args.user_id ?? "").trim();
-          if (!next) return;
-          if (next.length < 3 || next.length > 64) return;
-          if (!USER_ID_RE.test(next)) return;
-          persistUserId(next);
-          pushCard({
-            id: `toast-userid-${Date.now()}`,
-            kind: "toast",
-            data: { text: `user_id saved as ${next}` },
-            ttl: 4500,
-          });
-        },
-      },
-      {
-        name: "clear_user_id",
-        description: "Wipe the persisted user_id.",
-        run: () => {
-          persistUserId(null);
-        },
-      },
-      {
-        name: "refresh_health",
-        description: "Force-refresh /api/health and update the live status row.",
-        run: () => {
-          void refreshHealth();
-        },
-      },
-    ]);
-  }, [persistUserId, pushCard, refreshHealth]);
-
   /* ---- first-load health probe ---- */
   useEffect(() => {
     if (backendHealth) return;
@@ -171,7 +120,7 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
   const composioOk = backendHealth?.composioOk ?? null;
 
   return (
-    <RoomStateOverlay room="settings" state={roomState}>
+    <>
       <div className="@container/settings mx-auto w-full max-w-[640px]">
         <header className="mb-8 @[640px]/settings:mb-12">
           <p className="font-mono text-[11px] uppercase tracking-wider text-ink-35">
@@ -325,7 +274,7 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
           </p>
         </section>
       </div>
-    </RoomStateOverlay>
+    </>
   );
 }
 

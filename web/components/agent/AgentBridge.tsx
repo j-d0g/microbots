@@ -6,10 +6,6 @@ import { useAgentStore } from "@/lib/store";
 /** Mounts once in the shell. Opens the SSE agent stream. */
 export function AgentBridge() {
   useEffect(() => {
-    const s = useAgentStore.getState();
-    if (s.windows.length === 0) {
-      s.openWindow("graph");
-    }
     // Expose store for Playwright/testing in dev. No-op in prod.
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
       (window as unknown as { __store: typeof useAgentStore }).__store = useAgentStore;

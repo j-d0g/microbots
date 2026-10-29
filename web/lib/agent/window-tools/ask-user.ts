@@ -8,7 +8,7 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { applyToolToSnapshot } from "../server-snapshot";
+import { toolResult } from "../server-snapshot";
 import type { AgentToolCtx } from "../tools";
 import type { AgentEvent } from "@/lib/agent-client";
 
@@ -37,8 +37,7 @@ export function askUserWindowTools(ctx: AgentToolCtx) {
       { type: "agent.tool.start", name: toolName, args },
       ...uiEvents,
     ];
-    const result = applyToolToSnapshot(ctx.snapshot, toolName, args);
-    ctx.snapshot = result.snapshot;
+    const result = toolResult(toolName, args);
     ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok ?? true });
     return result.message;
   };

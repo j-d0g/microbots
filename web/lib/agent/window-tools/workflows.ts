@@ -12,7 +12,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { AgentToolCtx } from "../tools";
-import { applyToolToSnapshot } from "../server-snapshot";
+import { toolResult } from "../server-snapshot";
 import { getKgWorkflows, upsertWorkflow } from "@/lib/api/backend";
 import type { Workflow } from "@/lib/api/backend";
 import type { AgentEvent } from "@/lib/agent-client";
@@ -35,8 +35,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
     ];
     ctx.emit({ type: "agent.tool.start", name: `workflows_${toolName}`, args });
     for (const e of events) ctx.emit(e);
-    const result = applyToolToSnapshot(ctx.snapshot, `workflows_${toolName}`, args);
-    ctx.snapshot = result.snapshot;
+    const result = toolResult(`workflows_${toolName}`, args);
     ctx.emit({
       type: "agent.tool.done",
       name: `workflows_${toolName}`,
@@ -75,8 +74,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
         ];
         ctx.emit({ type: "agent.tool.start", name: "workflows_list_all", args: {} });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, "workflows_list_all", {});
-        ctx.snapshot = result.snapshot;
+        const result = toolResult("workflows_list_all", {});
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_list_all",
@@ -134,8 +132,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
         ];
         ctx.emit({ type: "agent.tool.start", name: "workflows_new", args: {} });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, "workflows_new", {});
-        ctx.snapshot = result.snapshot;
+        const result = toolResult("workflows_new", {});
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_new",
@@ -227,12 +224,9 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           args: input as Record<string, unknown>,
         });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(
-          ctx.snapshot,
-          "workflows_save",
+        const result = toolResult("workflows_save",
           input as Record<string, unknown>
         );
-        ctx.snapshot = result.snapshot;
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_save",
@@ -279,8 +273,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           args: { query },
         });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, "workflows_search", { query });
-        ctx.snapshot = result.snapshot;
+        const result = toolResult("workflows_search", { query });
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_search",
@@ -317,8 +310,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           args: { tag },
         });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, "workflows_filter_by_tag", { tag });
-        ctx.snapshot = result.snapshot;
+        const result = toolResult("workflows_filter_by_tag", { tag });
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_filter_by_tag",
@@ -356,11 +348,10 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           args: { by, ascending },
         });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, "workflows_sort_alphabetically", {
+        const result = toolResult("workflows_sort_alphabetically", {
           by,
           ascending,
         });
-        ctx.snapshot = result.snapshot;
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_sort_alphabetically",
@@ -397,8 +388,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           args,
         });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, "workflows_read_skill_chain", args);
-        ctx.snapshot = result.snapshot;
+        const result = toolResult("workflows_read_skill_chain", args);
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_read_skill_chain",
@@ -439,8 +429,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           args,
         });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, "workflows_run", args);
-        ctx.snapshot = result.snapshot;
+        const result = toolResult("workflows_run", args);
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_run",
@@ -496,8 +485,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           args,
         });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, "workflows_delete", args);
-        ctx.snapshot = result.snapshot;
+        const result = toolResult("workflows_delete", args);
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_delete",
@@ -539,8 +527,7 @@ export function workflowsWindowTools(ctx: AgentToolCtx) {
           args,
         });
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, "workflows_duplicate", args);
-        ctx.snapshot = result.snapshot;
+        const result = toolResult("workflows_duplicate", args);
         ctx.emit({
           type: "agent.tool.done",
           name: "workflows_duplicate",

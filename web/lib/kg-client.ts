@@ -1,8 +1,8 @@
 /**
  * KG ↔ Frontend contract client.
  *
- * Schema-exact TypeScript types + thin typed wrappers around every
- * endpoint in `/api/kg`. Types are authoritative here and re-imported
+ * Schema-exact TypeScript types + thin typed wrappers around the
+ * frontend's `/api/kg` reads and writes. Types are authoritative here and re-imported
  * by windows + hooks so the UI surface stays in lockstep with the
  * backend Pydantic models (`app/routes/api_kg.py`).
  *
@@ -129,46 +129,6 @@ export interface Workflow {
   skill_chain: WorkflowSkillStep[];
 }
 
-export interface ChatSummaryRow {
-  integration: Slug;
-  signal_level: "low" | "mid" | "high";
-  count: number;
-}
-
-export interface UserProfile {
-  id: RecordId;
-  name?: string;
-  role?: string;
-  goals: string[];
-  preferences: Record<string, unknown>;
-  context_window?: number;
-  chat_count: number;
-  memory_count: number;
-  skill_count: number;
-  workflow_count: number;
-  entity_count: number;
-  integration_count: number;
-}
-
-export type WikiLayer =
-  | "root"
-  | "integrations"
-  | "entities"
-  | "chats"
-  | "memories"
-  | "skills"
-  | "workflows";
-
-export interface WikiNode {
-  path: string;
-  depth: 1 | 2 | 3;
-  layer: WikiLayer;
-}
-
-export interface WikiPage extends WikiNode {
-  content: string;
-}
-
 /* ============================== writes ============================ */
 
 export interface AddMemoryBody {
@@ -230,19 +190,6 @@ export interface AddChatBody {
   occurred_at?: ISO8601;
   from_integration?: Slug;
   mentions?: AddChatMention[];
-}
-
-export interface WriteWikiPageBody {
-  content: string;
-  rationale?: string;
-}
-
-export interface UpdateUserProfileBody {
-  name?: string;
-  role?: string;
-  goals?: string[];
-  preferences?: Record<string, unknown>;
-  context_window?: number;
 }
 
 /* ============================== client ============================ */
@@ -398,41 +345,6 @@ export function getChats(
   );
 }
 
-export function getChatsSummary(
-  userId?: string | null,
-  signal?: AbortSignal,
-): Promise<ChatSummaryRow[]> {
-  return kg<ChatSummaryRow[]>("/chats/summary", { userId, signal });
-}
-
-export function getUser(
-  userId?: string | null,
-  signal?: AbortSignal,
-): Promise<UserProfile> {
-  return kg<UserProfile>("/user", { userId, signal });
-}
-
-export function getWiki(
-  userId?: string | null,
-  signal?: AbortSignal,
-): Promise<WikiNode[]> {
-  return kg<WikiNode[]>("/wiki", { userId, signal });
-}
-
-export function getWikiPage(
-  path: string,
-  userId?: string | null,
-  signal?: AbortSignal,
-): Promise<WikiPage> {
-  // path may be multi-segment, e.g. "entities/martin" — keep slashes,
-  // encode each segment.
-  const encoded = path
-    .split("/")
-    .map((seg) => encodeURIComponent(seg))
-    .join("/");
-  return kg<WikiPage>(`/wiki/${encoded}`, { userId, signal });
-}
-
 /* ============================== writes ============================ */
 
 export function addMemory(
@@ -468,31 +380,6 @@ export function addChat(
   userId?: string | null,
 ): Promise<{ id: RecordId }> {
   return kg("/chats", { method: "POST", body, userId });
-}
-
-export function writeWikiPage(
-  path: string,
-  body: WriteWikiPageBody,
-  userId?: string | null,
-): Promise<{
-  id: RecordId;
-  path: string;
-  updated: boolean;
-  unchanged: boolean;
-  revision: number;
-}> {
-  const encoded = path
-    .split("/")
-    .map((seg) => encodeURIComponent(seg))
-    .join("/");
-  return kg(`/wiki/${encoded}`, { method: "PUT", body, userId });
-}
-
-export function updateUser(
-  body: UpdateUserProfileBody,
-  userId?: string | null,
-): Promise<{ id: RecordId; updated: boolean; fields: string[] }> {
-  return kg("/user", { method: "PATCH", body, userId });
 }
 
 /* ============================ re-exports ========================== */

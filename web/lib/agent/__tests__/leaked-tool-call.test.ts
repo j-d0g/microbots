@@ -2,21 +2,26 @@ import { describe, expect, it } from "vitest";
 import { detectLeakedToolCall } from "../leaked-tool-call";
 
 describe("detectLeakedToolCall", () => {
-  it("recovers a leaked open_window(kind='profile') from streamed text", () => {
-    const text = "open_window(kind='profile')\nmorning. let me pull up your profile.";
+  it("recovers a leaked open_window call from streamed text", () => {
+    const text = "open_window(kind='graph', focus='Linear')\nmorning. Here is the graph.";
     const out = detectLeakedToolCall(text);
     expect(out?.name).toBe("open_window");
-    expect(out?.args.kind).toBe("profile");
+    expect(out?.args).toEqual({ kind: "graph", focus: "Linear" });
     expect(out?.events[0]).toEqual({
       type: "ui.canvas",
-      action: { type: "open", kind: "profile", openedBy: "agent" },
+      action: {
+        type: "open",
+        kind: "graph",
+        payload: { focus: "Linear" },
+        openedBy: "agent",
+      },
     });
   });
 
   it("handles double quotes and extra args", () => {
-    const text = 'open_window(kind="workflows", mount="full")';
+    const text = 'open_window(kind="workflows", focus="Bug Triage")';
     const out = detectLeakedToolCall(text);
-    expect(out?.args.kind).toBe("workflows");
+    expect(out?.args).toEqual({ kind: "workflows", focus: "Bug Triage" });
   });
 
   it("recovers close_window", () => {
@@ -34,7 +39,7 @@ describe("detectLeakedToolCall", () => {
   });
 
   it("returns null for normal prose", () => {
-    expect(detectLeakedToolCall("morning. opened the wiki for you.")).toBeNull();
+    expect(detectLeakedToolCall("morning. I found the project graph.")).toBeNull();
   });
 
   it("returns null when no tool syntax is present even if a tool name appears", () => {

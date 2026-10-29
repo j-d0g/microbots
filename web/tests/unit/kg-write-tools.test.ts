@@ -22,9 +22,6 @@ function makeCtx(): AgentToolCtx & { events: AgentEvent[] } {
   return {
     snapshot: {
       windows: [],
-      viewport: { w: 1920, h: 1080 },
-      recentActions: [],
-      grid: "",
       focusedId: null,
       user: { query: "" },
     } as AgentToolCtx["snapshot"],
@@ -134,7 +131,7 @@ describe("kgWriteTools execution", () => {
     }
   });
 
-  it("add_chat calls backend and emits ui.tool.open for chats_summary", async () => {
+  it("add_chat calls backend without opening a canvas card", async () => {
     fetchSpy.mockResolvedValueOnce(
       jsonResponse({ id: "rec:1", chat_id: "chat:1" }),
     );
@@ -145,14 +142,10 @@ describe("kgWriteTools execution", () => {
       { toolCallId: "tc5", messages: [], abortSignal: undefined as never },
     );
     expect(typeof result).toBe("string");
-    const toolOpen = ctx.events.find((e) => e.type === "ui.tool.open");
-    expect(toolOpen).toBeDefined();
-    if (toolOpen && toolOpen.type === "ui.tool.open") {
-      expect(toolOpen.kind).toBe("chats_summary");
-    }
+    expect(ctx.events.some((event) => event.type === "ui.tool.open")).toBe(false);
   });
 
-  it("write_wiki_page calls backend and emits ui.tool.open for wiki", async () => {
+  it("write_wiki_page calls backend without opening a canvas card", async () => {
     fetchSpy.mockResolvedValueOnce(
       jsonResponse({ path: "onboarding/setup", revision: 1 }),
     );
@@ -163,14 +156,10 @@ describe("kgWriteTools execution", () => {
       { toolCallId: "tc6", messages: [], abortSignal: undefined as never },
     );
     expect(typeof result).toBe("string");
-    const toolOpen = ctx.events.find((e) => e.type === "ui.tool.open");
-    expect(toolOpen).toBeDefined();
-    if (toolOpen && toolOpen.type === "ui.tool.open") {
-      expect(toolOpen.kind).toBe("wiki");
-    }
+    expect(ctx.events.some((event) => event.type === "ui.tool.open")).toBe(false);
   });
 
-  it("update_user calls backend and emits ui.tool.open for profile", async () => {
+  it("update_user calls backend without opening a canvas card", async () => {
     fetchSpy.mockResolvedValueOnce(
       jsonResponse({
         id: "user:1",
@@ -196,11 +185,7 @@ describe("kgWriteTools execution", () => {
       { toolCallId: "tc7", messages: [], abortSignal: undefined as never },
     );
     expect(typeof result).toBe("string");
-    const toolOpen = ctx.events.find((e) => e.type === "ui.tool.open");
-    expect(toolOpen).toBeDefined();
-    if (toolOpen && toolOpen.type === "ui.tool.open") {
-      expect(toolOpen.kind).toBe("profile");
-    }
+    expect(ctx.events.some((event) => event.type === "ui.tool.open")).toBe(false);
   });
 
   it("each tool emits agent.tool.start and agent.tool.done events", async () => {

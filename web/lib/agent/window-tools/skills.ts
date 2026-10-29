@@ -3,14 +3,14 @@
  *
  * Tools for browsing, filtering, sorting, and managing reusable capabilities
  * (skills) in the skills window. Each tool emits AgentEvents for UI updates
- * and applies changes via applyToolToSnapshot.
+ * and applies changes via toolResult.
  *
  * Skills have: slug, name, description, steps, frequency, strength, tags, uses_integrations.
  */
 
 import { tool } from "ai";
 import { z } from "zod";
-import { applyToolToSnapshot } from "../server-snapshot";
+import { toolResult } from "../server-snapshot";
 import { getKgSkills } from "@/lib/api/backend";
 import type { Skill } from "@/lib/api/backend";
 import type { AgentToolCtx } from "../tools";
@@ -30,8 +30,7 @@ function dispatchWindowTool(
 ): string {
   ctx.emit({ type: "agent.tool.start", name: toolName, args });
   for (const e of uiEvents) ctx.emit(e);
-  const result = applyToolToSnapshot(ctx.snapshot, toolName, args);
-  ctx.snapshot = result.snapshot;
+  const result = toolResult(toolName, args);
   ctx.emit({ type: "agent.tool.done", name: toolName, ok: (result.ok ?? true) });
   return result.message;
 }

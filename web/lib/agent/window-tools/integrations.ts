@@ -8,13 +8,13 @@
  * Pattern follows graphTools and v1WorkTools from ../tools.ts:
  * - Each tool validates input with Zod
  * - Emits AgentEvent via ctx.emit for UI updates
- * - Applies changes via applyToolToSnapshot
+ * - Applies changes via toolResult
  * - Returns descriptive result string for the agent
  */
 
 import { tool } from "ai";
 import { z } from "zod";
-import { applyToolToSnapshot } from "../server-snapshot";
+import { toolResult } from "../server-snapshot";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
 import type { AgentToolCtx } from "../tools";
@@ -57,8 +57,7 @@ export function integrationsWindowTools(ctx: AgentToolCtx) {
 
     ctx.emit({ type: "agent.tool.start", name: toolName, args });
     for (const e of events) ctx.emit(e);
-    const result = applyToolToSnapshot(ctx.snapshot, `integrations_${toolName}`, args);
-    ctx.snapshot = result.snapshot;
+    const result = toolResult(`integrations_${toolName}`, args);
     ctx.emit({
       type: "agent.tool.done",
       name: toolName,
@@ -141,8 +140,7 @@ export function integrationsWindowTools(ctx: AgentToolCtx) {
 
         for (const e of events) ctx.emit(e);
 
-        const result = applyToolToSnapshot(ctx.snapshot, `integrations_${toolName}`, args);
-        ctx.snapshot = result.snapshot;
+        const result = toolResult(`integrations_${toolName}`, args);
 
         ctx.emit({
           type: "agent.tool.done",
@@ -192,8 +190,7 @@ export function integrationsWindowTools(ctx: AgentToolCtx) {
           { type: "ui.room", room: "composio_connect" as WindowKind },
         ];
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, `integrations_${toolName}`, {});
-        ctx.snapshot = result.snapshot;
+        const result = toolResult(`integrations_${toolName}`, {});
         ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok ?? true });
         return "Opened the connection manager. Available integrations and their OAuth status are displayed.";
       },
@@ -215,8 +212,7 @@ export function integrationsWindowTools(ctx: AgentToolCtx) {
           (c: { slug: string; status: string }) => c.slug === toolkit,
         );
 
-        const result = applyToolToSnapshot(ctx.snapshot, `integrations_${toolName}`, args);
-        ctx.snapshot = result.snapshot;
+        const result = toolResult(`integrations_${toolName}`, args);
         ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok ?? true });
 
         if (!connection) {
@@ -256,8 +252,7 @@ export function integrationsWindowTools(ctx: AgentToolCtx) {
           } as AgentEvent,
         ];
         for (const e of events) ctx.emit(e);
-        const result = applyToolToSnapshot(ctx.snapshot, `integrations_${toolName}`, args);
-        ctx.snapshot = result.snapshot;
+        const result = toolResult(`integrations_${toolName}`, args);
         ctx.emit({ type: "agent.tool.done", name: toolName, ok: result.ok ?? true });
         return `Opening connection manager for ${toolkit}. The user will need to authorize in the OAuth popup.`;
       },

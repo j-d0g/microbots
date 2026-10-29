@@ -84,9 +84,9 @@ export function IntegrationDetailWindow({
       {
         name: "configure",
         description:
-          "Open settings for this integration. Currently routes to the settings window.",
+          "Open system settings.",
         run: () => {
-          openWindow("settings");
+          window.location.assign("/settings");
         },
       },
       {
