@@ -3,68 +3,7 @@
 import { createParser, type EventSourceMessage } from "eventsource-parser";
 import { useAgentStore, type WindowKind } from "./store";
 import { buildSnapshot } from "./agent/snapshot";
-import { addChat } from "./api/backend";
 import { canvasActionForEvent } from "./agent/canvas-reducer";
-
-/* IDs of chat messages already persisted so retries (eg. duplicate
- * `reply.done` events from an upstream proxy) don't write twice. */
-const persistedChatIds = new Set<string>();
-
-/** Push the most recent user→agent exchange to `/api/kg/chats`.
- *  Fire-and-forget — failures land in the console but never block UI.
- *  Each turn is written as two rows (user + agent) so signal and
- *  output can be queried independently. */
-async function persistChatTurn(userId: string | null): Promise<void> {
-  const msgs = useAgentStore.getState().chatMessages;
-  // Walk backwards to find the latest agent reply and the user turn
-  // that triggered it.
-  let agent: import("./store").ChatMessage | null = null;
-  let user: import("./store").ChatMessage | null = null;
-  for (let i = msgs.length - 1; i >= 0; i--) {
-    const m = msgs[i];
-    if (!agent && m.role === "agent") agent = m;
-    else if (agent && !user && m.role === "user") {
-      user = m;
-      break;
-    }
-  }
-  const writes: Promise<unknown>[] = [];
-  if (user && !persistedChatIds.has(user.id) && user.text.trim()) {
-    persistedChatIds.add(user.id);
-    writes.push(
-      addChat(
-        {
-          content: user.text,
-          source_type: "ui_chat",
-          source_id: user.id,
-          signal_level: "high",
-        },
-        userId,
-      ),
-    );
-  }
-  if (agent && !persistedChatIds.has(agent.id) && agent.text.trim()) {
-    persistedChatIds.add(agent.id);
-    writes.push(
-      addChat(
-        {
-          content: agent.text,
-          source_type: "ui_chat",
-          source_id: agent.id,
-          signal_level: "mid",
-        },
-        userId,
-      ),
-    );
-  }
-  // We deliberately don't await — caller is fire-and-forget. Surface
-  // errors to console for the dev tools but never throw.
-  for (const w of writes) {
-    w.catch((err) => {
-      console.warn("[chat-persist] failed:", err);
-    });
-  }
-}
 
 export type AgentEvent =
   | {
@@ -174,11 +113,6 @@ export function applyAgentEvent(evt: AgentEvent): void {
       if (last?.role === "agent" && last.status === "streaming") {
         s.finalizeLastAgentMessage();
       }
-      // Fire-and-forget chat persistence. We push the most recent
-      // user→agent pair as two separate `Chat` rows so the KG can
-      // index user signal and agent output independently. The
-      // `source_id` makes the call idempotent on retry.
-      void persistChatTurn(state.userId);
       break;
     }
     case "agent.tool.start":

@@ -104,7 +104,7 @@ export interface ChatMessage {
   ts: number;
   /** Which room is in focus when this message is sent or received. */
   room?: RoomKind;
-  status?: "streaming" | "done";
+  status?: "streaming" | "done" | "failed" | "stopped";
   cards?: ChatCard[];
   tools?: ToolTrace[];
 }
@@ -145,13 +145,17 @@ export interface AgentStoreState {
   closeChatCanvas: () => void;
   chatMessages: ChatMessage[];
   appendChatMessage: (m: ChatMessage) => void;
+  setChatMessageStatus: (
+    id: string,
+    status: NonNullable<ChatMessage["status"]>,
+  ) => void;
   getOrCreateStreamingAgentMessage: () => ChatMessage;
   appendToLastAgentMessage: (chunk: string) => void;
   attachChatCard: (kind: WindowKind, payload?: Record<string, unknown>) => void;
   answerChatCard: (cardId: string, answer: string) => void;
   startChatToolTrace: (name: string, args?: Record<string, unknown>) => void;
   finishChatToolTrace: (name: string, ok: boolean) => void;
-  finalizeLastAgentMessage: () => void;
+  finalizeLastAgentMessage: (status?: "done" | "stopped") => void;
   clearChatHistory: () => void;
 
   /* --- canvas cards --- */
@@ -229,17 +233,40 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     } else {
       get().openWindow(kind, { payload });
     }
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("canvas") !== kind) {
+        url.searchParams.set("canvas", kind);
+        window.history.pushState(
+          { ...window.history.state, microbotsCanvas: true },
+          "",
+          `${url.pathname}${url.search}${url.hash}`,
+        );
+      }
+    }
     set({ chatRoom: kind, room: kind, chatCanvasOpen: true });
   },
-  closeChatCanvas: () => set({ chatCanvasOpen: false }),
+  closeChatCanvas: () => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("canvas")) {
+        if (window.history.state?.microbotsCanvas) {
+          window.history.back();
+          return;
+        }
+        url.searchParams.delete("canvas");
+        window.history.replaceState(
+          window.history.state,
+          "",
+          `${url.pathname}${url.search}${url.hash}`,
+        );
+      }
+    }
+    set({ chatCanvasOpen: false });
+  },
   chatMessages: [],
   appendChatMessage: (m) => {
     set((s) => ({ chatMessages: [...s.chatMessages, m] }));
-    // Fire-and-forget persistence to /api/kg/chats. The helper
-    // dedupes on `source_id = msg.id` server-side so retries (or
-    // duplicate appends from the orchestrator + voice paths) don't
-    // double-write. Only finalised messages are persisted; streaming
-    // chunks are upserted on `finalizeLastAgentMessage`.
     if (m.text.trim() && m.status !== "streaming") {
       void import("./chat-persistence").then(({ persistChatMessage }) => {
         const userId = (get() as { userId: string }).userId;
@@ -247,6 +274,12 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       });
     }
   },
+  setChatMessageStatus: (id, status) =>
+    set((s) => ({
+      chatMessages: s.chatMessages.map((message) =>
+        message.id === id ? { ...message, status } : message,
+      ),
+    })),
   getOrCreateStreamingAgentMessage: () => {
     const last = get().chatMessages.at(-1);
     if (last?.role === "agent" && last.status === "streaming") return last;
@@ -377,24 +410,20 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       }),
     }));
   },
-  finalizeLastAgentMessage: () => {
+  finalizeLastAgentMessage: (status = "done") => {
     let finalised: ChatMessage | null = null;
     set((s) => {
       const list = s.chatMessages;
       for (let i = list.length - 1; i >= 0; i--) {
-        if (list[i].role === "agent") {
+        if (list[i].role === "agent" && list[i].status === "streaming") {
           const next = list.slice();
-          next[i] = { ...list[i], status: "done" };
+          next[i] = { ...list[i], status };
           finalised = next[i];
           return { chatMessages: next };
         }
       }
       return s;
     });
-    // Persist the finished agent reply now that streaming chunks have
-    // been collapsed into the final text. agent-client.ts also calls
-    // persistChatTurn but going through the store keeps voice-path
-    // replies covered without requiring every caller to opt in.
     if (finalised && (finalised as ChatMessage).text.trim()) {
       void import("./chat-persistence").then(({ persistChatMessage }) => {
         const userId = (get() as { userId: string }).userId;
@@ -402,7 +431,16 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       });
     }
   },
-  clearChatHistory: () => set({ chatMessages: [] }),
+  clearChatHistory: () => {
+    if (get().chatCanvasOpen) get().closeChatCanvas();
+    set({
+      chatMessages: [],
+      agentReply: "",
+      chatRoom: "graph",
+      room: "graph",
+      chatCanvasOpen: false,
+    });
+  },
 
   /* --- canvas cards --- */
   windows: [],

@@ -10,6 +10,7 @@
 import { useCallback, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
+import { entityDetailCollections } from "@/lib/entity-detail-data";
 import {
   getEntity,
   upsertEntity,
@@ -33,7 +34,12 @@ export function EntityDetailWindow({
         : Promise.resolve(null as unknown as EntityDetail),
     [id, userId],
   );
-  const { data, loading, error, refetch } = useKgResource(fetcher, seed);
+  const { data, loading, error, refetch } = useKgResource(
+    fetcher,
+    `/api/kg/entities/${encodeURIComponent(id)}`,
+    seed,
+  );
+  const collections = data ? entityDetailCollections(data) : null;
 
   const [editing, setEditing] = useState(false);
 
@@ -79,13 +85,13 @@ export function EntityDetailWindow({
                 )}
               </div>
 
-              {data.aliases.length > 0 && (
+              {collections && collections.aliases.length > 0 && (
                 <div>
                   <p className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-35">
                     aliases
                   </p>
                   <div className="flex flex-wrap gap-1">
-                    {data.aliases.map((a) => (
+                    {collections.aliases.map((a) => (
                       <span
                         key={a}
                         className="rounded bg-paper-2 px-1.5 py-0.5 font-mono text-[10px] text-ink-60"
@@ -97,13 +103,13 @@ export function EntityDetailWindow({
                 </div>
               )}
 
-              {data.tags.length > 0 && (
+              {collections && collections.tags.length > 0 && (
                 <div>
                   <p className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-35">
                     tags
                   </p>
                   <div className="flex flex-wrap gap-1">
-                    {data.tags.map((t) => (
+                    {collections.tags.map((t) => (
                       <span
                         key={t}
                         className="rounded bg-accent-indigo-soft px-1.5 py-0.5 font-mono text-[10px] text-accent-indigo"
@@ -117,15 +123,15 @@ export function EntityDetailWindow({
 
               <div>
                 <p className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-35">
-                  appears in · {data.appears_in_edges.length}
+                  appears in · {collections?.appearsInEdges.length ?? 0}
                 </p>
-                {data.appears_in_edges.length === 0 ? (
+                {!collections?.appearsInEdges.length ? (
                   <p className="font-mono text-[11px] text-ink-35">
                     no integration edges
                   </p>
                 ) : (
                   <ul className="space-y-1">
-                    {data.appears_in_edges.map((edge, i) => (
+                    {collections.appearsInEdges.map((edge, i) => (
                       <li
                         key={`${edge.integration_slug}-${i}`}
                         className="flex items-baseline justify-between rounded border border-rule/50 bg-paper-2/30 px-2 py-1"
@@ -151,15 +157,15 @@ export function EntityDetailWindow({
 
               <div>
                 <p className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-35">
-                  mentions · {data.mentions.length}
+                  mentions · {collections?.mentions.length ?? 0}
                 </p>
-                {data.mentions.length === 0 ? (
+                {!collections?.mentions.length ? (
                   <p className="font-mono text-[11px] text-ink-35">
                     not mentioned in any chat yet
                   </p>
                 ) : (
                   <ul className="space-y-1">
-                    {data.mentions.slice(0, 12).map((m, i) => (
+                    {collections.mentions.slice(0, 12).map((m, i) => (
                       <li
                         key={`${m.chat_id}-${i}`}
                         className="rounded border border-rule/50 bg-paper-2/30 px-2 py-1.5"

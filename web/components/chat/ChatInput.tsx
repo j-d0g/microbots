@@ -11,6 +11,7 @@ interface ChatInputProps {
   busy: boolean;
   onSubmit: (event?: FormEvent) => void;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onStop: () => void;
   agentStatus: string;
 }
 
@@ -22,6 +23,7 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
       busy,
       onSubmit,
       onKeyDown,
+      onStop,
       agentStatus,
     },
     ref,
@@ -46,30 +48,42 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
             onKeyDown={onKeyDown}
             placeholder={busy ? "thinking…" : "ask the agent. enter to send."}
             rows={1}
-            disabled={busy}
             data-testid="chat-input"
             className={cn(
               "max-h-[160px] flex-1 resize-none bg-transparent",
               "py-1.5 text-[14px] leading-relaxed tracking-tight text-ink-90",
               "outline-none placeholder:text-ink-35",
-              "disabled:opacity-60",
             )}
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
           />
-          <button
-            type="submit"
-            disabled={busy || !input.trim()}
-            data-testid="chat-send"
-            className={cn(
-              "shrink-0 rounded-sm border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider",
-              "transition-all duration-150 disabled:pointer-events-none disabled:opacity-30",
-              "border-ink-90 bg-ink-90 text-paper-0 hover:bg-accent-indigo",
-            )}
-          >
-            {busy ? "…" : "send"}
-          </button>
+          {busy ? (
+            <button
+              type="button"
+              onClick={onStop}
+              data-testid="chat-stop"
+              className={cn(
+                "shrink-0 rounded-sm border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider",
+                "border-rule bg-paper-0 text-ink-60 transition-colors hover:border-ink-90 hover:text-ink-90",
+              )}
+            >
+              stop
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              data-testid="chat-send"
+              className={cn(
+                "shrink-0 rounded-sm border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider",
+                "transition-all duration-150 disabled:pointer-events-none disabled:opacity-30",
+                "border-ink-90 bg-ink-90 text-paper-0 hover:bg-accent-indigo",
+              )}
+            >
+              send
+            </button>
+          )}
         </div>
         <StatusLine
           busy={busy}

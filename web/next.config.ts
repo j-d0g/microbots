@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
+  devIndicators: false,
   // Allow a second concurrent `next dev` from the same `web/` dir
   // (e.g. parallel worktrees, a teammate already running) by giving
   // it its own dist dir + lock. Defaults to `.next` for normal runs.

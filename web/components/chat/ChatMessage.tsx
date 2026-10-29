@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Check, LoaderCircle, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { InlineCard } from "./cards/InlineCard";
@@ -9,12 +11,18 @@ export function ChatMessage({
   message,
   busy,
   onSubmitAnswer,
+  onRetry,
 }: {
   message: ChatMessageData;
   busy: boolean;
   onSubmitAnswer: (answer: string) => void;
+  onRetry: (id: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const isUser = message.role === "user";
+  const hasLongText =
+    isUser &&
+    (message.text.split(/\r?\n/).length > 8 || message.text.length > 500);
   return (
     <article
       data-testid={`chat-msg-${message.role}`}
@@ -64,14 +72,101 @@ export function ChatMessage({
         />
       ))}
       {(message.text || busy) && (
-        <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-ink-90">
-          {message.text}
+        <div
+          className={cn(
+            "text-[14px] leading-relaxed text-ink-90",
+            isUser && "whitespace-pre-wrap",
+          )}
+          style={
+            hasLongText && !expanded
+              ? {
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 8,
+                  overflow: "hidden",
+                }
+              : undefined
+          }
+        >
+          {isUser ? (
+            message.text
+          ) : (
+            <ReactMarkdown
+              allowedElements={[
+                "p",
+                "strong",
+                "em",
+                "code",
+                "ul",
+                "ol",
+                "li",
+                "a",
+              ]}
+              unwrapDisallowed
+              skipHtml
+              components={{
+                p: ({ children }) => <p className="my-1">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                em: ({ children }) => <em>{children}</em>,
+                code: ({ children }) => (
+                  <code className="rounded bg-paper-2 px-1 py-0.5 font-mono text-[12px]">
+                    {children}
+                  </code>
+                ),
+                ul: ({ children }) => (
+                  <ul className="my-1 list-disc pl-5">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="my-1 list-decimal pl-5">{children}</ol>
+                ),
+                li: ({ children }) => <li className="my-0.5">{children}</li>,
+                a: ({ href, children }) => (
+                  <a
+                    href={href}
+                    className="text-accent-indigo underline underline-offset-2"
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {children}
+                  </a>
+                ),
+              }}
+            >
+              {message.text}
+            </ReactMarkdown>
+          )}
           {busy && (
             <span
               aria-hidden
               className="ml-0.5 inline-block h-[12px] w-[6px] translate-y-[1px] bg-accent-indigo breathing"
             />
           )}
+        </div>
+      )}
+      {hasLongText && (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="self-start font-mono text-[10px] uppercase tracking-wider text-ink-35 hover:text-ink-60"
+        >
+          {expanded ? "show less" : "show more"}
+        </button>
+      )}
+      {isUser && message.status === "failed" && (
+        <p className="font-mono text-[10px] text-confidence-low">
+          not sent ·{" "}
+          <button
+            type="button"
+            onClick={() => onRetry(message.id)}
+            className="underline underline-offset-2"
+          >
+            retry
+          </button>
+        </p>
+      )}
+      {!isUser && message.status === "stopped" && (
+        <p className="font-mono text-[10px] uppercase tracking-wider text-ink-35">
+          stopped
         </p>
       )}
     </article>

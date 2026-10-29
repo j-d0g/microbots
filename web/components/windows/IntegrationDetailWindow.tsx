@@ -35,7 +35,11 @@ export function IntegrationDetailWindow({
         : Promise.resolve(null as unknown as IntegrationDetail),
     [slug, userId],
   );
-  const { data, loading, error, refetch } = useKgResource(fetcher, seed);
+  const { data, loading, error, refetch } = useKgResource(
+    fetcher,
+    `/api/kg/integrations/${encodeURIComponent(slug)}?limit=10`,
+    seed,
+  );
 
   if (!slug) {
     return (

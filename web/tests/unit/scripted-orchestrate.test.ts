@@ -23,6 +23,15 @@ function request(query: string, snapshot: ReturnType<typeof buildSnapshot>) {
   }) as NextRequest;
 }
 
+function healthyBackend() {
+  return Response.json({
+    status: "ok",
+    service: "microbots",
+    surreal: { ok: true, table_count: 31 },
+    composio: { ok: false, configured: false },
+  });
+}
+
 function resetStore() {
   useAgentStore.setState({
     windows: [],
@@ -40,6 +49,16 @@ afterEach(() => {
 });
 
 describe("scripted orchestrator model", () => {
+  it("rejects chat turns while the knowledge graph API is unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new Error("connection refused");
+    }));
+
+    const response = await POST(request("what can you do?", buildSnapshot()));
+
+    expect(response.status).toBe(503);
+  });
+
   it("selects scripted mode without a key, regardless of model preference", async () => {
     vi.stubEnv("MICROBOTS_AGENT_MODEL", "openai/gpt-4o");
     vi.stubEnv("OPENROUTER_API_KEY", "");
@@ -50,6 +69,7 @@ describe("scripted orchestrator model", () => {
     vi.stubEnv("MICROBOTS_AGENT_MODEL", "scripted");
     vi.stubEnv("OPENROUTER_API_KEY", "");
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/health")) return healthyBackend();
       if (String(input).includes("/api/kg/search")) {
         return Response.json({
           query: "production deploy",
@@ -115,19 +135,22 @@ describe("scripted orchestrator model", () => {
 
   it("opens the top deploy workflow card and answers from its search result", async () => {
     vi.stubEnv("OPENROUTER_API_KEY", "");
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-      query: "tell me about deploys",
-      scope: "all",
-      count: 1,
-      results: [{
-        kind: "workflows",
-        id: "workflow:deploy-pipeline",
-        name: "Deploy Pipeline",
-        focus: "deploy-pipeline",
-        snippet: "Build, test, and deploy the application.",
-        score: 0.95,
-      }],
-    })));
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/health")) return healthyBackend();
+      return Response.json({
+        query: "tell me about deploys",
+        scope: "all",
+        count: 1,
+        results: [{
+          kind: "workflows",
+          id: "workflow:deploy-pipeline",
+          name: "Deploy Pipeline",
+          focus: "deploy-pipeline",
+          snippet: "Build, test, and deploy the application.",
+          score: 0.95,
+        }],
+      });
+    }));
     const response = await POST(request("tell me about deploys", buildSnapshot()));
     const events = readEvents(await response.text());
 
@@ -148,6 +171,7 @@ describe("scripted orchestrator model", () => {
     vi.stubEnv("OPENROUTER_API_KEY", "");
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const path = new URL(String(input)).pathname;
+      if (path.endsWith("/api/health")) return healthyBackend();
       if (path.endsWith("/integrations")) {
         return Response.json([
           { slug: "linear", name: "Linear", co_used_with_slugs: [
@@ -198,19 +222,22 @@ describe("scripted orchestrator model", () => {
 
   it("routes entity hits to entity detail and answers with one description sentence", async () => {
     vi.stubEnv("OPENROUTER_API_KEY", "");
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-      query: "bob",
-      scope: "all",
-      count: 1,
-      results: [{
-        kind: "entities",
-        id: "entity:bob",
-        focus: "entity:bob",
-        name: "Bob",
-        snippet: "Bob is the primary code reviewer. He owns review assignments.",
-        score: 0.9,
-      }],
-    })));
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/health")) return healthyBackend();
+      return Response.json({
+        query: "bob",
+        scope: "all",
+        count: 1,
+        results: [{
+          kind: "entities",
+          id: "entity:bob",
+          focus: "entity:bob",
+          name: "Bob",
+          snippet: "Bob is the primary code reviewer. He owns review assignments.",
+          score: 0.9,
+        }],
+      });
+    }));
     const response = await POST(request("who is Bob?", buildSnapshot()));
     const events = readEvents(await response.text());
     expect(events).toContainEqual(expect.objectContaining({
@@ -225,15 +252,18 @@ describe("scripted orchestrator model", () => {
 
   it("keeps non-memory hits out of memory card results", async () => {
     vi.stubEnv("OPENROUTER_API_KEY", "");
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-      query: "context",
-      scope: "all",
-      count: 2,
-      results: [
-        { kind: "memories", id: "memory:1", snippet: "Run the deploy check.", score: 0.9 },
-        { kind: "integrations", id: "integration:slack", name: "Slack", score: 0.8 },
-      ],
-    })));
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/health")) return healthyBackend();
+      return Response.json({
+        query: "context",
+        scope: "all",
+        count: 2,
+        results: [
+          { kind: "memories", id: "memory:1", snippet: "Run the deploy check.", score: 0.9 },
+          { kind: "integrations", id: "integration:slack", name: "Slack", score: 0.8 },
+        ],
+      });
+    }));
     const response = await POST(request("find context", buildSnapshot()));
     const events = readEvents(await response.text());
     expect(events).toContainEqual(expect.objectContaining({

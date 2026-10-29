@@ -61,6 +61,7 @@ db-reset: db-down
 	$(PYTHON) $(KG)/seed/seed.py
 
 # Explicit offline/demo path; does not seed or reset existing graph data.
+ingest-demo: SURREAL_DB ?= memory_demo
 ingest-demo: db-up
 	$(PYTHON) $(KG)/schema/apply.py
 	$(PYTHON) -m ingest --from-fixtures --offline $(ARGS)
@@ -81,6 +82,6 @@ help:
 		'db-down      Stop the local database' \
 		'db-reset     Delete local database data and restore the seeded demo' \
 		'test         Run pytest, TypeScript checks, and Vitest (requires db-up + install)' \
-		'ingest-demo  Ingest fixtures with deterministic offline outputs' \
+		'ingest-demo  Ingest fixtures offline into memory_demo by default' \
 		'surface      Detect automation candidates in the current graph' \
 		'help         Show these commands'

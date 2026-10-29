@@ -11,9 +11,19 @@ export function ChatLayout() {
   const closeChatCanvas = useAgentStore((s) => s.closeChatCanvas);
 
   useEffect(() => {
+    const onPopState = () => {
+      if (useAgentStore.getState().chatCanvasOpen) {
+        useAgentStore.setState({ chatCanvasOpen: false });
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  useEffect(() => {
     if (!chatCanvasOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
       closeChatCanvas();
     };

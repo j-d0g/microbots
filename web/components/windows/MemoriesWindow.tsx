@@ -39,7 +39,11 @@ export function MemoriesWindow({
     (signal: AbortSignal) => getMemories({ by, limit }, userId, signal),
     [by, limit, userId],
   );
-  const { data, loading, error, refetch } = useKgResource(fetcher, seed);
+  const { data, loading, error, refetch } = useKgResource(
+    fetcher,
+    `/api/kg/memories?by=${by}&limit=${limit}`,
+    seed,
+  );
 
   const list = data ?? [];
   const [adding, setAdding] = useState(false);

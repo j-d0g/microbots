@@ -63,7 +63,11 @@ export function WorkflowsWindow({
     (signal: AbortSignal) => getWorkflows(userId, signal),
     [userId],
   );
-  const { data, loading, error, refetch } = useKgResource(fetcher, seed);
+  const { data, loading, error, refetch } = useKgResource(
+    fetcher,
+    "/api/kg/workflows",
+    seed,
+  );
 
   const list = useMemo(() => {
     return [...(data ?? [])].sort((a, b) => a.slug.localeCompare(b.slug));
