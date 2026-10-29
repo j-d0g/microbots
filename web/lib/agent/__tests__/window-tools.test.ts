@@ -442,7 +442,8 @@ describe("Window Tool Factories", () => {
     async function checkHealth(backend: CanvasSnapshot["backend"]) {
       const ctx = createMockCtx();
       ctx.snapshot = { ...ctx.snapshot, backend };
-      const tool = settingsWindowTools(ctx).settings_check_health as {
+      const tool = settingsWindowTools(ctx)
+        .settings_check_health as unknown as {
         execute: (args: Record<string, never>) => Promise<string>;
       };
       return tool.execute({});
