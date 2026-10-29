@@ -19,7 +19,7 @@ Try typing:
 
 ## Optional keys
 
-Set `OPENROUTER_API_KEY` in `web/.env.local` for the real agent, `OPENAI_API_KEY` there for voice/GPT-Live, and `COMPOSIO_API_KEY` in `.env` for integrations. Restart after changing keys.
+Set `OPENROUTER_API_KEY` in `.env` for the real agent, `OPENAI_API_KEY` in `web/.env.local` for voice/GPT-Live, and `COMPOSIO_API_KEY` in `.env` for integrations. Restart after changing keys.
 
 ## Local commands
 

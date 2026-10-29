@@ -17,7 +17,7 @@ npm run dev
 
 The default `MICROBOTS_AGENT_MODEL=scripted` uses the agent endpoint, tools, and streaming responses without provider keys. Try "morning brief", "what's connected to Linear?", "show me the Bug Triage workflow", or "should I automate PR reviews?". Delete that setting to use the keyword router instead.
 
-Set `OPENROUTER_API_KEY` in `.env.local` to use the real agent; it takes precedence over the scripted model. The default backend URL is `http://localhost:8001`. Integrations require `COMPOSIO_API_KEY` in the root `.env`; without it, connection controls show an unconfigured state.
+For `make dev`, set `OPENROUTER_API_KEY` in the root `.env` to use the real agent; it takes precedence over the scripted model. For web-only runs, set it in `.env.local` instead. The default backend URL is `http://localhost:8001`. Integrations require `COMPOSIO_API_KEY` in the root `.env`; without it, connection controls show an unconfigured state.
 
 ## Checks
 
