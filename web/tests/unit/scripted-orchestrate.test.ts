@@ -56,8 +56,8 @@ describe("scripted orchestrator model", () => {
       .filter((event): event is Extract<AgentEvent, { type: "ui.canvas" }> => event.type === "ui.canvas")
       .map((event) => event.action);
     expect(canvasActions).toEqual([
-      { type: "open", kind: "memories", mount: "full", openedBy: "agent" },
-      { type: "open", kind: "workflows", mount: "full", openedBy: "agent" },
+      { type: "open", kind: "memories", openedBy: "agent" },
+      { type: "open", kind: "workflows", openedBy: "agent" },
       { type: "arrange", layout: "split" },
     ]);
     expect(events.filter((event) => event.type === "reply.chunk").map((event) =>

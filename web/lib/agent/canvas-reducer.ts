@@ -1,5 +1,5 @@
 import type { AgentEvent } from "@/lib/agent-client";
-import { resolveMount } from "./mount-points";
+import { DEFAULT_MOUNTS, resolveMount } from "./mount-points";
 import type { MountPoint, RectPct } from "./types";
 import type { WindowKind } from "@/lib/store";
 
@@ -271,7 +271,7 @@ export function applyCanvasAction(state: CanvasState, action: CanvasAction): Can
           ),
         };
       }
-      const newMount = mount ?? "full";
+      const newMount = mount ?? DEFAULT_MOUNTS[action.kind] ?? "full";
       return {
         ...state,
         windows: [
