@@ -8,15 +8,15 @@ import { useAgentStore } from "./store";
  *
  * Two providers, one interface:
  *   - "browser"     — Web Speech API (zero key)
- *   - "elevenlabs"  — server-held key, MediaRecorder ↑ /api/stt, /api/tts ↓
+ *   - "openai"      — server-held key, MediaRecorder ↑ /api/stt, /api/tts ↓
  *
  * The selection is made on mount via /api/voice/config (which inspects
  * env vars without leaking them) and cached in module scope. STT and
  * TTS are independently negotiated.
  * ----------------------------------------------------------------------- */
 
-export type SttProvider = "elevenlabs" | "deepgram" | "browser";
-export type TtsProvider = "elevenlabs" | "cartesia" | "browser";
+export type SttProvider = "openai" | "browser";
+export type TtsProvider = "openai" | "browser";
 
 interface VoiceConfig {
   stt: SttProvider;
@@ -170,9 +170,9 @@ function makeBrowserSttSession(opts: {
   };
 }
 
-/* ---------- ElevenLabs Scribe session (MediaRecorder ↑ /api/stt) ----- */
+/* ---------- Server STT session (MediaRecorder ↑ /api/stt) ------------- */
 
-function makeElevenSttSession(): SttSession {
+function makeRecorderSttSession(): SttSession {
   let stream: MediaStream | null = null;
   let recorder: MediaRecorder | null = null;
   const chunks: BlobPart[] = [];
@@ -220,58 +220,10 @@ function makeElevenSttSession(): SttSession {
         console.warn("[voice] STT failed", await res.text().catch(() => ""));
         return "";
       }
-      const { transcript } = (await res.json()) as { transcript: string };
-      return transcript ?? "";
+      const { text } = (await res.json()) as { text: string };
+      return text ?? "";
     },
   };
-}
-
-/* ---------- Voice confirm grammar ---------------------------------------- */
-
-/** Maps voice confirmations/cancellations to boolean decisions. */
-const CONFIRM_GRAMMAR: Record<string, boolean> = {
-  yes: true, yeah: true, yep: true, yup: true,
-  save: true, "save it": true,
-  run: true, "run it": true,
-  deploy: true, "deploy it": true,
-  confirm: true, approved: true, "go ahead": true, go: true, do: true,
-  no: false, nope: false, nah: false,
-  hold: false, "hold on": false, "not yet": false,
-  cancel: false, stop: false, wait: false, "never mind": false,
-};
-
-/** Check if a transcript matches a confirm/cancel grammar phrase.
- *  Returns `true` (confirm), `false` (cancel), or `null` (no match). */
-export function matchConfirmGrammar(transcript: string): boolean | null {
-  const t = transcript.toLowerCase().trim();
-  if (t in CONFIRM_GRAMMAR) return CONFIRM_GRAMMAR[t];
-  // Check multi-word matches
-  for (const [phrase, decision] of Object.entries(CONFIRM_GRAMMAR)) {
-    if (t === phrase || t.startsWith(phrase + " ") || t.endsWith(" " + phrase)) {
-      return decision;
-    }
-  }
-  return null;
-}
-
-/** Maps voice commands to store actions (quiet mode, pin, etc.). */
-const VOICE_ACTIONS: Record<string, string> = {
-  quiet: "quietMode",
-  shh: "quietMode",
-  mute: "quietMode",
-  "go silent": "quietMode",
-  "quiet mode": "quietMode",
-  "pin this": "pinWindow",
-  "pin it": "pinWindow",
-  "unpin": "unpinWindow",
-  "unpin this": "unpinWindow",
-};
-
-/** Check if a transcript matches a voice action.
- *  Returns the action name or `null`. */
-export function matchVoiceAction(transcript: string): string | null {
-  const t = transcript.toLowerCase().trim();
-  return VOICE_ACTIONS[t] ?? null;
 }
 
 /* ---------- Unified hold-to-talk hook ----------------------------------- */
@@ -357,6 +309,8 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
   );
 
   const onPress = useCallback(async () => {
+    cancelSpeak();
+
     // Re-press during the tail window: cancel the pending stop and
     // resume the existing session. No new mic prompt, no lost audio.
     if (tailTimerRef.current !== null && sessionRef.current) {
@@ -375,8 +329,8 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
     clearTranscript();
 
     const session: SttSession =
-      cfgSttRef.current === "elevenlabs"
-        ? makeElevenSttSession()
+      cfgSttRef.current === "openai"
+        ? makeRecorderSttSession()
         : makeBrowserSttSession({
             onInterim: (text) => {
               // Pump live transcript into the store so the dock can
@@ -454,229 +408,163 @@ export function usePushToTalk(opts: UsePushToTalkOpts = {}) {
 
 /* ---------- TTS --------------------------------------------------------- */
 
-import { getAudioContext, getIsAudioPlaying, setGlobalPlayingCallback, playBase64Audio } from "./audio-player";
-
-let currentAudio: HTMLAudioElement | null = null;
-let cancelBrowserSpeak: (() => void) | null = null;
-let currentStopFn: (() => void) | null = null;
+let speakGen = 0;
+let stopCurrent: (() => void) | null = null;
 
 export interface SpeakOpts {
   onStart?: () => void;
   onEnd?: () => void;
 }
 
-/** Global flag to track if TTS is currently playing */
-export function isTTSPlaying(): boolean {
-  return getIsAudioPlaying();
-}
-
-/** Set a callback to be notified when TTS state changes */
-export function onTTSStateChange(cb: (playing: boolean) => void): void {
-  setGlobalPlayingCallback(cb);
-}
-
 /** Speak `text` using the configured provider. Returns a stop fn. */
 export async function speak(text: string, opts: SpeakOpts = {}): Promise<() => void> {
-  console.log("[voice.ts speak] Starting speak for text:", text.substring(0, 50), "...");
-  
-  if (typeof window === "undefined") {
-    console.log("[voice.ts speak] Window not defined (SSR), skipping");
-    return () => {};
-  }
-  
-  if (!text.trim()) {
-    console.log("[voice.ts speak] Empty text, skipping");
-    return () => {};
-  }
-
-  // Cancel anything currently speaking first.
-  console.log("[voice.ts speak] Cancelling previous speech");
   cancelSpeak();
+  const gen = ++speakGen;
+  let done = false;
+  const noop = () => {};
+  const isCurrent = () => gen === speakGen;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    opts.onEnd?.();
+  };
+
+  if (typeof window === "undefined" || !text.trim()) return noop;
+
+  let browserStarted = false;
+  const speakInBrowser = (): (() => void) => {
+    if (!isCurrent() || browserStarted) return noop;
+    browserStarted = true;
+    if (!("speechSynthesis" in window)) {
+      console.warn("[voice] No TTS available");
+      finish();
+      return noop;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.98;
+    utterance.pitch = 1;
+    utterance.onstart = () => {
+      if (isCurrent()) opts.onStart?.();
+    };
+    const browserStop = () => {
+      if (stopCurrent === browserStop) stopCurrent = null;
+      finish();
+    };
+    utterance.onend = browserStop;
+    utterance.onerror = browserStop;
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    stopCurrent = browserStop;
+    return () => cancelSpeak();
+  };
 
   const cfg = await loadVoiceConfig();
-  console.log("[voice.ts speak] Voice config loaded:", cfg);
-  
-  if (cfg.tts === "elevenlabs" || cfg.tts === "cartesia") {
-    console.log("[voice.ts speak] Using server TTS provider:", cfg.tts);
+  if (!isCurrent()) return noop;
+
+  if (cfg.tts === "openai") {
     try {
-      console.log("[voice.ts speak] Fetching /api/tts...");
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      
-      console.log("[voice.ts speak] /api/tts response status:", res.status);
-      
+      if (!isCurrent()) return noop;
+
       if (!res.ok) {
         const errorText = await res.text().catch(() => "unknown error");
-        console.error("[voice.ts speak] TTS request failed:", res.status, errorText);
+        if (!isCurrent()) return noop;
         throw new Error(`tts ${res.status}: ${errorText}`);
       }
-      
-      console.log("[voice.ts speak] Getting blob from response...");
+
       const blob = await res.blob();
-      console.log("[voice.ts speak] Received blob:", blob.size, "bytes, type:", blob.type);
-      
+      if (!isCurrent()) return noop;
       if (blob.size === 0) {
-        console.error("[voice.ts speak] Received empty audio blob");
         throw new Error("Empty audio response");
       }
 
-      // Use AudioContext if available for better control, fallback to HTML5
-      const audioCtx = getAudioContext();
-      if (audioCtx) {
-        console.log("[voice.ts speak] Using Web Audio API");
-        try {
-          const arrayBuffer = await blob.arrayBuffer();
-          console.log("[voice.ts speak] Decoding audio data...");
-          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-          console.log("[voice.ts speak] Decoded audio buffer, duration:", audioBuffer.duration.toFixed(2), "seconds");
-          
-          const source = audioCtx.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(audioCtx.destination);
-          
-          source.onended = () => {
-            console.log("[voice.ts speak] Web Audio playback ended");
-            opts.onEnd?.();
-          };
-
-          console.log("[voice.ts speak] Starting Web Audio playback...");
-          source.start(0);
-          opts.onStart?.();
-          
-          currentStopFn = () => {
-            try {
-              source.stop();
-              source.disconnect();
-            } catch {
-              // Ignore
-            }
-            opts.onEnd?.();
-          };
-          
-          return currentStopFn;
-        } catch (decodeError) {
-          console.warn("[voice.ts speak] Web Audio decode failed, falling back to HTML5:", decodeError);
-          // Fall through to HTML5 Audio
-        }
-      }
-
-      // HTML5 Audio fallback
-      console.log("[voice.ts speak] Using HTML5 Audio");
       const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      currentAudio = audio;
-      
-      audio.onplay = () => {
-        console.log("[voice.ts speak] HTML5 Audio started playing");
-        opts.onStart?.();
-      };
-      
-      audio.onended = () => {
-        console.log("[voice.ts speak] HTML5 Audio playback ended");
-        opts.onEnd?.();
+      let audio: HTMLAudioElement;
+      try {
+        audio = new Audio(url);
+      } catch (err) {
         URL.revokeObjectURL(url);
-        if (currentAudio === audio) currentAudio = null;
-      };
-      
-      audio.onerror = (e) => {
-        console.error("[voice.ts speak] HTML5 Audio error:", e);
-        opts.onEnd?.();
-        URL.revokeObjectURL(url);
-        if (currentAudio === audio) currentAudio = null;
-      };
-      
-      console.log("[voice.ts speak] Calling audio.play()...");
-      await audio.play();
-      console.log("[voice.ts speak] audio.play() returned successfully");
-      
-      return () => {
-        console.log("[voice.ts speak] Stop function called");
+        throw err;
+      }
+      let revoked = false;
+      const releaseAudio = () => {
+        audio.onended = null;
+        audio.onerror = null;
         try {
           audio.pause();
           audio.currentTime = 0;
         } catch {
           /* ignore */
         }
-        URL.revokeObjectURL(url);
-        if (currentAudio === audio) currentAudio = null;
-        opts.onEnd?.();
+        if (!revoked) {
+          URL.revokeObjectURL(url);
+          revoked = true;
+        }
       };
+      const stopAudio = () => {
+        releaseAudio();
+        if (stopCurrent === stopAudio) stopCurrent = null;
+        finish();
+      };
+      stopCurrent = stopAudio;
+
+      audio.onplay = () => {
+        if (isCurrent()) opts.onStart?.();
+      };
+
+      audio.onended = () => {
+        releaseAudio();
+        if (stopCurrent === stopAudio) stopCurrent = null;
+        finish();
+      };
+
+      audio.onerror = () => {
+        if (!isCurrent()) {
+          releaseAudio();
+          return;
+        }
+        console.warn("[voice] OpenAI TTS playback failed");
+        releaseAudio();
+        if (stopCurrent === stopAudio) stopCurrent = null;
+        speakInBrowser();
+      };
+
+      try {
+        await audio.play();
+        if (!isCurrent()) return noop;
+        return () => cancelSpeak();
+      } catch (err) {
+        if (!isCurrent()) return noop;
+        releaseAudio();
+        if (stopCurrent === stopAudio) stopCurrent = null;
+        if (!browserStarted) {
+          console.warn("[voice] OpenAI TTS playback failed; using browser voice", err);
+        }
+        return browserStarted ? () => cancelSpeak() : speakInBrowser();
+      }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn("[voice.ts speak] /api/tts failed; falling back to browser", err);
+      if (!isCurrent()) return noop;
+      console.warn("[voice] OpenAI TTS failed; using browser voice", err);
     }
-  } else {
-    console.log("[voice.ts speak] Server TTS not available, using browser TTS");
   }
 
-  // Browser fallback
-  if ("speechSynthesis" in window) {
-    console.log("[voice.ts speak] Using browser speech synthesis");
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.98;
-    utterance.pitch = 1;
-    utterance.onstart = () => {
-      console.log("[voice.ts speak] Browser TTS started");
-      opts.onStart?.();
-    };
-    utterance.onend = () => {
-      console.log("[voice.ts speak] Browser TTS ended");
-      opts.onEnd?.();
-      cancelBrowserSpeak = null;
-    };
-    cancelBrowserSpeak = () => {
-      window.speechSynthesis.cancel();
-      cancelBrowserSpeak = null;
-      opts.onEnd?.();
-    };
-    // small kick-off so the first utterance plays reliably after async work
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-    console.log("[voice.ts speak] Browser TTS speak() called");
-    return () => cancelSpeak();
-  }
-  
-  console.warn("[voice.ts speak] No TTS available");
-  // No TTS available; trigger end so callers can finish their UI.
-  opts.onEnd?.();
-  return () => {};
+  return speakInBrowser();
 }
 
 export function cancelSpeak(): void {
-  console.log("[voice.ts cancelSpeak] Cancelling all speech");
-  
-  if (currentAudio) {
-    console.log("[voice.ts cancelSpeak] Stopping current HTML5 audio");
-    try {
-      currentAudio.pause();
-    } catch {
-      /* ignore */
-    }
-    currentAudio = null;
+  speakGen++;
+  if (typeof window !== "undefined") {
+    window.speechSynthesis?.cancel();
   }
-  
-  if (currentStopFn) {
-    console.log("[voice.ts cancelSpeak] Calling current stop function");
-    currentStopFn();
-    currentStopFn = null;
-  }
-  
-  if (cancelBrowserSpeak) {
-    console.log("[voice.ts cancelSpeak] Stopping browser TTS");
-    cancelBrowserSpeak();
-    cancelBrowserSpeak = null;
-  } else if (
-    typeof window !== "undefined" &&
-    "speechSynthesis" in window
-  ) {
-    console.log("[voice.ts cancelSpeak] Cancelling speech synthesis");
-    window.speechSynthesis.cancel();
-  }
-  
-  console.log("[voice.ts cancelSpeak] All speech cancelled");
+  const stop = stopCurrent;
+  stopCurrent = null;
+  stop?.();
 }
 
 /* ---------- Backward-compat hook used by existing components ------------ */
