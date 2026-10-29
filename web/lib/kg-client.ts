@@ -324,14 +324,12 @@ export function getEntityTypes(
 }
 
 export function getEntities(
-  entityType: string,
+  entityType?: string,
   userId?: string | null,
   signal?: AbortSignal,
 ): Promise<Entity[]> {
-  return kg<Entity[]>(
-    `/entities?entity_type=${encodeURIComponent(entityType)}`,
-    { userId, signal },
-  );
+  const query = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : "";
+  return kg<Entity[]>(`/entities${query}`, { userId, signal });
 }
 
 export function getEntity(

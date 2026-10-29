@@ -121,25 +121,27 @@ export function metaTools(ctx: AgentToolCtx) {
   return {
     open_window: tool({
       description:
-        "Open a window of a given kind. If already open, brings it forward. Omit mount to use the window's default or saved position.",
+        "Open a window of a given kind. If already open, brings it forward. Omit mount to use the window's default or saved position. Optional focus centres a node, entity, or workflow.",
       inputSchema: z.object({
         kind: WINDOW_KIND,
         mount: MOUNT_POINT.optional(),
+        focus: z.string().optional().describe("node, entity or workflow to centre on"),
       }),
-      execute: async ({ kind, mount }) => {
+      execute: async ({ kind, mount, focus }) => {
         const events: AgentEvent[] = [{
           type: "ui.canvas",
           action: {
             type: "open",
             kind: kind as WindowKind,
             ...(mount ? { mount: mount as MountPoint } : {}),
+            ...(focus ? { payload: { focus } } : {}),
             openedBy: "agent",
           },
         }];
         return applyAndEmit(
           ctx,
           "open_window",
-          { kind, ...(mount ? { mount } : {}) },
+          { kind, ...(mount ? { mount } : {}), ...(focus ? { focus } : {}) },
           events,
           {
             message: `Opened ${kind}${mount ? ` at ${mount}` : ""}.`,
@@ -231,11 +233,12 @@ export function v1WorkTools(ctx: AgentToolCtx) {
     toolName: string,
     args: Record<string, unknown>,
     payload: Record<string, unknown>,
+    kind: WindowKind = toolName as WindowKind,
   ): string {
     const events: AgentEvent[] = [
       {
         type: "ui.tool.open",
-        kind: toolName as WindowKind,
+        kind,
         payload: { ...payload, status: "done" },
       },
     ];
@@ -392,7 +395,7 @@ export function v1WorkTools(ctx: AgentToolCtx) {
 
     search_memory: tool({
       description:
-        "Search the knowledge graph and recent chats. Opens search_memory window.",
+        "Search the knowledge graph and recent chats. Opens the memories window.",
       inputSchema: z.object({
         query: z.string().min(1),
         scope: z.enum(["kg", "recent_chats", "all"]).optional().default("all"),
@@ -422,7 +425,7 @@ export function v1WorkTools(ctx: AgentToolCtx) {
           count: results.length,
           results,
         };
-        return emitToolWindow("search_memory", { query, scope }, payload);
+        return emitToolWindow("search_memory", { query, scope }, payload, "memories");
       },
     }),
 

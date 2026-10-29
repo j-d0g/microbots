@@ -134,7 +134,7 @@ Tools for cross-cutting concerns and system operations.
 
 | Tool | Description | Use When... |
 |------|-------------|-------------|
-| `open_window` | Open a window; omit mount to use its default or saved position | Navigating to a window |
+| `open_window` | Open a window; omit mount to use its default or saved position; optional focus centres a node, entity, or workflow | Navigating to a window |
 | `integrations_open_connect_manager` | Open OAuth manager | User says "connect to Slack" |
 | `integrations_connect_toolkit` | Start OAuth flow | Connecting specific integration |
 | `settings_check_health` | Check backend status | Debugging connection issues |

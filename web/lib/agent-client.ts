@@ -142,7 +142,12 @@ export type AgentEvent =
 export function applyAgentEvent(evt: AgentEvent): void {
   const s = useAgentStore.getState();
   const canvasAction = canvasActionForEvent(evt);
-  if (canvasAction) s.dispatchCanvas(canvasAction);
+  if (canvasAction) {
+    s.dispatchCanvas(canvasAction);
+    if (s.uiMode === "chat" && canvasAction.type === "open") {
+      s.attachChatCard(canvasAction.kind, canvasAction.payload);
+    }
+  }
   switch (evt.type) {
     case "ui.room":
       if (evt.slug) s.setRoomSlug(evt.slug);
@@ -215,21 +220,7 @@ export function applyAgentEvent(evt: AgentEvent): void {
       break;
     case "reply.chunk":
       s.appendReply(evt.text);
-      {
-        const last = useAgentStore.getState().chatMessages.at(-1);
-        if (last?.role === "agent" && last.status === "streaming") {
-          s.appendToLastAgentMessage(evt.text);
-        } else {
-          s.appendChatMessage({
-            id: `agent-${Date.now()}`,
-            role: "agent",
-            text: evt.text,
-            ts: Date.now(),
-            room: s.chatRoom,
-            status: "streaming",
-          });
-        }
-      }
+      s.appendToLastAgentMessage(evt.text);
       break;
     case "reply.done": {
       const state = useAgentStore.getState();
@@ -260,10 +251,10 @@ export function applyAgentEvent(evt: AgentEvent): void {
         args: evt.args,
         ok: true,
       });
+      if (s.uiMode === "chat") s.startChatToolTrace(evt.name, evt.args);
       break;
     case "agent.tool.done":
-      // No store change — the start record above already marks it ok.
-      // We could stamp the duration here once we capture start times.
+      if (s.uiMode === "chat") s.finishChatToolTrace(evt.name, evt.ok);
       break;
     case "agent.tool.retry":
       // Sidecar / inspector can read this from the event stream.

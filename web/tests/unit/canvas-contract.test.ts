@@ -197,6 +197,23 @@ describe("shared canvas reducer contract", () => {
     expect(lastResult).toBe("Opened settings.");
   });
 
+  it("passes open_window focus into browser and server window payloads", async () => {
+    const { browser, ctx, events } = await runScenario("chat", [
+      { tool: "open_window", input: { kind: "workflows", focus: "Bug Triage" } },
+    ]);
+    expect(browser.windows[0].payload).toEqual({ focus: "Bug Triage" });
+    expect(ctx.snapshot.windows[0].payload).toEqual({ focus: "Bug Triage" });
+    expect(events).toContainEqual({
+      type: "ui.canvas",
+      action: {
+        type: "open",
+        kind: "workflows",
+        payload: { focus: "Bug Triage" },
+        openedBy: "agent",
+      },
+    });
+  });
+
   it("deduplicates opens and keeps only the top window when entering chat mode", () => {
     const initial: CanvasState = {
       windows: [],

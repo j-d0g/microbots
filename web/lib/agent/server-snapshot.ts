@@ -17,13 +17,14 @@ export function applyCanvasToSnapshot(
     windows: snap.windows.map((window) => ({
       id: window.id,
       kind: window.kind,
+      ...(window.payload ? { payload: window.payload } : {}),
       mount: window.mount,
       rect: window.rect,
       zIndex: window.zIndex,
       pinned: window.pinned,
       openedAt: window.openedAt,
     })),
-    mode: snap.ui?.mode ?? "windowed",
+    mode: snap.ui?.mode ?? "chat",
     viewport: snap.viewport,
   };
   const next = applyCanvasAction(canvas, action);
@@ -39,6 +40,7 @@ export function applyCanvasToSnapshot(
         id: window.id,
         kind: window.kind,
         ...(old?.slug ? { slug: old.slug } : {}),
+        ...(window.payload ? { payload: window.payload } : {}),
         mount: window.mount,
         rect: window.rect,
         zIndex: window.zIndex,
@@ -89,7 +91,7 @@ export function snapshotToPrompt(
   const includeGrid = opts.includeGrid ?? true;
   const includeRecentActions = opts.includeRecentActions ?? true;
   const lines: string[] = [];
-  const mode = snap.ui?.mode ?? "windowed";
+  const mode = snap.ui?.mode ?? "chat";
   const userId = snap.user?.userId ?? null;
   lines.push(
     `<canvas viewport=${snap.viewport.w}x${snap.viewport.h} mode=${mode} user_id=${userId ?? "NOT_SET"}>`,
