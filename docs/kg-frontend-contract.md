@@ -7,8 +7,7 @@ What `web/` calls and what it gets back. Backed by `app/routes/api_kg.py` (REST)
 ## Base
 
 - **Base URL**: `${NEXT_PUBLIC_KG_API_BASE}` (set in `web/.env.local`).
-  - Local: `http://localhost:8001`
-  - Deployed: `https://<app-service>.onrender.com` (TBD; will be added to `render.yaml`).
+  - Local API: `http://localhost:8001` (started by `make dev`).
 - **All paths are prefixed `/api/kg`**.
 - **CORS**: open (`*`) per `app/main.py`. No auth headers required for the demo.
 - **Content-type**: JSON in, JSON out.
@@ -312,6 +311,6 @@ interface UpdateUserProfileBody {
 
 ## Open items
 
-- `NEXT_PUBLIC_KG_API_BASE` value once `app/` is added to `render.yaml`.
+- `NEXT_PUBLIC_KG_API_BASE` if the API is hosted somewhere other than `http://localhost:8001`.
 - Whether the agent stream itself (the `/agent/stream` SSE) lives on the same origin as `/api/kg` — leaning yes, simpler CORS + same env var.
 - Pagination: none of the read endpoints paginate today. If a list grows past ~200 rows we'll add cursors.

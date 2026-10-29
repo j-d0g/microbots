@@ -1,39 +1,31 @@
-# Microbots
-
-Microbots is a local-first knowledge graph for agent memory, backed by SurrealDB.
+Talk to one agent about your work: it searches your knowledge graph, shows what needs you today, and suggests what to automate.
 
 ## Quickstart
 
-Prerequisites: Docker with Compose, [uv](https://docs.astral.sh/uv/), and Node.js 22.
+Requires [uv](https://docs.astral.sh/uv/), Node.js 22, Bash 4.3+, curl, and either Docker Compose or SurrealDB v2 on PATH.
 
 ```bash
-cp .env.example .env
-cp web/.env.example web/.env.local
-make dev
+cp .env.example .env && cp web/.env.example web/.env.local && make dev
 ```
 
-`make dev` starts SurrealDB, applies the schema, seeds demo data, then runs the API on port 8001 and the web app on port 3000. Open [http://localhost:3000](http://localhost:3000).
+Open [localhost:3000](http://localhost:3000). This installs dependencies, starts SurrealDB on :8000, seeds the demo graph, and runs the API on :8001 and chat on :3000. No keys needed.
 
-### Works without API keys
+Try typing:
 
-- The shepherd uses a deterministic local router to open relevant rooms.
-- The knowledge graph is populated from local seed data in SurrealDB.
-- With `OPENAI_API_KEY`, click the voice dot for a full-duplex GPT-Live
-  conversation (Esc or click again to end); GPT-Live delegates requests to the
-  microbots agent, which runs the same tools as typed input.
-- `.` hold-to-talk remains OpenAI STT/TTS; without a key, browser speech is the fallback.
-- OpenRouter, Composio, and voice-provider keys are optional; configure them in `.env` for their live integrations.
+- "morning brief"
+- "what's connected to Linear?"
+- "show me the Bug Triage workflow"
+- "should I automate PR reviews?"
 
-## Development
+## Optional keys
 
-- Python API: `app/`; KG schema, seed data, and domain code: `knowledge_graph/`.
-- Web client: `web/`; its README documents local scripts.
-- `make db-schema`, `make db-seed`, `uv run pytest -q`
-- API docs: `docs/api-reference.md`; frontend contract: `docs/kg-frontend-contract.md`.
+Set `OPENROUTER_API_KEY` in `.env` for the real agent, `OPENAI_API_KEY` in `web/.env.local` for voice/GPT-Live, and `COMPOSIO_API_KEY` in `.env` for integrations. Restart after changing keys.
 
-## Knowledge-graph pipeline
+## Local commands
 
-`make db-up ingest-demo` ingests local train fixtures through triage, enrichment,
-and wiki generation without API keys. Outputs are explicitly labeled offline/demo;
-they exercise the pipeline, not real semantic extraction. `make db-reset` restores
-the seeded demo afterward. See [KG commands and architecture](knowledge_graph/README.md).
+`make help` lists commands. `make test` runs Python tests, TypeScript checks, and Vitest against the running database. `make db-reset` deletes local graph data and restores the demo. `make db-down` stops the database; stopping `make dev` stops both app servers.
+
+If Docker Hub rate-limits pulls, download the static binary for your OS from [SurrealDB v2.3.10 GitHub releases](https://github.com/surrealdb/surrealdb/releases/tag/v2.3.10).
+Extract it, make `surreal` executable, and put it on PATH; `make db-up` uses it with root/root in memory on :8000 (data is lost when stopped).
+
+See [web development](web/README.md), [KG pipeline commands](knowledge_graph/README.md), and the [API reference](docs/api-reference.md).

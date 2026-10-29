@@ -238,7 +238,7 @@ async def test_seed_edge_invariants(test_db):
 def test_corpus_meta_annotations():
     corpus_meta = ROOT / "tests" / "fixtures" / "corpus_meta.json"
     if not corpus_meta.exists():
-        pytest.skip("No corpus_meta.json (run make synth-corpus first)")
+        pytest.skip("No corpus_meta.json (run uv run python knowledge_graph/tests/synth/generate_corpus.py first)")
     import json
     meta = json.loads(corpus_meta.read_text())
     assert "expected_entities" in meta

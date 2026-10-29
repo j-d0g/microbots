@@ -1,26 +1,23 @@
 # Microbots web
 
-Next.js client for the local Microbots knowledge graph.
+Chat-first Next.js client for Microbots. Ask one agent about your knowledge graph, daily priorities, and possible automations; results and tool traces appear inline.
 
 ## Run
 
-Use Node.js 22. Copy `.env.example` to `.env.local`; the default backend URL targets `http://localhost:8001`.
+From the repository root, copy both env templates and run `make dev`. It installs dependencies and starts the database, Python API (:8001), and web client (:3000).
+
+For web-only development, use Node.js 22 and copy `.env.example` to `.env.local` in this directory. Keep the backend running separately:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-The Python API and seeded SurrealDB are started from the repository root with `make dev`.
-
 ## Local behavior
 
-With `OPENAI_API_KEY`, click the voice dot for a full-duplex GPT-Live
-conversation (Esc or click again to end); GPT-Live delegates requests to the
-microbots agent, which runs the same tools as typed input. `.` hold-to-talk
-remains OpenAI STT/TTS; without a key, browser speech is the fallback. Without
-`OPENROUTER_API_KEY`, commands use the deterministic local room router. Composio
-connection controls show an unconfigured state unless `COMPOSIO_API_KEY` is set.
+The default `MICROBOTS_AGENT_MODEL=scripted` uses the agent endpoint, tools, and streaming responses without provider keys. Try "morning brief", "what's connected to Linear?", "show me the Bug Triage workflow", or "should I automate PR reviews?". Delete that setting to use the keyword router instead.
+
+For `make dev`, set `OPENROUTER_API_KEY` in the root `.env` to use the real agent; it takes precedence over the scripted model. For web-only runs, set it in `.env.local` instead. The default backend URL is `http://localhost:8001`. Integrations require `COMPOSIO_API_KEY` in the root `.env`; without it, connection controls show an unconfigured state.
 
 ## Checks
 
@@ -30,4 +27,4 @@ npm test
 npm run build
 ```
 
-Core client code lives in `lib/`; API routes are in `app/api/`; room UI is in `components/rooms/`.
+`make test` at the repository root also runs the Python tests. Core client code lives in `lib/`; API routes are in `app/api/`; chat UI is in `components/chat/`.

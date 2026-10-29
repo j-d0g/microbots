@@ -6,7 +6,7 @@ Writes deterministic JSON fixtures under tests/fixtures/{train,holdout}/.
 Usage:
     uv run python tests/synth/generate_corpus.py [--model MODEL] [--seed SEED]
     # or:
-    make synth-corpus
+    uv run python knowledge_graph/tests/synth/generate_corpus.py
 """
 # /// script
 # requires-python = ">=3.11"
