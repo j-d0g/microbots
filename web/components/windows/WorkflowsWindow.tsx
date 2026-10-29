@@ -12,7 +12,7 @@
  * windows since the schema collapses them into one resource.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import {
@@ -26,15 +26,38 @@ import { cn } from "@/lib/cn";
 
 type SortField = "name" | "slug";
 
+export function resolveWorkflowRef(
+  list: Pick<Workflow, "slug" | "name">[],
+  ref?: string | null,
+): string | null {
+  const value = ref?.trim();
+  if (!value) return null;
+  const bySlug = list.find((workflow) => workflow.slug === value);
+  if (bySlug) return bySlug.slug;
+  const normalized = value.toLowerCase();
+  return (
+    list.find((workflow) => workflow.name.trim().toLowerCase() === normalized)
+      ?.slug ?? null
+  );
+}
+
 export function WorkflowsWindow({
   payload,
 }: {
   payload?: Record<string, unknown>;
 }) {
   const userId = useAgentStore((s) => s.userId);
+  const payloadSlug =
+    typeof payload?.slug === "string" ? payload.slug : undefined;
+  const payloadFocus =
+    typeof payload?.focus === "string" ? payload.focus : undefined;
   const [selectedSlug, setSelectedSlug] = useState<string | null>(
-    (payload?.slug as string) ?? null,
+    payloadFocus ?? payloadSlug ?? null,
   );
+  const manualSelectionRef = useRef<{
+    focus: string | undefined;
+    slug: string | undefined;
+  } | null>(null);
   const [editing, setEditing] = useState(false);
   /* Filter / sort / focus state driven by the agent's in-window
    * tools. The list pane reflects these; the detail pane scrolls
@@ -79,6 +102,32 @@ export function WorkflowsWindow({
   }, [data, searchQuery, tagFilter, sortBy, sortAsc]);
 
   const selected = list.find((w) => w.slug === selectedSlug) ?? null;
+  const selectManually = useCallback(
+    (slug: string | null) => {
+      manualSelectionRef.current = { focus: payloadFocus, slug: payloadSlug };
+      setSelectedSlug(slug);
+    },
+    [payloadFocus, payloadSlug],
+  );
+
+  useEffect(() => {
+    const manualSelection = manualSelectionRef.current;
+    if (
+      manualSelection &&
+      manualSelection.focus === payloadFocus &&
+      manualSelection.slug === payloadSlug
+    ) {
+      return;
+    }
+    if (!data) return;
+    const resolved =
+      resolveWorkflowRef(data, payloadFocus) ??
+      resolveWorkflowRef(data, payloadSlug);
+    if (!resolved) return;
+    setSelectedSlug(resolved);
+    setEditing(false);
+    setFocusedStep(null);
+  }, [data, payloadFocus, payloadSlug]);
 
   /* ── agent tool handlers ──
    *
@@ -278,7 +327,7 @@ export function WorkflowsWindow({
           <button
             type="button"
             onClick={() => {
-              setSelectedSlug(null);
+              selectManually(null);
               setEditing(true);
             }}
             className="mb-2 w-full rounded border border-dashed border-rule/60 px-2 py-1 text-left font-mono text-[10px] uppercase tracking-wider text-accent-indigo hover:bg-paper-2/60"
@@ -294,7 +343,7 @@ export function WorkflowsWindow({
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedSlug(w.slug);
+                    selectManually(w.slug);
                     setEditing(false);
                   }}
                   className={cn(
@@ -331,7 +380,7 @@ export function WorkflowsWindow({
                 onCancel={() => setEditing(false)}
                 onSaved={(slug) => {
                   setEditing(false);
-                  setSelectedSlug(slug);
+                  selectManually(slug);
                   refetch();
                 }}
               />

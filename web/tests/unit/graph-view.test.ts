@@ -8,9 +8,11 @@ import {
   deriveView,
   edgeStyle,
   isLinkDrawn,
+  LABEL_PRIORITY,
   labelText,
   memoryCounts,
   nodeOpacity,
+  pickLabels,
   resolveNodeRef,
   ringOf,
   ringRadii,
@@ -232,11 +234,13 @@ describe("graph view helpers", () => {
   it("labels always-visible layers, hovered/focused/path nodes, and zoomed nodes", () => {
     const nodes = fixture().nodes;
     const entity = nodes.find((node) => node.id === "entity:alice")!;
+    const memory = nodes.find((node) => node.layer === "memory")!;
     const user = nodes.find((node) => node.layer === "user")!;
     const integration = nodes.find((node) => node.id === "int-linear")!;
     const workflow = nodes.find((node) => node.id === "workflow:bug_triage")!;
     const base = {
       hoverId: null,
+      focusId: null,
       focusSet: null,
       pathIds: new Set<string>(),
       zoom: 1,
@@ -250,6 +254,58 @@ describe("graph view helpers", () => {
       shouldLabel(entity, { ...base, focusSet: new Set([entity.id]) }),
     ).toBe(true);
     expect(shouldLabel(entity, { ...base, zoom: 1.6 })).toBe(true);
+    const focusedView = {
+      ...base,
+      focusId: "int-linear",
+      focusSet: new Set([memory.id]),
+      zoom: 3,
+    };
+    expect(shouldLabel(memory, focusedView)).toBe(false);
+    expect(shouldLabel(memory, { ...focusedView, hoverId: memory.id })).toBe(
+      true,
+    );
+    expect(shouldLabel(memory, { ...focusedView, focusId: memory.id })).toBe(
+      true,
+    );
+  });
+
+  it("resolves overlapping labels by priority", () => {
+    const labels = pickLabels([
+      { id: "memory", x: 0, y: 0, w: 40, h: 12, priority: LABEL_PRIORITY.memory },
+      { id: "integration", x: 0, y: 0, w: 40, h: 12, priority: LABEL_PRIORITY.integration },
+    ]);
+
+    expect([...labels]).toEqual(["integration"]);
+  });
+
+  it("always keeps focused and hovered labels", () => {
+    const labels = pickLabels([
+      { id: "focus", x: 0, y: 0, w: 40, h: 12, priority: LABEL_PRIORITY.focused },
+      { id: "hover", x: 0, y: 0, w: 40, h: 12, priority: LABEL_PRIORITY.hovered },
+      { id: "user", x: 0, y: 0, w: 40, h: 12, priority: LABEL_PRIORITY.user },
+    ]);
+
+    expect([...labels]).toEqual(["focus", "hover"]);
+  });
+
+  it("keeps every non-overlapping label", () => {
+    const labels = pickLabels([
+      { id: "left", x: 0, y: 0, w: 20, h: 10, priority: LABEL_PRIORITY.entity },
+      { id: "middle", x: 30, y: 0, w: 20, h: 10, priority: LABEL_PRIORITY.integration },
+      { id: "right", x: 60, y: 0, w: 20, h: 10, priority: LABEL_PRIORITY.memory },
+    ]);
+
+    expect(labels).toEqual(new Set(["middle", "left", "right"]));
+  });
+
+  it("orders equal-priority labels by id regardless of input order", () => {
+    const candidates = [
+      { id: "beta", x: 0, y: 0, w: 10, h: 10, priority: LABEL_PRIORITY.entity },
+      { id: "alpha", x: 20, y: 0, w: 10, h: 10, priority: LABEL_PRIORITY.entity },
+    ];
+
+    expect([...pickLabels(candidates)]).toEqual(["alpha", "beta"]);
+    expect([...pickLabels([...candidates].reverse())]).toEqual(["alpha", "beta"]);
   });
 
   it("only draws appears_in edges near focus, hover, or a complete path", () => {

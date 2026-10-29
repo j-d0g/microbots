@@ -21,7 +21,13 @@ import { useKgResource } from "@/lib/use-kg-resource";
 import { cn } from "@/lib/cn";
 import { memoryCardSearchDisplay } from "./memory-card-data";
 
-export function InlineCard({ card }: { card: ChatCard }) {
+export function InlineCard({
+  card,
+  onSubmitAnswer,
+}: {
+  card: ChatCard;
+  onSubmitAnswer: (answer: string) => void;
+}) {
   switch (card.kind) {
     case "graph":
       return <GraphCard card={card} />;
@@ -37,7 +43,7 @@ export function InlineCard({ card }: { card: ChatCard }) {
     case "skills":
       return <SkillCard card={card} />;
     case "ask_user":
-      return <AskUserInlineCard card={card} />;
+      return <AskUserInlineCard card={card} onSubmitAnswer={onSubmitAnswer} />;
     default:
       return <GenericCard card={card} />;
   }
@@ -283,10 +289,30 @@ function SkillCard({ card }: { card: ChatCard }) {
   );
 }
 
-function AskUserInlineCard({ card }: { card: ChatCard }) {
+function AskUserInlineCard({
+  card,
+  onSubmitAnswer,
+}: {
+  card: ChatCard;
+  onSubmitAnswer: (answer: string) => void;
+}) {
+  const answerChatCard = useAgentStore((state) => state.answerChatCard);
+  const answer =
+    typeof card.payload?.answer === "string" ? card.payload.answer : undefined;
+  const handleAnswer = useCallback(
+    (selection: string) => {
+      answerChatCard(card.id, selection);
+      onSubmitAnswer(selection);
+    },
+    [answerChatCard, card.id, onSubmitAnswer],
+  );
   return (
     <CardShell card={card} title="one question">
-      <AskUserCard payload={card.payload} />
+      <AskUserCard
+        payload={card.payload}
+        answer={answer}
+        onAnswer={handleAnswer}
+      />
     </CardShell>
   );
 }

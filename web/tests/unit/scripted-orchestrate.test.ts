@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { applyAgentEvent, type AgentEvent } from "@/lib/agent-client";
 import { GET, POST } from "@/app/api/agent/orchestrate/route";
 import { buildSnapshot } from "@/lib/agent/snapshot";
-import { useAgentStore } from "@/lib/store";
+import { useAgentStore, type ChatMessage } from "@/lib/store";
 import { scriptedResponse } from "@/lib/agent/providers/scripted";
 import { memoryCardSearchDisplay } from "@/components/chat/cards/memory-card-data";
 
@@ -168,6 +168,18 @@ describe("scripted response mappings", () => {
     expect(response.text).toContain("draft suggestions");
   });
 
+  it.each([
+    ["Draft review suggestions", "draft review suggestions"],
+    ["Ask before each review", "ask before each review"],
+    ["Keep reviews manual", "keep reviews manual"],
+  ])("acknowledges the PR-review choice %j without claiming automation", (choice, acknowledgement) => {
+    const response = scriptedResponse(choice);
+
+    expect(response.toolCalls).toEqual([]);
+    expect(response.text).toContain(acknowledgement);
+    expect(response.text).toContain("Nothing has been automated yet in this demo.");
+  });
+
   it("returns the fallback prompt suggestions", () => {
     expect(scriptedResponse("hello")).toEqual({
       toolCalls: [],
@@ -177,6 +189,45 @@ describe("scripted response mappings", () => {
 });
 
 describe("chat message event attachments", () => {
+  it("persists an answer only on the matching chat card", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "agent-ask",
+        role: "agent",
+        text: "How should I help?",
+        ts: 1,
+        status: "done",
+        cards: [
+          {
+            id: "ask-1",
+            kind: "ask_user",
+            payload: { question: "How should I help?" },
+          },
+          { id: "graph-1", kind: "graph", payload: { focus: "Linear" } },
+        ],
+      },
+      {
+        id: "agent-other",
+        role: "agent",
+        text: "Another card.",
+        ts: 2,
+        status: "done",
+        cards: [{ id: "ask-2", kind: "ask_user", payload: { question: "Other?" } }],
+      },
+    ];
+    useAgentStore.setState({ chatMessages: messages });
+
+    useAgentStore.getState().answerChatCard("ask-1", "Keep reviews manual");
+
+    const updated = useAgentStore.getState().chatMessages;
+    expect(updated[0].cards?.[0].payload).toEqual({
+      question: "How should I help?",
+      answer: "Keep reviews manual",
+    });
+    expect(updated[0].cards?.[1]).toBe(messages[0].cards?.[1]);
+    expect(updated[1]).toBe(messages[1]);
+  });
+
   it("lazily creates a streaming message and updates deduplicated cards and tool traces", () => {
     resetStore();
     useAgentStore.setState({ uiMode: "chat" });

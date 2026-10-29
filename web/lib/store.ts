@@ -227,6 +227,7 @@ export interface AgentStoreState {
   getOrCreateStreamingAgentMessage: () => ChatMessage;
   appendToLastAgentMessage: (chunk: string) => void;
   attachChatCard: (kind: WindowKind, payload?: Record<string, unknown>) => void;
+  answerChatCard: (cardId: string, answer: string) => void;
   startChatToolTrace: (name: string, args?: Record<string, unknown>) => void;
   finishChatToolTrace: (name: string, ok: boolean) => void;
   finalizeLastAgentMessage: () => void;
@@ -456,6 +457,26 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       }),
     }));
   },
+  answerChatCard: (cardId, answer) =>
+    set((s) => {
+      let changed = false;
+      const chatMessages = s.chatMessages.map((message) => {
+        const cards = message.cards;
+        if (!cards?.some((card) => card.id === cardId)) return message;
+        return {
+          ...message,
+          cards: cards.map((card) => {
+            if (card.id !== cardId) return card;
+            changed = true;
+            return {
+              ...card,
+              payload: { ...card.payload, answer },
+            };
+          }),
+        };
+      });
+      return changed ? { chatMessages } : s;
+    }),
   startChatToolTrace: (name, args) => {
     const message = get().getOrCreateStreamingAgentMessage();
     const trace: ToolTrace = {

@@ -16,13 +16,15 @@ import {
   coUsedWidth,
   edgeStyle,
   isLinkDrawn,
+  LABEL_PRIORITY,
   labelText,
   linkEnds,
   nodeOpacity,
+  pickLabels,
   ringRadii,
   shouldLabel,
 } from "./graph-view";
-import type { CoUsedEdge, GraphView } from "./graph-view";
+import type { CoUsedEdge, GraphView, LabelCandidate } from "./graph-view";
 import type { GraphController, GraphLink, GraphNode } from "./types";
 import { LAYER_INK, LAYER_RING } from "./types";
 
@@ -87,6 +89,29 @@ function collisionRadiusFor(layer: GraphNode["layer"]) {
   }
 }
 
+function labelPriority(
+  node: GraphNode,
+  focused: boolean,
+  hovered: boolean,
+): number {
+  if (focused) return LABEL_PRIORITY.focused;
+  if (hovered) return LABEL_PRIORITY.hovered;
+  switch (node.layer) {
+    case "user":
+      return LABEL_PRIORITY.user;
+    case "integration":
+      return LABEL_PRIORITY.integration;
+    case "workflow":
+      return LABEL_PRIORITY.workflow;
+    case "skill":
+      return LABEL_PRIORITY.skill;
+    case "entity":
+      return LABEL_PRIORITY.entity;
+    case "memory":
+      return LABEL_PRIORITY.memory;
+  }
+}
+
 function hashId(id: string): number {
   let hash = 2166136261;
   for (let index = 0; index < id.length; index += 1) {
@@ -119,6 +144,7 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
     coUsed,
   } = props;
   const fgRef = useRef<FGRef | null>(null);
+  const labelIdsRef = useRef<Set<string>>(new Set());
 
   const nodeSetKey = useMemo(
     () => view.nodes.map((node) => node.id).sort().join("\u001e"),
@@ -369,14 +395,7 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
         ctx.stroke();
       }
 
-      if (
-        shouldLabel(node, {
-          hoverId,
-          focusSet: view.focusSet,
-          pathIds,
-          zoom: globalScale,
-        })
-      ) {
+      if (labelIdsRef.current.has(node.id)) {
         const fontSize = Math.max((compact ? 10 : 11) / globalScale, 5.5);
         ctx.font = `${fontSize}px "Inter", system-ui, sans-serif`;
         ctx.textAlign = "left";
@@ -516,6 +535,45 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
     [coUsed, nodeById],
   );
 
+  const drawFramePre = useCallback(
+    (ctx: CanvasRenderingContext2D, globalScale: number) => {
+      drawCoUsed(ctx, globalScale);
+      const fontSize = Math.max((compact ? 10 : 11) / globalScale, 5.5);
+      const candidates: LabelCandidate[] = [];
+      ctx.save();
+      ctx.font = `${fontSize}px "Inter", system-ui, sans-serif`;
+      for (const node of data.nodes) {
+        if (
+          node.x == null ||
+          node.y == null ||
+          !shouldLabel(node, {
+            hoverId,
+            focusId,
+            focusSet: view.focusSet,
+            pathIds,
+            zoom: globalScale,
+          })
+        ) {
+          continue;
+        }
+        const hovered = hoverId === node.id;
+        const text = labelText(node, hovered);
+        const radius = radiusFor(node.layer);
+        candidates.push({
+          id: node.id,
+          x: (node.x + radius + 4) * globalScale,
+          y: (node.y - fontSize / 2) * globalScale,
+          w: ctx.measureText(text).width * globalScale,
+          h: fontSize * globalScale,
+          priority: labelPriority(node, focusId === node.id, hovered),
+        });
+      }
+      ctx.restore();
+      labelIdsRef.current = pickLabels(candidates);
+    },
+    [compact, data, drawCoUsed, focusId, hoverId, pathIds, view.focusSet],
+  );
+
   return (
     <ForceGraph2D
       ref={fgRef as unknown as never}
@@ -534,7 +592,7 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
       maxZoom={6}
       nodeRelSize={4}
       onEngineStop={onEngineStop}
-      onRenderFramePre={drawCoUsed}
+      onRenderFramePre={drawFramePre}
       nodeCanvasObject={drawNode}
       nodePointerAreaPaint={(rawNode, color, ctx) => {
         const node = rawNode as GraphNode;
