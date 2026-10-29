@@ -4,7 +4,17 @@ import { OPENAI_BASE, notConfigured } from "../voice/openai";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+
 export async function POST(req: NextRequest) {
+  const contentLength = Number(req.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_AUDIO_BYTES) {
+    return NextResponse.json(
+      { error: "audio exceeds 25 MB limit" },
+      { status: 413 },
+    );
+  }
+
   const key = process.env.OPENAI_API_KEY;
   if (!key) return notConfigured();
 
@@ -12,6 +22,12 @@ export async function POST(req: NextRequest) {
   const audio = inForm.get("audio");
   if (!(audio instanceof Blob)) {
     return NextResponse.json({ error: "audio field required" }, { status: 400 });
+  }
+  if (audio.size > MAX_AUDIO_BYTES) {
+    return NextResponse.json(
+      { error: "audio exceeds 25 MB limit" },
+      { status: 413 },
+    );
   }
   const filename =
     typeof (audio as { name?: unknown }).name === "string"

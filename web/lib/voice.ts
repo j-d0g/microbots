@@ -423,10 +423,26 @@ export async function speak(text: string, opts: SpeakOpts = {}): Promise<() => v
   const gen = ++speakGen;
   const isCurrent = () => gen === speakGen;
   let done = false;
+  let browserFallbackStarted = false;
   const finish = () => {
     if (done) return;
     done = true;
     opts.onEnd?.();
+  };
+  const speakInBrowser = () => {
+    if (!isCurrent() || browserFallbackStarted) return;
+    browserFallbackStarted = true;
+    stopCurrent = finish;
+    if (!("speechSynthesis" in window)) {
+      finish();
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.98;
+    utterance.onstart = () => opts.onStart?.();
+    utterance.onend = finish;
+    utterance.onerror = finish;
+    window.speechSynthesis.speak(utterance);
   };
   stopCurrent = finish;
 
@@ -435,9 +451,15 @@ export async function speak(text: string, opts: SpeakOpts = {}): Promise<() => v
     let audio: HTMLAudioElement | null = null;
     let url = "";
     const release = () => {
-      audio?.pause();
-      if (url) URL.revokeObjectURL(url);
+      const currentAudio = audio;
       audio = null;
+      if (currentAudio) {
+        currentAudio.onplay = null;
+        currentAudio.onended = null;
+        currentAudio.onerror = null;
+        currentAudio.pause();
+      }
+      if (url) URL.revokeObjectURL(url);
       url = "";
     };
     try {
@@ -455,9 +477,15 @@ export async function speak(text: string, opts: SpeakOpts = {}): Promise<() => v
         release();
         finish();
       };
+      const fallback = () => {
+        release();
+        if (!isCurrent()) return;
+        console.warn("[voice] OpenAI TTS failed; using browser voice");
+        speakInBrowser();
+      };
       audio.onplay = () => opts.onStart?.();
       audio.onended = stop;
-      audio.onerror = stop;
+      audio.onerror = fallback;
       stopCurrent = stop;
       await audio.play();
       return cancelSpeak;
@@ -465,21 +493,11 @@ export async function speak(text: string, opts: SpeakOpts = {}): Promise<() => v
       release();
       if (!isCurrent()) return () => {};
       console.warn("[voice] OpenAI TTS failed; using browser voice", err);
-      stopCurrent = finish;
     }
   }
 
   if (!isCurrent()) return () => {};
-  if (!("speechSynthesis" in window)) {
-    finish();
-    return () => {};
-  }
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.98;
-  utterance.onstart = () => opts.onStart?.();
-  utterance.onend = finish;
-  utterance.onerror = finish;
-  window.speechSynthesis.speak(utterance);
+  speakInBrowser();
   return cancelSpeak;
 }
 

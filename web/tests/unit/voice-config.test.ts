@@ -11,6 +11,7 @@ function jsonResponse(data: unknown, status = 200) {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("voice config", () => {
@@ -154,5 +155,58 @@ describe("voice config", () => {
 
     expect(synthesis.speak).toHaveBeenCalledOnce();
     expect((synthesis.speak.mock.calls[0][0] as MockUtterance).text).toBe("hello");
+  });
+
+  it("waits for browser speech to end after OpenAI audio errors", async () => {
+    vi.resetModules();
+    class MockUtterance {
+      rate = 1;
+      onstart: (() => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+
+      constructor(public text: string) {}
+    }
+    class MockAudio {
+      static instance: MockAudio | null = null;
+      onplay: (() => void) | null = null;
+      onended: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      pause = vi.fn();
+
+      constructor(public src: string) {
+        MockAudio.instance = this;
+      }
+
+      play = vi.fn().mockResolvedValue(undefined);
+    }
+    const synthesis = {
+      cancel: vi.fn(),
+      speak: vi.fn(),
+    };
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ stt: "openai", tts: "openai" }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3])));
+    vi.stubGlobal("window", { speechSynthesis: synthesis });
+    vi.stubGlobal("SpeechSynthesisUtterance", MockUtterance);
+    vi.stubGlobal("Audio", MockAudio);
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:test");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { speak } = await import("@/lib/voice");
+    const onEnd = vi.fn();
+    await speak("hello", { onEnd });
+
+    const audio = MockAudio.instance;
+    expect(audio).toBeDefined();
+    audio?.onerror?.();
+    expect(synthesis.speak).toHaveBeenCalledOnce();
+    expect(onEnd).not.toHaveBeenCalled();
+
+    const utterance = synthesis.speak.mock.calls[0][0] as MockUtterance;
+    utterance.onend?.();
+    utterance.onerror?.();
+    expect(onEnd).toHaveBeenCalledOnce();
   });
 });

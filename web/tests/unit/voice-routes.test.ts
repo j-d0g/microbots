@@ -15,6 +15,39 @@ afterEach(() => {
 });
 
 describe("voice routes", () => {
+  it("rejects oversized STT content-length before reading the form", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    const formData = vi.fn();
+    const request = {
+      headers: new Headers({ "content-length": String(25 * 1024 * 1024 + 1) }),
+      formData,
+    };
+
+    const response = await postStt(request as never);
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ error: "audio exceeds 25 MB limit" });
+    expect(formData).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized parsed STT audio file", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    const audio = new Blob(["x"]);
+    Object.defineProperty(audio, "size", { value: 25 * 1024 * 1024 + 1 });
+    const formData = vi.fn().mockResolvedValue({
+      get: vi.fn(() => audio),
+    });
+
+    const response = await postStt({
+      headers: new Headers(),
+      formData,
+    } as never);
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ error: "audio exceeds 25 MB limit" });
+    expect(formData).toHaveBeenCalledOnce();
+  });
+
   it("returns a browser fallback when STT has no API key", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
     const fetchMock = vi.fn<typeof fetch>();
