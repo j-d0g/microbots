@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST as postStt } from "../../app/api/stt/route";
 import { POST as postTts } from "../../app/api/tts/route";
 
+const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+const MAX_MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
+
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -19,7 +22,11 @@ describe("voice routes", () => {
     vi.stubEnv("OPENAI_API_KEY", "sk-test");
     const formData = vi.fn();
     const request = {
-      headers: new Headers({ "content-length": String(25 * 1024 * 1024 + 1) }),
+      headers: new Headers({
+        "content-length": String(
+          MAX_AUDIO_BYTES + MAX_MULTIPART_OVERHEAD_BYTES + 1,
+        ),
+      }),
       formData,
     };
 
@@ -46,6 +53,31 @@ describe("voice routes", () => {
     expect(response.status).toBe(413);
     expect(await response.json()).toEqual({ error: "audio exceeds 25 MB limit" });
     expect(formData).toHaveBeenCalledOnce();
+  });
+
+  it("allows multipart framing when the parsed STT audio is within the limit", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    const audio = new Blob(["x"]);
+    Object.defineProperty(audio, "size", { value: MAX_AUDIO_BYTES - 1 });
+    const formData = vi.fn().mockResolvedValue({
+      get: vi.fn(() => audio),
+    });
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({ text: "recognized" }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await postStt({
+      headers: new Headers({
+        "content-length": String(MAX_AUDIO_BYTES + 512),
+      }),
+      formData,
+    } as never);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ text: "recognized" });
+    expect(formData).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("returns a browser fallback when STT has no API key", async () => {

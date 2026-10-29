@@ -5,10 +5,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+const MAX_MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   const contentLength = Number(req.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_AUDIO_BYTES) {
+  if (
+    Number.isFinite(contentLength) &&
+    contentLength > MAX_AUDIO_BYTES + MAX_MULTIPART_OVERHEAD_BYTES
+  ) {
     return NextResponse.json(
       { error: "audio exceeds 25 MB limit" },
       { status: 413 },
