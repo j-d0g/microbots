@@ -9,7 +9,7 @@ type Provider = "openai" | "anthropic";
 function configuredModel(): string {
   const configured = process.env.MC_MODEL?.trim();
   if (configured) return configured;
-  return process.env.OPENAI_API_KEY ? "openai:gpt-5-mini" : "demo";
+  return process.env.OPENAI_API_KEY ? "openai:gpt-6-luna" : "demo";
 }
 
 function hasProviderKey(provider: Provider): boolean {
@@ -32,7 +32,7 @@ export function getModel(scenario?: DemoScenario) {
   const [provider, ...modelParts] = configuredModel().split(":");
   const modelId = modelParts.join(":");
   if (!modelId) throw new Error("MC_MODEL must use provider:modelId format");
-  if (provider === "openai") return openai(modelId);
+  if (provider === "openai") return openai.responses(modelId);
   if (provider === "anthropic") return anthropic(modelId);
   throw new Error(`Unsupported MC_MODEL provider: ${provider}`);
 }

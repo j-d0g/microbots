@@ -1,7 +1,7 @@
 import "server-only";
 
 const pricesPerMillion: Record<string, { input: number; output: number }> = {
-  "openai:gpt-5-mini": { input: 0.25, output: 2 },
+  "openai:gpt-6-luna": { input: 0.1, output: 0.5 },
   "anthropic:claude-sonnet-5": { input: 2, output: 10 },
 };
 
