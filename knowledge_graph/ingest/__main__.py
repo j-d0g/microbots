@@ -22,7 +22,6 @@ from ingest.dedup import dedup
 from ingest.db import surreal_session
 from ingest.e2e_smoke import run_smoke, smoke_should_run_llm
 from ingest.pullers import enabled_integrations, get_puller
-from ingest.pullers.base import BasePuller
 from ingest.pullers.fixture import FixturePuller
 from ingest.triage import chunk, parallel_triage
 from ingest.writers.chat_records import write_chat_record
@@ -42,7 +41,7 @@ def _log_composio_pull_hint(exc: BaseException, config: Config) -> None:
         log.error(
             "Composio has no connected account for this app under COMPOSIO_USER_ID=%r. "
             "Run: composio login && composio link <toolkit> (e.g. composio link github, composio link perplexityai). "
-            "See https://docs.composio.dev/docs/cli and `make composio-auth`.",
+            "See https://docs.composio.dev/docs/cli and knowledge_graph/README.md.",
             config.composio_user_id,
         )
     if "not found" in text.lower() and "tool" in text.lower():
@@ -62,6 +61,7 @@ def _parse_args() -> argparse.Namespace:
         metavar="NAME",
         help="Run only this integration (repeatable). Default: all enabled in config",
     )
+    p.add_argument("--offline", action="store_true", help="Deterministic offline/demo outputs; requires --from-fixtures")
     p.add_argument(
         "--smoke",
         action="store_true",
@@ -73,96 +73,30 @@ def _parse_args() -> argparse.Namespace:
         help=(
             "Skip Composio entirely; pull raw items from "
             "knowledge_graph/tests/fixtures/train/<integration>.json. "
-            "Still runs full triage + enrich + wiki against real LLM. "
-            "Requires OPENROUTER_API_KEY (or ANTHROPIC_API_KEY). "
+            "Runs full triage + enrich + wiki. Use --offline for no keys. "
+            "Without --offline, requires OPENROUTER_API_KEY or ANTHROPIC_API_KEY. "
             "Composio API key is NOT required."
         ),
     )
     return p.parse_args()
 
 
-async def _run_from_fixtures(integration_names: list[str], config: Config) -> dict[str, int]:
-    """Same as ``_run`` but uses ``FixturePuller`` and skips Composio preflight.
+async def _run(integration_names: list[str], config: Config, *, from_fixtures: bool = False) -> dict[str, int]:
+    if config.offline and not from_fixtures:
+        raise ValueError("Offline/demo mode requires --from-fixtures; live pullers are disabled")
+    if from_fixtures:
+        composio = None
+    else:
+        composio = _connect_composio(integration_names, config)
+    if not config.offline and not (config.openrouter_api_key or config.anthropic_api_key):
+        raise ValueError("Set OPENROUTER_API_KEY or ANTHROPIC_API_KEY, or use --from-fixtures --offline")
 
-    Useful for end-to-end testing without OAuth-connected accounts. Real LLM
-    triage + enrichment + wiki still run against the cloud SurrealDB.
-    """
-    if not (config.openrouter_api_key or config.anthropic_api_key):
-        log.error("--from-fixtures still needs an LLM key. Set OPENROUTER_API_KEY or ANTHROPIC_API_KEY.")
-        return {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
-
-    results = {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
-    new_chat_ids = []
-
-    async with surreal_session(config) as db:
-        for name in integration_names:
-            log.info("\u25b6 Loading fixture for %s\u2026", name)
-            puller: BasePuller = FixturePuller(name)
-            try:
-                # composio is None — fixtures don't need it.
-                raw_items = await puller.pull(config, None)  # type: ignore[arg-type]
-            except Exception:  # noqa: BLE001
-                log.exception("Fixture load failed for %s", name)
-                results["failed"] += 1
-                continue
-
-            log.info("  Fetched %d raw items", len(raw_items))
-            new_items = await dedup(raw_items, db)
-            results["skipped_dedup"] += len(raw_items) - len(new_items)
-            log.info("  %d new after dedup", len(new_items))
-
-            if not new_items:
-                continue
-
-            batches = chunk(new_items, config.pipeline.batch_size)
-            log.info("  Triage: %d batch(es) (parallel up to %d)", len(batches), config.pipeline.parallel_llm_calls)
-            triage_results = await parallel_triage(batches, name, config)
-
-            for tr in triage_results:
-                if tr is None:
-                    results["failed"] += 1
-                    log.warning("  A triage batch failed (see logs above)")
-                    continue
-                await write_integration_metadata(name, tr["integration_metadata"], db)
-                for chat in tr.get("chat_records", []):
-                    if str(chat.get("signal_level", "mid")).lower() == "low":
-                        continue
-                    chat_rec_id = await write_chat_record(chat, name, db)
-                    new_chat_ids.append(chat_rec_id)
-                    results["success"] += 1
-                results["dropped"] += len(tr.get("items_dropped", []))
-
-    if results["success"] > 0:
-        log.info("\u25b6 Starting enrichment layer (%d new chats)\u2026", results["success"])
-        from enrich.orchestrator import run_enrichment
-        enrich_results = await run_enrichment(new_chat_ids, config)
-        log.info(
-            "  Enrichment: %d memories, %d entities resolved, %d skills, %d workflows",
-            enrich_results["memories"],
-            enrich_results["entities_resolved"],
-            enrich_results["skills"],
-            enrich_results["workflows"],
-        )
-        log.info("\u25b6 Starting wiki agent (Phase 4)\u2026")
-        try:
-            from wiki.orchestrator import run_wiki
-            wiki_results = await run_wiki(config)
-            log.info(
-                "  Wiki: %d files updated, %d unchanged, %d failed",
-                wiki_results.updated,
-                wiki_results.unchanged,
-                wiki_results.failed,
-            )
-        except Exception as e:  # noqa: BLE001
-            log.error("  Wiki agent failed (non-fatal): %s", e)
-
-    return results
+    return await _ingest(integration_names, config, composio, from_fixtures=from_fixtures)
 
 
-async def _run(integration_names: list[str], config: Config) -> dict[str, int]:
+def _connect_composio(integration_names: list[str], config: Config):
     if not config.composio_api_key:
-        log.error("COMPOSIO_API_KEY is not set")
-        return {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
+        raise ValueError("COMPOSIO_API_KEY is not set; use --from-fixtures --offline for the demo")
 
     try:
         resolved = resolve_composio_user_id(
@@ -171,8 +105,7 @@ async def _run(integration_names: list[str], config: Config) -> dict[str, int]:
             integrations=integration_names,
         )
     except Exception as e:  # noqa: BLE001
-        log.error("Composio preflight failed: %s", e)
-        return {"success": 0, "failed": len(integration_names), "skipped_dedup": 0, "dropped": 0}
+        raise ValueError(f"Composio preflight failed: {e}") from e
 
     if resolved.user_id != config.composio_user_id:
         log.warning("Composio user_id override: %s", resolved.reason)
@@ -180,19 +113,18 @@ async def _run(integration_names: list[str], config: Config) -> dict[str, int]:
     else:
         log.info("Composio preflight: %s", resolved.reason)
 
-    composio = Composio(api_key=config.composio_api_key)
+    return Composio(api_key=config.composio_api_key)
 
-    if not (config.openrouter_api_key or config.anthropic_api_key):
-        log.error("Set OPENROUTER_API_KEY and/or ANTHROPIC_API_KEY for triage")
-        return {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
+
+async def _ingest(integration_names, config, composio, *, from_fixtures=False):
 
     results = {"success": 0, "failed": 0, "skipped_dedup": 0, "dropped": 0}
     new_chat_ids = []
 
     async with surreal_session(config) as db:
         for name in integration_names:
-            log.info("▶ Pulling %s…", name)
-            puller = get_puller(name)
+            log.info("Pulling %s...", name)
+            puller = FixturePuller(name) if from_fixtures else get_puller(name)
             try:
                 raw_items = await puller.pull(config, composio)
             except Exception as e:  # noqa: BLE001
@@ -247,6 +179,7 @@ async def _run(integration_names: list[str], config: Config) -> dict[str, int]:
         try:
             from wiki.orchestrator import run_wiki
             wiki_results = await run_wiki(config)
+            results["failed"] += wiki_results.failed
             log.info(
                 "  Wiki: %d files updated, %d unchanged, %d failed",
                 wiki_results.updated,
@@ -254,7 +187,8 @@ async def _run(integration_names: list[str], config: Config) -> dict[str, int]:
                 wiki_results.failed,
             )
         except Exception as e:  # noqa: BLE001
-            log.error("  Wiki agent failed (non-fatal): %s", e)
+            results["failed"] += 1
+            log.error("  Wiki agent failed: %s", e)
 
     return results
 
@@ -281,6 +215,7 @@ def main() -> None:
         return
 
     config = load_config()
+    config.offline = args.offline or config.offline
     if args.integrations:
         names = _select_integrations(config, args.integrations)
     else:
@@ -291,12 +226,12 @@ def main() -> None:
         sys.exit(1)
         return
 
-    if args.from_fixtures:
-        log.info("Ingest [fixtures]: integrations=%s (LLM=%s)", names, config.llm.provider)
-        r = asyncio.run(_run_from_fixtures(names, config))
-    else:
-        log.info("Ingest: integrations=%s (LLM=%s)", names, config.llm.provider)
-        r = asyncio.run(_run(names, config))
+    log.info("Ingest: integrations=%s mode=%s", names, "offline/demo" if config.offline else "live")
+    try:
+        r = asyncio.run(_run(names, config, from_fixtures=args.from_fixtures))
+    except ValueError as exc:
+        log.error("%s", exc)
+        sys.exit(1)
     log.info(
         "Done. Wrote %d chat record(s), failed batch(es)=%d, "
         "skipped (dedup)=%d, dropped (low signal)=%d",
@@ -305,7 +240,7 @@ def main() -> None:
         r["skipped_dedup"],
         r["dropped"],
     )
-    if r["failed"] and r["success"] == 0:
+    if r["failed"]:
         sys.exit(1)
 
 

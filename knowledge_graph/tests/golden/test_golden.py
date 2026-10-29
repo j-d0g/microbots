@@ -3,9 +3,6 @@
 In replay mode (default): loads recorded transcripts from tests/golden/prompts/
 and validates the expected_output against the phase's Pydantic model.
 
-In record mode (LLM_MODE=record): runs live agents against fixture data and
-writes new goldens.
-
 Each golden case file format:
 ```json
 {
@@ -20,7 +17,6 @@ Each golden case file format:
 
 Run:
     make test                  # replay mode (no LLM cost)
-    make rerecord-goldens      # live LLM, overwrites goldens
 """
 from __future__ import annotations
 
@@ -89,7 +85,7 @@ def test_golden_replay(case):
         pytest.skip("No golden cases committed yet. Run: make rerecord-goldens")
 
     if LLM_MODE != "replay":
-        pytest.skip("Not in replay mode")
+        pytest.fail("Golden tests only validate stored outputs; live recording is not implemented")
 
     phase = case["phase"]
     expected = case.get("expected_output", {})
@@ -117,23 +113,3 @@ def test_golden_replay(case):
         for mem in expected["memories"]:
             assert "content" in mem, "Memory item missing content"
             assert "memory_type" in mem, "Memory item missing memory_type"
-
-
-@pytest.mark.parametrize(
-    "case",
-    _CASES or [{"phase": "none", "case": "skip"}],
-    ids=lambda c: f"{c.get('phase', '?')}/{c.get('case', '?')}",
-)
-def test_golden_record(case):
-    """In record mode, this would run live agents and write new goldens.
-
-    Not yet wired — requires LLM API keys and fixture-to-agent runners.
-    """
-    if case.get("phase") == "none":
-        pytest.skip("No golden cases")
-
-    if LLM_MODE != "record":
-        pytest.skip("Not in record mode")
-
-    # Record mode placeholder — implement per-phase agent runners here
-    pytest.skip(f"Recording mode: agent runner not yet wired for phase={case['phase']}")
