@@ -23,16 +23,31 @@ async def _counts(db):
 
 
 @pytest.mark.e2e
-async def test_offline_fixture_pipeline_is_complete_and_idempotent(test_db, test_db_config, train_dir, monkeypatch):
+async def test_offline_fixture_pipeline_is_complete_idempotent_and_scoped(test_db, test_db_config, train_dir, monkeypatch):
     monkeypatch.setattr(pydantic_ai.models, "ALLOW_MODEL_REQUESTS", False)
     config = test_db_config
     config.offline = True
     config.openrouter_api_key = config.anthropic_api_key = config.composio_api_key = None
+    await test_db.query("""
+        CREATE entity:unrelated_offline_probe CONTENT {
+            name: "Unrelated existing entity",
+            entity_type: "person",
+            tags: ["preexisting"]
+        }
+    """)
     names = enabled_integrations(config)
     expected = sum(len(json.loads((train_dir / f"{name}.json").read_text())) for name in names)
 
     result = await _run(names, config, from_fixtures=True)
     assert result == {"success": expected, "failed": 0, "skipped_dedup": 0, "dropped": 0}
+    unrelated = unwrap_surreal_rows(await test_db.query(
+        "SELECT tags FROM entity:unrelated_offline_probe"
+    ))
+    assert unrelated and "offline_demo" not in unrelated[0].get("tags", [])
+    resolved = unwrap_surreal_rows(await test_db.query(
+        "SELECT tags FROM entity WHERE tags CONTAINS 'offline_demo'"
+    ))
+    assert resolved
     counts = await _counts(test_db)
     assert counts["chat"] == counts["chat_from"] == counts["chat_yields"] == expected
     assert 0 < counts["memory"] <= expected  # Identical insights share a memory record.

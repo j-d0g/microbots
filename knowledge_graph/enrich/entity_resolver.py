@@ -76,7 +76,22 @@ async def resolve_entities(
     config: Config,
     db: AsyncSurreal,
 ) -> int:
-    res_stubs = await db.query("SELECT * FROM entity")
+    if config.offline:
+        if not new_chat_ids:
+            return 0
+        mention_rows = unwrap_surreal_rows(await db.query(
+            "SELECT out FROM chat_mentions WHERE in IN $chat_ids",
+            {"chat_ids": new_chat_ids},
+        ))
+        entity_ids = [row["out"] for row in mention_rows if row.get("out") is not None]
+        if not entity_ids:
+            return 0
+        res_stubs = await db.query(
+            "SELECT * FROM entity WHERE id IN $ids",
+            {"ids": entity_ids},
+        )
+    else:
+        res_stubs = await db.query("SELECT * FROM entity")
     stubs = unwrap_surreal_rows(res_stubs)
     if not stubs:
         return 0
