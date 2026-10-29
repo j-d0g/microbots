@@ -26,7 +26,7 @@ function client() {
     if (!apiKey) {
       throw new Error(
         "OPENROUTER_API_KEY is not set. The orchestrate route should " +
-          "have short-circuited before calling this. See plan §12.",
+          "have selected the scripted provider before calling this.",
       );
     }
     _client = createOpenAICompatible({
@@ -56,28 +56,18 @@ export function chatModel(slug?: string) {
   return client().chatModel(id);
 }
 
-/** True iff the orchestrate route can actually call the LLM. The route
- *  uses this to short-circuit to a 503 + fallback header. */
 export function hasOpenRouterKey(): boolean {
   return Boolean(process.env.OPENROUTER_API_KEY);
 }
 
-export function isAgentLive(): boolean {
-  return hasOpenRouterKey() || process.env.MICROBOTS_AGENT_MODEL === "scripted";
-}
-
 export function agentModel() {
-  if (!hasOpenRouterKey() && process.env.MICROBOTS_AGENT_MODEL === "scripted") {
-    return scriptedModel();
-  }
+  if (!hasOpenRouterKey()) return scriptedModel();
   return chatModel();
 }
 
 /** The model slug we'll ship to the OpenRouter dashboard / logs. */
 export function activeModelSlug(): string {
-  if (!hasOpenRouterKey() && process.env.MICROBOTS_AGENT_MODEL === "scripted") {
-    return "scripted";
-  }
+  if (!hasOpenRouterKey()) return "scripted";
   return process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 }
 

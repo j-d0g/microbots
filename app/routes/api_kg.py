@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+import re
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,6 +13,14 @@ from app.services import kg_queries as Q
 from app.services.surreal import q, q_one, session
 
 router = APIRouter(prefix="/kg", tags=["knowledge-graph"])
+
+
+def _name_match_distance(name: str, query: str) -> int | None:
+    query_tokens = set(re.findall(r"[a-z0-9]+", query.casefold()))
+    name_tokens = set(re.findall(r"[a-z0-9]+", name.casefold()))
+    if query_tokens and query_tokens <= name_tokens:
+        return len(name_tokens - query_tokens)
+    return None
 
 
 @router.get("/integrations")
@@ -60,6 +69,89 @@ async def memories_top(
     order_field = "confidence" if by == "confidence" else "created_at"
     async with session() as s:
         return await q(s, Q.Q_MEMORIES_TOP.replace("{order_field}", order_field), {"limit": limit})
+
+
+@router.get("/search")
+async def search_knowledge_graph(
+    query: str = Query(..., min_length=1),
+    scope: Literal["memories", "entities", "workflows", "all"] = Query("all"),
+    limit: int = Query(5, ge=1, le=20),
+) -> dict[str, Any]:
+    term = query.strip()
+    if not term:
+        raise HTTPException(status_code=422, detail="query must not be blank")
+
+    results: list[dict[str, Any]] = []
+    params = {"query": term, "limit": limit}
+    async with session() as s:
+        if scope in ("memories", "all"):
+            for row in await q(s, Q.Q_SEARCH_MEMORIES, params):
+                results.append({
+                    "kind": "memories",
+                    "id": str(row["id"]),
+                    "focus": str(row["id"]),
+                    "snippet": row.get("content", ""),
+                    "score": float(row.get("confidence", 0)),
+                })
+        if scope in ("entities", "all"):
+            for row in await q(s, Q.Q_SEARCH_ENTITIES, params):
+                results.append({
+                    "kind": "entities",
+                    "id": str(row["id"]),
+                    "focus": str(row["id"]),
+                    "name": row.get("name", ""),
+                    "snippet": row.get("description") or row.get("name", ""),
+                    "score": 0.5,
+                    "_name_match_distance": _name_match_distance(
+                        row.get("name", ""), term
+                    ),
+                })
+        if scope in ("workflows", "all"):
+            for row in await q(s, Q.Q_SEARCH_WORKFLOWS, params):
+                results.append({
+                    "kind": "workflows",
+                    "id": str(row.get("slug") or row["id"]),
+                    "focus": str(row.get("slug") or row["id"]),
+                    "name": row.get("name", ""),
+                    "snippet": row.get("description", ""),
+                    "score": 0.5,
+                    "_name_match_distance": _name_match_distance(
+                        row.get("name", ""), term
+                    ),
+                })
+        if scope == "all":
+            for row in await q(s, Q.Q_SEARCH_INTEGRATIONS, params):
+                connections = (row.get("connections") or []) + (
+                    row.get("incoming_connections") or []
+                )
+                results.append({
+                    "kind": "integrations",
+                    "id": str(row.get("slug", "")),
+                    "focus": str(row.get("slug", "")),
+                    "name": row.get("name", ""),
+                    "connections": connections,
+                    "snippet": ", ".join(
+                        str(connection.get("name") or connection.get("slug") or "")
+                        for connection in connections
+                    ),
+                    "score": 0.9,
+                    "_name_match_distance": _name_match_distance(
+                        row.get("name", ""), term
+                    ),
+                })
+
+    results.sort(
+        key=lambda result: (
+            result.get("_name_match_distance") is None,
+            result.get("_name_match_distance") or 0,
+            -result["score"],
+            result["kind"],
+            result["id"],
+        )
+    )
+    for result in results:
+        result.pop("_name_match_distance", None)
+    return {"query": term, "scope": scope, "count": len(results), "results": results}
 
 
 @router.get("/skills")

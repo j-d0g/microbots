@@ -1,16 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { applyAgentEvent, type AgentEvent } from "@/lib/agent-client";
-import {
-  applyCanvasAction,
-  type CanvasAction,
-  type CanvasState,
-} from "@/lib/agent/canvas-reducer";
+import { ORCH_MAX_STEPS, ORCH_SYSTEM } from "@/lib/agent/orchestrator";
+import { createAgentTools, createToolCtx } from "@/lib/agent/tools";
+import type { AgentEvent } from "@/lib/agent-client";
+import { applyCanvasAction, type CanvasState } from "@/lib/agent/canvas-reducer";
 import { buildSnapshot } from "@/lib/agent/snapshot";
-import { createToolCtx, metaTools } from "@/lib/agent/tools";
 import { useAgentStore } from "@/lib/store";
 
 const toolOptions = {
-  toolCallId: "canvas-contract",
+  toolCallId: "agent-contract",
   messages: [],
   abortSignal: new AbortController().signal,
 };
@@ -20,55 +17,43 @@ async function executeTool(
   input: Record<string, unknown>,
 ): Promise<unknown> {
   const execute = (tool as {
-    execute: (input: Record<string, unknown>, options: typeof toolOptions) => Promise<unknown>;
+    execute: (
+      input: Record<string, unknown>,
+      options: typeof toolOptions,
+    ) => Promise<unknown>;
   }).execute;
   return execute(input, toolOptions);
 }
 
-async function runScenario(
-  steps: Array<{ tool: string; input: Record<string, unknown> }>,
-) {
-  useAgentStore.setState({ windows: [], chatMessages: [] });
-  const events: AgentEvent[] = [];
-  const ctx = createToolCtx(buildSnapshot({ query: "" }), (event) => events.push(event));
-  const tools: Record<string, unknown> = metaTools(ctx);
-  let applied = 0;
-
-  for (const step of steps) {
-    await executeTool(tools[step.tool], step.input);
-    for (const event of events.slice(applied)) applyAgentEvent(event);
-    applied = events.length;
-  }
-
-  const browser = buildSnapshot();
-  const comparable = (windows: typeof browser.windows) =>
-    windows.map(({ id, kind, payload, focused, openedAt }) => ({
-      id,
-      kind,
-      payload,
-      focused,
-      openedAt,
-    }));
-  expect(comparable(browser.windows)).toEqual(comparable(ctx.snapshot.windows));
-  expect(browser.focusedId).toBe(ctx.snapshot.focusedId);
-  return { browser, ctx, events };
-}
-
-describe("shared canvas reducer contract", () => {
+describe("agent tool and canvas contract", () => {
   beforeEach(() => {
     useAgentStore.setState({ windows: [], chatMessages: [] });
   });
 
-  it("keeps browser and server snapshots in sync while opening, focusing, and closing cards", async () => {
-    const { browser, events } = await runScenario([
-      { tool: "open_window", input: { kind: "graph", focus: "Linear" } },
-      { tool: "open_window", input: { kind: "memories" } },
-      { tool: "focus_window", input: { kind: "graph" } },
-      { tool: "close_window", input: { kind: "memories" } },
+  it("exposes exactly the seven registry tools in the model prompt", () => {
+    const ctx = createToolCtx({ open: null, recentCards: [] }, () => {});
+    const names = Object.keys(createAgentTools(ctx));
+    expect(names).toEqual([
+      "show",
+      "close",
+      "search",
+      "ask_user",
+      "remember",
+      "upsert_entity",
+      "save_workflow",
     ]);
+    expect(ORCH_SYSTEM).toContain("Never claim success when a tool returned ok:false.");
+    expect(names.every((name) => ORCH_SYSTEM.includes(`- ${name}:`))).toBe(true);
+    expect(ORCH_SYSTEM.length).toBeLessThanOrEqual(4000);
+    expect(ORCH_MAX_STEPS).toBe(4);
+  });
 
-    expect(browser.windows.map((window) => window.kind)).toEqual(["graph"]);
-    expect(browser.windows[0].payload).toEqual({ focus: "Linear" });
+  it("passes show focus through the browser and server canvas state", async () => {
+    const events: AgentEvent[] = [];
+    const ctx = createToolCtx({ open: null, recentCards: [] }, (event) => events.push(event));
+    const tools = createAgentTools(ctx);
+    await executeTool(tools.show, { kind: "graph", focus: "Linear" });
+
     expect(events).toContainEqual({
       type: "ui.canvas",
       action: {
@@ -78,43 +63,51 @@ describe("shared canvas reducer contract", () => {
         openedBy: "agent",
       },
     });
-  });
-
-  it("opens a focused card and clears the canvas", async () => {
-    const { browser, events } = await runScenario([
-      { tool: "open_window", input: { kind: "workflows", focus: "Bug Triage" } },
-      { tool: "clear_canvas", input: {} },
-    ]);
-
-    expect(browser.windows).toEqual([]);
-    expect(events).toContainEqual({
-      type: "ui.canvas",
-      action: { type: "clear" },
+    expect(ctx.snapshot).toEqual({
+      open: { kind: "graph", focus: "Linear" },
+      recentCards: [{ kind: "graph", focus: "Linear" }],
     });
   });
 
-  it("deduplicates opens, updates payloads, and moves the card to the top", () => {
-    const initial: CanvasState = { windows: [] };
-    const graph: CanvasAction = {
-      type: "open",
-      kind: "graph",
-      payload: { focus: "Linear" },
-      at: 1,
-    };
-    const memories: CanvasAction = { type: "open", kind: "memories", at: 2 };
-    let state = applyCanvasAction(initial, graph);
-    state = applyCanvasAction(state, memories);
-    state = applyCanvasAction(state, {
-      type: "open",
-      kind: "graph",
-      payload: { compact: true },
-      at: 3,
-    });
+  it("reports an unsuccessful close when nothing is open", async () => {
+    const ctx = createToolCtx({ open: null, recentCards: [] }, () => {});
+    const result = await executeTool(createAgentTools(ctx).close, {});
+    expect(result).toEqual({ ok: false, reason: "nothing open" });
+  });
 
-    expect(state.windows.map((window) => window.kind)).toEqual(["memories", "graph"]);
-    expect(state.windows[1]).toMatchObject({
-      payload: { focus: "Linear", compact: true },
-      openedAt: 3,
+  it("closes the visible canvas without reviving an older card", () => {
+    let state: CanvasState = { windows: [] };
+    state = applyCanvasAction(state, { type: "open", kind: "graph", at: 1 });
+    state = applyCanvasAction(state, { type: "open", kind: "memories", at: 2 });
+    state = applyCanvasAction(state, { type: "close" });
+    expect(state.windows).toEqual([]);
+  });
+
+  it("builds only the compact open and last-five-card snapshot", () => {
+    useAgentStore.setState({
+      windows: [{
+        id: "graph",
+        kind: "graph",
+        payload: { focus: "Linear", ignored: true },
+        openedAt: 1,
+      }],
+      chatMessages: Array.from({ length: 7 }, (_, index) => ({
+        id: `message-${index}`,
+        role: "agent" as const,
+        text: "",
+        ts: index,
+        status: "done" as const,
+        cards: [{
+          id: `card-${index}`,
+          kind: index % 2 ? "workflows" as const : "memories" as const,
+          payload: { focus: `focus-${index}` },
+        }],
+      })),
     });
+    const snapshot = buildSnapshot();
+    expect(Object.keys(snapshot).sort()).toEqual(["open", "recentCards"]);
+    expect(snapshot.open).toEqual({ kind: "graph", focus: "Linear" });
+    expect(snapshot.recentCards).toHaveLength(5);
+    expect(snapshot.recentCards[0]).toEqual({ kind: "memories", focus: "focus-2" });
   });
 });

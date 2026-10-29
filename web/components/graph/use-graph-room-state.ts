@@ -8,13 +8,8 @@ import {
   resolveNodeRef,
   shortestPath,
 } from "./graph-view";
-import {
-  graphRoomTools,
-  type GraphRoomOps,
-} from "./graph-room-tools";
 import type { GraphController, GraphFilter, GraphLink, GraphNode } from "./types";
 import type { NodeLayer } from "@/lib/seed/types";
-import { registerTools } from "@/lib/room-tools";
 
 const DEFAULT_FILTER: GraphFilter = {
   layer: null,
@@ -69,10 +64,10 @@ export function useGraphRoomState(
     });
   }, [payloadFocus, graph.nodes]);
 
-  const operations = useMemo<GraphRoomOps>(
+  const operations = useMemo(
     () => ({
-      resolve: (ref) => resolveNodeRef(graph.nodes, ref),
-      focusNode: (id, shouldFit = true) => {
+      resolve: (ref: string) => resolveNodeRef(graph.nodes, ref),
+      focusNode: (id: string | null, shouldFit = true) => {
         setPathIds(new Set());
         setFocusId(id);
         setFitOnFocusChange(shouldFit);
@@ -83,7 +78,7 @@ export function useGraphRoomState(
           );
         }
       },
-      path: (from, to) => {
+      path: (from: string, to: string) => {
         const path = shortestPath(adjacency, from, to);
         if (path.length === 0) return;
         setPathIds(new Set(path));
@@ -98,9 +93,9 @@ export function useGraphRoomState(
       },
       filterLayer: (layer: NodeLayer | null) =>
         setFilter((current) => ({ ...current, layer })),
-      filterIntegration: (integration) =>
+      filterIntegration: (integration: string | null) =>
         setFilter((current) => ({ ...current, integration })),
-      search: (query) => setFilter((current) => ({ ...current, query })),
+      search: (query: string) => setFilter((current) => ({ ...current, query })),
       zoomFit: () =>
         controllerRef.current?.fit(
           focusId
@@ -108,7 +103,7 @@ export function useGraphRoomState(
             : undefined,
           380,
         ),
-      zoomTo: (scale) => controllerRef.current?.zoomTo(scale, 280),
+      zoomTo: (scale: number) => controllerRef.current?.zoomTo(scale, 280),
     }),
     [adjacency, controllerRef, focusId, graph.nodes],
   );
@@ -154,11 +149,6 @@ export function useGraphRoomState(
     if (typeof window === "undefined") return;
     (window as unknown as { __graph?: typeof graphOps }).__graph = graphOps;
   }, [graphOps]);
-
-  useEffect(
-    () => registerTools("graph", graphRoomTools(operations)),
-    [operations],
-  );
 
   const focusedNode = useMemo(
     () => graph.nodes.find((node) => node.id === focusId) ?? null,

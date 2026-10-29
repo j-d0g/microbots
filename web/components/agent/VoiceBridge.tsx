@@ -8,8 +8,7 @@ import {
   usePushToTalk,
   useVoiceConfig,
 } from "@/lib/voice";
-import { AgentFallback, applyAgentEvent, sendQuery } from "@/lib/agent-client";
-import { routeIntent } from "@/lib/agent-router";
+import { sendQuery } from "@/lib/agent-client";
 import { createLiveVoice, type LiveVoiceState } from "@/lib/voice-live";
 
 /* -------------------------------------------------------------------------
@@ -59,14 +58,7 @@ export function VoiceBridge() {
       try {
         await sendQuery(text);
       } catch (err) {
-        if (err instanceof AgentFallback) {
-          for await (const evt of routeIntent(text)) {
-            applyAgentEvent(evt);
-          }
-        } else {
-          // eslint-disable-next-line no-console
-          console.error("[voice-bridge] sendQuery failed", err);
-        }
+        console.error("[voice-bridge] sendQuery failed", err);
       }
       return useAgentStore.getState().agentReply;
     },

@@ -8,15 +8,15 @@
  * binding fields.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAgentStore } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import {
   addMemory,
   getMemories,
+  type AddMemoryBody,
   type Memory,
-} from "@/lib/kg-client";
-import { registerTools } from "@/lib/room-tools";
+} from "@/lib/api/backend";
 import { KgShell, KgHeader } from "./kg-shell";
 import { cn } from "@/lib/cn";
 
@@ -41,118 +41,8 @@ export function MemoriesWindow({
   );
   const { data, loading, error, refetch } = useKgResource(fetcher, seed);
 
-  /* Agent-driven filters layered on top of the server-fetched list. */
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [typeFilter, setTypeFilter] = useState<string>("");
-  const [tagFilter, setTagFilter] = useState<string>("");
-
-  const list = useMemo(() => {
-    const all = data ?? [];
-    const q = searchQuery.trim().toLowerCase();
-    const ty = typeFilter.trim().toLowerCase();
-    const tag = tagFilter.trim().toLowerCase();
-    return all.filter((m) => {
-      if (q && !(m.content ?? "").toLowerCase().includes(q)) return false;
-      if (ty && (m.memory_type ?? "").toLowerCase() !== ty) return false;
-      if (tag) {
-        const tags = ((m as unknown as { tags?: string[] }).tags ?? []).map(
-          (t) => t.toLowerCase(),
-        );
-        if (!tags.includes(tag)) return false;
-      }
-      return true;
-    });
-  }, [data, searchQuery, typeFilter, tagFilter]);
+  const list = data ?? [];
   const [adding, setAdding] = useState(false);
-
-  /* Register UI handlers for the orchestrator's `memories_*` tools.
-   * Sort + limit feed the existing query state so the agent can
-   * mutate either; search / filter layer on top in-memory. */
-  useEffect(() => {
-    return registerTools("memories", [
-      {
-        name: "list",
-        description: "Refetch the memory list with current sort + limit.",
-        run: () => {
-          setSearchQuery("");
-          setTypeFilter("");
-          setTagFilter("");
-          refetch();
-        },
-      },
-      {
-        name: "refresh",
-        description: "Refetch only.",
-        run: () => refetch(),
-      },
-      {
-        name: "sort_by_confidence",
-        description: "Sort memories by confidence, descending.",
-        run: () => setBy("confidence"),
-      },
-      {
-        name: "sort_by_recency",
-        description: "Sort memories by recency, descending.",
-        run: () => setBy("recency"),
-      },
-      {
-        name: "set_limit",
-        description: "Update the fetch limit (1-200).",
-        args: { limit: "number" },
-        run: (args) => {
-          const n = Number(args.limit);
-          if (!Number.isFinite(n)) return;
-          setLimit(Math.max(1, Math.min(200, Math.floor(n))));
-        },
-      },
-      {
-        name: "search",
-        description: "Free-text filter over memory content. Empty clears.",
-        args: { query: "string" },
-        run: (args) => {
-          setSearchQuery(typeof args.query === "string" ? args.query : "");
-        },
-      },
-      {
-        name: "filter_by_type",
-        description: "Restrict the list to one memory_type. Empty clears.",
-        args: { memory_type: "string" },
-        run: (args) => {
-          setTypeFilter(
-            typeof args.memory_type === "string" ? args.memory_type : "",
-          );
-        },
-      },
-      {
-        name: "filter_by_tag",
-        description: "Restrict the list to memories carrying this tag. Empty clears.",
-        args: { tag: "string" },
-        run: (args) => {
-          setTagFilter(typeof args.tag === "string" ? args.tag : "");
-        },
-      },
-      {
-        name: "read_related_entity",
-        description: "Narration hook — agent describes the entity binding.",
-        run: () => {
-          /* Bindings already shown on the row; pure read. */
-        },
-      },
-      {
-        name: "read_related_integration",
-        description: "Narration hook — agent describes the integration binding.",
-        run: () => {
-          /* Bindings already shown on the row; pure read. */
-        },
-      },
-      {
-        name: "export_selected",
-        description:
-          "Narration hook — orchestrator handles serialization; UI just refreshes.",
-        run: () => refetch(),
-      },
-    ]);
-  }, [refetch]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -226,7 +116,7 @@ export function MemoriesWindow({
                       from {m.source}
                     </span>
                   )}
-                  {m.tags.slice(0, 4).map((t) => (
+                  {m.tags?.slice(0, 4).map((t) => (
                     <span
                       key={t}
                       className="rounded bg-paper-2 px-1.5 py-0.5 font-mono text-[9px] text-ink-35"
@@ -285,8 +175,9 @@ function QuickAddMemory({
   onCancel: () => void;
   onSaved: () => void;
 }) {
+  type MemoryType = NonNullable<AddMemoryBody["memory_type"]>;
   const [content, setContent] = useState("");
-  const [type, setType] = useState("fact");
+  const [type, setType] = useState<MemoryType>("fact");
   const [confidence, setConfidence] = useState(0.7);
   const [aboutEntityId, setAboutEntityId] = useState("");
   const [aboutIntegration, setAboutIntegration] = useState("");
@@ -329,7 +220,7 @@ function QuickAddMemory({
         <input
           type="text"
           value={type}
-          onChange={(e) => setType(e.target.value)}
+          onChange={(e) => setType(e.target.value as MemoryType)}
           placeholder="type"
           className="w-24 rounded border border-rule/50 bg-paper-2/40 px-2 py-1 font-mono text-[11px] text-ink-90 focus:border-accent-indigo/50 focus:outline-none"
         />

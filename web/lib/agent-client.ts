@@ -1,10 +1,9 @@
 "use client";
 
 import { createParser, type EventSourceMessage } from "eventsource-parser";
-import { useAgentStore, type WindowKind, type RoomKind } from "./store";
-import { callRoomTool } from "./room-tools";
+import { useAgentStore, type WindowKind } from "./store";
 import { buildSnapshot } from "./agent/snapshot";
-import { addChat } from "./kg-client";
+import { addChat } from "./api/backend";
 import { canvasActionForEvent } from "./agent/canvas-reducer";
 
 /* IDs of chat messages already persisted so retries (eg. duplicate
@@ -69,12 +68,6 @@ async function persistChatTurn(userId: string | null): Promise<void> {
 
 export type AgentEvent =
   | {
-      type: "ui.room";
-      room: RoomKind;
-      slug?: string;
-      payload?: Record<string, unknown>;
-    }
-  | {
       type: "ui.card";
       card: {
         id: string;
@@ -83,15 +76,7 @@ export type AgentEvent =
         ttl?: number;
       };
     }
-  | { type: "ui.close_window"; room?: RoomKind }
   | { type: "ui.canvas"; action: import("./agent/canvas-reducer").CanvasAction }
-  | {
-      type: "ui.tool";
-      room: RoomKind;
-      tool: string;
-      args?: Record<string, unknown>;
-    }
-  /* ── V1 tool-window events ── */
   | {
       type: "ui.tool.open";
       kind: WindowKind;
@@ -137,14 +122,6 @@ export function applyAgentEvent(evt: AgentEvent): void {
     }
   }
   switch (evt.type) {
-    case "ui.room":
-      break;
-    case "ui.tool": {
-      // In-window tools work in BOTH modes.
-      // Fire-and-forget; agents don't await tool side-effects in the event stream.
-      void callRoomTool(evt.room, evt.tool, evt.args ?? {});
-      break;
-    }
     case "ui.card":
       s.pushCard({
         id: evt.card.id,
@@ -217,16 +194,6 @@ export function applyAgentEvent(evt: AgentEvent): void {
   }
 }
 
-/** Sentinel thrown when the orchestrate route signals it can't run
- *  (e.g. no API key). Callers should catch this and degrade to the
- *  scripted local fallback (`routeIntent` from `agent-router.ts`). */
-export class AgentFallback extends Error {
-  constructor(public reason: string) {
-    super(reason);
-    this.name = "AgentFallback";
-  }
-}
-
 async function consumeSSE(
   body: ReadableStream<Uint8Array>,
   signal?: AbortSignal,
@@ -255,49 +222,30 @@ async function consumeSSE(
   }
 }
 
-/** Send a user query to the orchestrator, posting a fresh canvas
- *  snapshot so the agent has eyes. Throws `AgentFallback` if the route
- *  is unreachable or returns 503 (no key). The chat input catches that
- *  and runs `routeIntent()` locally so the demo still works. */
+/** Send a user query to the server orchestrator with the current card context. */
 export async function sendQuery(
   query: string,
   signal?: AbortSignal,
 ): Promise<void> {
-  let live = false;
-  try {
-    const status = await fetch("/api/agent/orchestrate", { signal });
-    if (!status.ok) throw new Error(`agent status returned ${status.status}`);
-    const result = (await status.json()) as { live?: unknown };
-    live = result.live === true;
-  } catch (err) {
-    if (signal?.aborted) throw err;
-    if (err instanceof AgentFallback) throw err;
-    throw new AgentFallback(
-      err instanceof Error ? err.message : "agent status unavailable",
-    );
-  }
-  if (!live) throw new AgentFallback("live agent is not configured");
-
-  const snapshot = buildSnapshot({ query });
+  const snapshot = buildSnapshot();
   let res: Response;
   try {
     res = await fetch("/api/agent/orchestrate", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ query, snapshot }),
+      body: JSON.stringify({
+        query,
+        snapshot,
+        userId: useAgentStore.getState().userId ?? null,
+      }),
       signal,
     });
-  } catch (err) {
-    throw new AgentFallback(
-      err instanceof Error ? err.message : "network error",
-    );
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : "network error");
   }
 
-  if (res.status === 503 || res.headers.get("x-agent-fallback") === "local") {
-    throw new AgentFallback("no API key configured");
-  }
   if (!res.ok || !res.body) {
-    throw new AgentFallback(`orchestrate returned ${res.status}`);
+    throw new Error(`orchestrate returned ${res.status}`);
   }
 
   await consumeSSE(res.body, signal);

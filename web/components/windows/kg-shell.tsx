@@ -9,7 +9,7 @@
  */
 
 import type { ReactNode } from "react";
-import type { BackendError } from "@/lib/kg-client";
+import type { BackendError } from "@/lib/api/backend";
 import { cn } from "@/lib/cn";
 
 export function KgShell({

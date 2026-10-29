@@ -142,12 +142,14 @@ export function toGraph(bundle: KgBundle): {
   }
 
   /* skills */
+  const integrationsBySkill = new Map<string, string[]>();
   for (const s of bundle.skills) {
     pushNode(acc, {
       id: s.id,
       label: s.name,
       layer: "skill",
     });
+    integrationsBySkill.set(s.slug, s.integrations ?? []);
     for (const integSlug of s.integrations ?? []) {
       pushLink(acc, s.id, integrationId(integSlug), "uses");
     }
@@ -170,6 +172,9 @@ export function toGraph(bundle: KgBundle): {
       if (!slug) continue;
       const skillId = `skill:${slug}`;
       pushLink(acc, w.id, skillId, `step ${step.step_order}`);
+      for (const integration of integrationsBySkill.get(slug) ?? []) {
+        pushLink(acc, w.id, integrationId(integration), "uses");
+      }
     }
   }
 

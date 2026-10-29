@@ -1,61 +1,28 @@
-import { useAgentStore, type AgentStoreState, type WindowState } from "@/lib/store";
-import { WINDOW_REGISTRY } from "@/components/windows/registry";
-import { topWindow } from "./canvas-reducer";
-import type { CanvasSnapshot, WindowSnapshot } from "./types";
+import { useAgentStore } from "@/lib/store";
+import type { CanvasSnapshot } from "./types";
 
-let CANVAS_T0 = typeof performance !== "undefined" ? performance.now() : Date.now();
-
-function nowMs(): number {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
-}
-
-function snapshotWindow(
-  win: WindowState,
-  state: AgentStoreState,
-  focusedId: string | null,
-): WindowSnapshot {
-  let summary = "";
-  try {
-    summary = WINDOW_REGISTRY[win.kind]?.summary(state, win) ?? "";
-  } catch {
-    summary = "";
-  }
-  return {
-    id: win.id,
-    kind: win.kind,
-    ...(win.payload ? { payload: win.payload } : {}),
-    focused: win.id === focusedId,
-    openedAt: Math.max(0, Math.round(win.openedAt - CANVAS_T0)),
-    summary,
-  };
-}
-
-export function buildSnapshot(opts?: { query?: string }): CanvasSnapshot {
+export function buildSnapshot(): CanvasSnapshot {
   const state = useAgentStore.getState();
-  const focusedId = topWindow(state.windows)?.id ?? null;
-  const windows = state.windows.map((window) =>
-    snapshotWindow(window, state, focusedId),
-  );
-
+  const current = state.windows.at(-1);
+  const recentCards = state.chatMessages
+    .flatMap((message) => message.cards ?? [])
+    .map((card) => ({
+      kind: card.kind,
+      ...(typeof card.payload?.focus === "string"
+        ? { focus: card.payload.focus }
+        : {}),
+    }))
+    .slice(-5);
   return {
-    focusedId,
-    windows,
-    user: {
-      query: opts?.query ?? "",
-      lastQuery: state.lastQuery || undefined,
-      userId: state.userId ?? null,
-    },
-    integrations: state.connections.map((connection) => ({
-      slug: connection.slug,
-      status: connection.status,
-    })),
-    backend: state.backendHealth
+    open: current
       ? {
-          surrealOk: state.backendHealth.surrealOk,
-          composioOk: state.backendHealth.composioOk,
-          composioConfigured: state.backendHealth.composioConfigured,
+          kind: current.kind,
+          ...(typeof current.payload?.focus === "string"
+            ? { focus: current.payload.focus }
+            : {}),
         }
-      : undefined,
+      : null,
+    recentCards,
   };
 }
 

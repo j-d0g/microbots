@@ -13,7 +13,7 @@ export function ChatHeader({
   canClear: boolean;
 }) {
   const health = useAgentStore((state) => state.backendHealth);
-  const degraded = !!health && (!health.surrealOk || !health.composioOk);
+  const degraded = !!health && (!health.apiOk || !health.surrealOk);
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-rule px-5">

@@ -72,6 +72,7 @@ export type ConnectionStatus =
   | "FAILED";
 
 export interface BackendHealthMirror {
+  apiOk: boolean;
   surrealOk: boolean;
   composioOk: boolean;
   composioConfigured: boolean;

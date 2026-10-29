@@ -22,7 +22,8 @@ const DEFAULT_BASE = "http://localhost:8001";
 /** Resolved at module load. SSR-safe — falls back to the default. */
 export const BASE_URL: string =
   (typeof process !== "undefined" &&
-    process.env.NEXT_PUBLIC_MICROBOTS_BASE_URL) ||
+    (process.env.NEXT_PUBLIC_KG_API_BASE ||
+      process.env.NEXT_PUBLIC_MICROBOTS_BASE_URL)) ||
   DEFAULT_BASE;
 
 /** Toolkit slugs the live Composio account has enabled. The list is
@@ -40,6 +41,23 @@ export const TOOLKIT_SLUGS = [
 export type ToolkitSlug = (typeof TOOLKIT_SLUGS)[number];
 
 /* ============================== types ============================= */
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  role: string;
+  goals: string[];
+  preferences: Record<string, unknown>;
+  context_window: number;
+  created_at: string;
+  updated_at: string;
+  chat_count: number;
+  memory_count: number;
+  entity_count: number;
+  skill_count: number;
+  workflow_count: number;
+  integration_count: number;
+}
 
 export type ConnectionStatus =
   | "INITIATED"
@@ -75,23 +93,6 @@ export interface ConnectResponse {
   status: string; // "INITIATED" | "ACTIVE"
 }
 
-export interface UserProfile {
-  id: string;
-  name: string;
-  role: string;
-  goals: string[];
-  preferences: Record<string, unknown>;
-  context_window: number;
-  created_at: string;
-  updated_at: string;
-  chat_count: number;
-  memory_count: number;
-  entity_count: number;
-  skill_count: number;
-  workflow_count: number;
-  integration_count: number;
-}
-
 export interface IntegrationSummary {
   slug: string;
   name: string;
@@ -108,6 +109,11 @@ export interface IntegrationDetail extends IntegrationSummary {
   skills?: Skill[];
 }
 
+export type RecordId = string;
+export type Slug = string;
+export type ISO8601 = string;
+export type Integration = IntegrationSummary;
+
 export interface Memory {
   id: string;
   content: string;
@@ -117,6 +123,7 @@ export interface Memory {
   integration_slugs?: string[];
   tags?: string[];
   created_at?: string;
+  updated_at?: ISO8601;
 }
 
 export interface Skill {
@@ -126,8 +133,35 @@ export interface Skill {
   description: string;
   frequency?: string;
   strength: number;
+  steps: string[];
   tags?: string[];
-  integrations?: string[];
+  integrations: string[];
+}
+
+export interface Entity extends EntityRow {
+  description?: string;
+  aliases: string[];
+  tags: string[];
+  chat_mention_count: number;
+}
+
+export interface EntityDetail extends Entity {
+  appears_in_edges: {
+    integration_slug: Slug;
+    handle?: string;
+    role?: string;
+  }[];
+  mentions: {
+    chat_id: RecordId;
+    title?: string;
+    source_type: string;
+    mention_type: string;
+  }[];
+}
+
+export interface WorkflowSkillStep {
+  skill_slug: Slug;
+  step_order: number;
 }
 
 export interface Workflow {
@@ -137,13 +171,16 @@ export interface Workflow {
   description: string;
   trigger?: string;
   outcome?: string;
-  skill_chain?: { skill_slug: string; step_order: number }[];
+  frequency?: string;
+  tags: string[];
+  skill_chain: WorkflowSkillStep[];
 }
 
 export interface EntityRow {
   id: string;
   name: string;
   entity_type: string;
+  description?: string;
   aliases?: string[];
   tags?: string[];
   chat_mention_count?: number;
@@ -280,57 +317,98 @@ export function getKgUser(userId?: string | null): Promise<UserProfile> {
 
 export function getKgIntegrations(
   userId?: string | null,
+  signal?: AbortSignal,
 ): Promise<IntegrationSummary[]> {
-  return api<IntegrationSummary[]>("/api/kg/integrations", { userId });
+  return api<IntegrationSummary[]>("/api/kg/integrations", { userId, signal });
 }
 
 export function getKgIntegration(
   slug: string,
   userId?: string | null,
   limit = 10,
+  signal?: AbortSignal,
 ): Promise<IntegrationDetail> {
   return api<IntegrationDetail>(
     `/api/kg/integrations/${encodeURIComponent(slug)}?limit=${limit}`,
-    { userId },
+    { userId, signal },
   );
 }
 
+export const getIntegrations = getKgIntegrations;
+export const getIntegration = getKgIntegration;
+
 export function getKgMemories(
-  opts: { by?: "confidence" | "recency"; limit?: number } = {},
+  opts: GetMemoriesOpts = {},
   userId?: string | null,
+  signal?: AbortSignal,
 ): Promise<Memory[]> {
   const by = opts.by ?? "confidence";
   const limit = opts.limit ?? 20;
   return api<Memory[]>(
     `/api/kg/memories?by=${by}&limit=${limit}`,
-    { userId },
+    { userId, signal },
   );
 }
+
+export type GetMemoriesOpts = { by?: "confidence" | "recency"; limit?: number };
+export const getMemories = getKgMemories;
 
 export function getKgSkills(
   opts: { minStrength?: number } = {},
   userId?: string | null,
+  signal?: AbortSignal,
 ): Promise<Skill[]> {
   const min = opts.minStrength ?? 1;
-  return api<Skill[]>(`/api/kg/skills?min_strength=${min}`, { userId });
+  return api<Skill[]>(`/api/kg/skills?min_strength=${min}`, { userId, signal });
 }
 
-export function getKgWorkflows(userId?: string | null): Promise<Workflow[]> {
-  return api<Workflow[]>("/api/kg/workflows", { userId });
+export const getSkills = getKgSkills;
+
+export function getKgWorkflows(
+  userId?: string | null,
+  signal?: AbortSignal,
+): Promise<Workflow[]> {
+  return api<Workflow[]>("/api/kg/workflows", { userId, signal });
 }
+
+export const getWorkflows = getKgWorkflows;
 
 export function getKgEntityTypes(
   userId?: string | null,
+  signal?: AbortSignal,
 ): Promise<EntityTypeCount[]> {
-  return api<EntityTypeCount[]>("/api/kg/entity-types", { userId });
+  return api<EntityTypeCount[]>("/api/kg/entity-types", { userId, signal });
 }
+
+export const getEntityTypes = getKgEntityTypes;
 
 export function getKgEntities(
   entityType?: string,
   userId?: string | null,
+  signal?: AbortSignal,
 ): Promise<EntityRow[]> {
   const q = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : "";
-  return api<EntityRow[]>(`/api/kg/entities${q}`, { userId });
+  return api<EntityRow[]>(`/api/kg/entities${q}`, { userId, signal });
+}
+
+export function getEntities(
+  entityType?: string,
+  userId?: string | null,
+  signal?: AbortSignal,
+): Promise<Entity[]> {
+  const q = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : "";
+  return api<Entity[]>(`/api/kg/entities${q}`, { userId, signal });
+}
+
+export function getEntity(
+  id: RecordId,
+  userId?: string | null,
+  signal?: AbortSignal,
+): Promise<EntityDetail> {
+  return api<EntityDetail>(`/api/kg/entities/${encodeURIComponent(id)}`, {
+    userId,
+    signal,
+  });
 }
 
 /* ============================== KG writes ========================= */
@@ -432,36 +510,61 @@ export function addChat(
   return api("/api/kg/chats", { method: "POST", body, userId });
 }
 
-export interface WriteWikiPageBody {
+export interface ChatRow {
+  id: RecordId;
   content: string;
-  rationale?: string;
+  source_type: string;
+  source_id?: string;
+  title?: string;
+  summary?: string;
+  signal_level?: "low" | "mid" | "high";
+  occurred_at?: ISO8601;
 }
 
-export function writeWikiPage(
-  path: string,
-  body: WriteWikiPageBody,
+export function getChats(
+  opts: { sourceType?: string; limit?: number } = {},
   userId?: string | null,
-): Promise<{ path: string; revision: number }> {
-  return api(`/api/kg/wiki/${encodeURIComponent(path)}`, {
-    method: "PUT",
-    body,
-    userId,
+  signal?: AbortSignal,
+): Promise<ChatRow[]> {
+  const sourceType = opts.sourceType ?? "ui_chat";
+  const limit = opts.limit ?? 50;
+  const query = new URLSearchParams({
+    source_type: sourceType,
+    limit: String(limit),
   });
+  return api<ChatRow[]>(`/api/kg/chats?${query}`, { userId, signal });
 }
 
-export interface UpdateUserProfileBody {
+export type SearchScope = "memories" | "entities" | "workflows" | "all";
+
+export interface KnowledgeSearchResult {
+  kind: "memories" | "entities" | "workflows" | "integrations";
+  id: string;
+  focus: string;
+  snippet: string;
+  score: number;
   name?: string;
-  role?: string;
-  goals?: string[];
-  preferences?: Record<string, unknown>;
-  context_window?: number; // 512–200000
+  connections?: Array<{ slug?: string; name?: string }>;
 }
 
-export function updateUser(
-  body: UpdateUserProfileBody,
+export interface KnowledgeSearchResponse {
+  query: string;
+  scope: SearchScope;
+  count: number;
+  results: KnowledgeSearchResult[];
+}
+
+export function searchKg(
+  query: string,
+  scope: SearchScope = "all",
   userId?: string | null,
-): Promise<UserProfile> {
-  return api("/api/kg/user", { method: "PATCH", body, userId });
+  signal?: AbortSignal,
+): Promise<KnowledgeSearchResponse> {
+  const params = new URLSearchParams({ query, scope });
+  return api<KnowledgeSearchResponse>(`/api/kg/search?${params}`, {
+    userId,
+    signal,
+  });
 }
 
 /* ============================== system ============================ */

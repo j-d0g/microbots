@@ -58,6 +58,44 @@ SELECT *,
 FROM memory ORDER BY {order_field} DESC LIMIT $limit
 """
 
+Q_SEARCH_MEMORIES = """
+SELECT id, content, confidence
+FROM memory
+WHERE string::contains(string::lowercase(content), string::lowercase($query))
+ORDER BY confidence DESC
+LIMIT $limit
+"""
+
+Q_SEARCH_ENTITIES = """
+SELECT id, name, entity_type, description, tags
+FROM entity
+WHERE string::contains(string::lowercase(name), string::lowercase($query))
+    OR string::contains(string::lowercase(description ?? ''), string::lowercase($query))
+ORDER BY name ASC
+LIMIT $limit
+"""
+
+Q_SEARCH_WORKFLOWS = """
+SELECT id, slug, name, description
+FROM workflow
+WHERE string::contains(string::lowercase(name), string::lowercase($query))
+    OR string::contains(string::lowercase(description ?? ''), string::lowercase($query))
+    OR string::contains(string::lowercase(slug), string::lowercase($query))
+ORDER BY name ASC
+LIMIT $limit
+"""
+
+Q_SEARCH_INTEGRATIONS = """
+SELECT slug, name,
+    (SELECT out.slug AS slug, out.name AS name FROM co_used_with WHERE in = $parent.id) AS connections,
+    (SELECT in.slug AS slug, in.name AS name FROM co_used_with WHERE out = $parent.id) AS incoming_connections
+FROM integration
+WHERE string::contains(string::lowercase(name), string::lowercase($query))
+    OR string::contains(string::lowercase(slug), string::lowercase($query))
+ORDER BY name ASC
+LIMIT $limit
+"""
+
 Q_SKILLS_ALL = """
 SELECT
     id, name, slug, description, steps, frequency, strength, tags,

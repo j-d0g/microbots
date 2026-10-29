@@ -1,59 +1,37 @@
-"use client";
-
-import type { AgentEvent } from "./agent-client";
-import type { RoomKind } from "./store";
+import type { WindowKind } from "./store";
 
 const INTENTS: ReadonlyArray<{
   keywords: readonly string[];
-  rooms: readonly RoomKind[];
+  kinds: readonly WindowKind[];
 }> = [
-  { keywords: ["graph", "map", "knowledge"], rooms: ["graph"] },
-  { keywords: ["memor"], rooms: ["memories"] },
+  { keywords: ["graph", "map", "knowledge"], kinds: ["graph"] },
+  { keywords: ["memor"], kinds: ["memories"] },
   {
     keywords: ["workflow", "playbook", "automation", "bug triage", "deploy", "pr review"],
-    rooms: ["workflows"],
+    kinds: ["workflows"],
   },
-  { keywords: ["skill"], rooms: ["skills"] },
+  { keywords: ["skill"], kinds: ["skills"] },
   {
     keywords: ["integration", "connect", "stack", "slack", "github", "linear", "gmail", "notion"],
-    rooms: ["integrations"],
+    kinds: ["integrations"],
   },
   {
     keywords: ["entit", "people", "contact", "team", "members"],
-    rooms: ["entities"],
+    kinds: ["entities"],
   },
   {
     keywords: ["brief", "today", "morning"],
-    rooms: ["memories", "workflows"],
+    kinds: ["memories", "workflows"],
   },
 ];
 
-const LOCAL_MODE_REPLY =
-  "local mode — try: graph, memories, workflows, skills, or integrations";
-
-export function matchLocalIntent(query: string): RoomKind[] {
+export function matchLocalIntent(query: string): WindowKind[] {
   const normalized = query.toLowerCase();
-  const rooms = new Set<RoomKind>();
-
+  const kinds = new Set<WindowKind>();
   for (const intent of INTENTS) {
     if (intent.keywords.some((keyword) => normalized.includes(keyword))) {
-      for (const room of intent.rooms) rooms.add(room);
+      for (const kind of intent.kinds) kinds.add(kind);
     }
   }
-
-  return [...rooms];
-}
-
-export async function* routeIntent(query: string): AsyncGenerator<AgentEvent> {
-  const rooms = matchLocalIntent(query);
-  const reply = rooms.length
-    ? `opening ${rooms.map((room) => room.replace(/_/g, " ")).join(" and ")} (local mode)`
-    : LOCAL_MODE_REPLY;
-
-  yield { type: "dock", state: "thinking" };
-  yield { type: "reply.start", query };
-  for (const room of rooms) yield { type: "ui.room", room };
-  yield { type: "reply.chunk", text: reply };
-  yield { type: "reply.done" };
-  yield { type: "dock", state: "idle" };
+  return [...kinds];
 }
