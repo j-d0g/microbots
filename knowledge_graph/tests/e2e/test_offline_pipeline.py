@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import pydantic_ai.models
@@ -11,6 +12,33 @@ from ingest.__main__ import _run
 from ingest.db import unwrap_surreal_rows
 from ingest.pullers import enabled_integrations
 from wiki.orchestrator import run_wiki
+
+
+async def test_offline_entity_resolution_without_chat_ids_uses_all_entities(
+    test_db, test_db_config, monkeypatch
+):
+    from enrich import entity_resolver
+
+    await test_db.query("""
+        CREATE entity:no_chat_ids_probe CONTENT {
+            name: "Entity resolved without chat IDs",
+            entity_type: "person"
+        }
+    """)
+    test_db_config.offline = True
+    prompts = []
+
+    class FakeAgent:
+        async def run(self, user, **kwargs):
+            prompts.append(user)
+            return SimpleNamespace(output=entity_resolver.EntityResolutionResult())
+
+    monkeypatch.setattr(
+        entity_resolver, "build_entity_agent", lambda config: FakeAgent()
+    )
+
+    assert await entity_resolver.resolve_entities([], test_db_config, test_db) == 0
+    assert any("Entity resolved without chat IDs" in prompt for prompt in prompts)
 
 
 async def _counts(db):

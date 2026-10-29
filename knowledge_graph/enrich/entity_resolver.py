@@ -76,9 +76,7 @@ async def resolve_entities(
     config: Config,
     db: AsyncSurreal,
 ) -> int:
-    if config.offline:
-        if not new_chat_ids:
-            return 0
+    if config.offline and new_chat_ids:
         mention_rows = unwrap_surreal_rows(await db.query(
             "SELECT out FROM chat_mentions WHERE in IN $chat_ids",
             {"chat_ids": new_chat_ids},
