@@ -16,7 +16,7 @@
  */
 
 import { streamText, stepCountIs } from "ai";
-import { chatModel } from "./providers/openrouter";
+import { agentModel } from "./providers/openrouter";
 import {
   metaTools,
   v1WorkTools,
@@ -313,7 +313,7 @@ const WINDOW_TOOL_FACTORIES: Record<
 function getCentreStageWindowKind(
   ctx: AgentToolCtx,
 ): { kind: WindowKind | null; source: "centre" | "focused" | "none" } {
-  const wins = ctx.snapshot.windows.map((w) => ({
+  const wins = ctx.snapshot.windows.filter((w) => !w.minimized).map((w) => ({
     id: w.id,
     kind: w.kind,
     zIndex: w.zIndex,
@@ -326,7 +326,7 @@ function getCentreStageWindowKind(
     const centre = ctx.snapshot.windows.find((w) => w.id === centreId);
     if (centre) return { kind: centre.kind as WindowKind, source: "centre" };
   }
-  const focused = ctx.snapshot.windows.find((w) => w.focused);
+  const focused = ctx.snapshot.windows.find((w) => w.focused && !w.minimized);
   if (focused) return { kind: focused.kind as WindowKind, source: "focused" };
   return { kind: null, source: "none" };
 }
@@ -393,7 +393,7 @@ ${skills.join("\n---\n")}`
     : "";
 
   const stream = streamText({
-    model: chatModel(),
+    model: agentModel(),
     system: ORCH_SYSTEM + skillBlock,
     prompt: `${snapshotToPrompt(ctx.snapshot, { includeGrid: false, includeRecentActions: false })}
 

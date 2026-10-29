@@ -58,6 +58,7 @@ export interface WindowSnapshot {
   rect: RectPct;
   zIndex: number;
   focused: boolean;
+  minimized?: boolean;
   /** Whether the user (or agent) has pinned this window. Required for
    *  the orchestrator to compute the stage layout server-side and pick
    *  centre-stage tools instead of plain top-z tools. */

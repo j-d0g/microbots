@@ -14,7 +14,8 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { applyToolToSnapshot } from "./server-snapshot";
+import { applyCanvasToSnapshot, applyToolToSnapshot } from "./server-snapshot";
+import { canvasActionForEvent, LAYOUT_PRESET_NAMES } from "./canvas-reducer";
 import { getKgWorkflows, getKgMemories } from "@/lib/api/backend";
 import type { MountPoint } from "./types";
 import type { AgentEvent } from "@/lib/agent-client";
@@ -35,6 +36,21 @@ export interface AgentToolCtx {
   emit: (event: AgentEvent) => void;
 }
 
+export function createToolCtx(
+  snapshot: import("./types").CanvasSnapshot,
+  send: (event: AgentEvent) => void,
+): AgentToolCtx {
+  const ctx: AgentToolCtx = {
+    snapshot,
+    emit: (event) => {
+      const action = canvasActionForEvent(event);
+      if (action) ctx.snapshot = applyCanvasToSnapshot(ctx.snapshot, action);
+      send(event);
+    },
+  };
+  return ctx;
+}
+
 /** Helper that emits the tool-start chip, the underlying UI events,
  *  mutates the server-side snapshot mirror, and emits tool-done. The
  *  return string is what the agent sees as the tool's result on its
@@ -44,13 +60,14 @@ function applyAndEmit(
   toolName: string,
   args: Record<string, unknown>,
   uiEvents: AgentEvent[],
+  resultOptions?: { ok?: boolean; message?: string },
 ): string {
   ctx.emit({ type: "agent.tool.start", name: toolName, args });
   for (const e of uiEvents) ctx.emit(e);
-  const result = applyToolToSnapshot(ctx.snapshot, toolName, args);
+  const result = applyToolToSnapshot(ctx.snapshot, toolName, args, resultOptions?.ok);
   ctx.snapshot = result.snapshot;
   ctx.emit({ type: "agent.tool.done", name: toolName, ok: (result.ok ?? true) });
-  return result.message;
+  return resultOptions?.message ?? result.message;
 }
 
 /* ------------------------------------------------------------------ *
@@ -93,19 +110,7 @@ export const MOUNT_POINT = z.enum([
   "pip-tr",
 ]);
 
-/** Layout preset names — kept in sync with `LAYOUT_PRESET_NAMES` in
- *  `server-snapshot.ts`. The simulator owns the geometry; this enum
- *  is just the wire shape the agent sees. */
-export const LAYOUT_PRESET = z.enum([
-  "focus",
-  "split",
-  "grid",
-  "stack-right",
-  "spotlight",
-  "theater",
-  "reading",
-  "triptych",
-]);
+export const LAYOUT_PRESET = z.enum(LAYOUT_PRESET_NAMES);
 
 /* ------------------------------------------------------------------ *
  *  Meta tools (window management)
@@ -121,10 +126,13 @@ export function metaTools(ctx: AgentToolCtx) {
         mount: MOUNT_POINT.optional().default("full"),
       }),
       execute: async ({ kind, mount }) => {
-        const events: AgentEvent[] = [
-          { type: "ui.room", room: kind as WindowKind },
-        ];
-        return applyAndEmit(ctx, "open_window", { kind, mount }, events);
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "open", kind: kind as WindowKind, mount: mount as MountPoint, openedBy: "agent" },
+        }];
+        return applyAndEmit(ctx, "open_window", { kind, mount }, events, {
+          message: `Opened ${kind} at ${mount}.`,
+        });
       },
     }),
 
@@ -136,10 +144,19 @@ export function metaTools(ctx: AgentToolCtx) {
         kind: WINDOW_KIND.optional(),
       }),
       execute: async ({ id, kind }) => {
-        const events: AgentEvent[] = [
-          { type: "ui.close_window", room: kind as WindowKind | undefined },
-        ];
-        return applyAndEmit(ctx, "close_window", { id, kind }, events);
+        const matches = ctx.snapshot.windows.some((window) =>
+          !window.minimized && (id ? window.id === id : kind ? window.kind === kind : window.id === ctx.snapshot.focusedId),
+        );
+        const events: AgentEvent[] = matches
+          ? [{ type: "ui.canvas", action: { type: "close", id, kind } }]
+          : [];
+        return applyAndEmit(
+          ctx,
+          "close_window",
+          { id, kind },
+          events,
+          matches ? undefined : { ok: false, message: "No window matched the close request." },
+        );
       },
     }),
 
@@ -151,10 +168,13 @@ export function metaTools(ctx: AgentToolCtx) {
         kind: WINDOW_KIND.optional(),
       }),
       execute: async ({ id, kind }) => {
-        const events: AgentEvent[] = kind
-          ? [{ type: "ui.room", room: kind as WindowKind }]
-          : [];
-        return applyAndEmit(ctx, "focus_window", { id, kind }, events);
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "focus", id, kind: kind as WindowKind | undefined },
+        }];
+        return applyAndEmit(ctx, "focus_window", { id, kind }, events, {
+          message: `Focused ${kind ?? id ?? "window"}.`,
+        });
       },
     }),
 
@@ -163,28 +183,12 @@ export function metaTools(ctx: AgentToolCtx) {
         "Tile every open window using a named preset. Rare — stage-manager auto-positions. Presets: focus | split | grid | stack-right | spotlight | theater | reading | triptych.",
       inputSchema: z.object({ layout: LAYOUT_PRESET }),
       execute: async ({ layout }) => {
-        ctx.emit({
-          type: "agent.tool.start",
-          name: "arrange_windows",
-          args: { layout },
+        return applyAndEmit(ctx, "arrange_windows", { layout }, [{
+          type: "ui.canvas",
+          action: { type: "arrange", layout: layout as import("./canvas-reducer").LayoutPreset },
+        }], {
+          message: `Arranged ${ctx.snapshot.windows.length} windows as ${layout}.`,
         });
-        const result = applyToolToSnapshot(ctx.snapshot, "arrange_windows", {
-          layout,
-        });
-        ctx.snapshot = result.snapshot;
-        for (const w of ctx.snapshot.windows) {
-          ctx.emit({
-            type: "ui.resize",
-            room: w.kind as WindowKind,
-            rect: pctRectToPx(w.rect, ctx.snapshot.viewport),
-          });
-        }
-        ctx.emit({
-          type: "agent.tool.done",
-          name: "arrange_windows",
-          ok: (result.ok ?? true),
-        });
-        return result.message;
       },
     }),
 
@@ -193,11 +197,10 @@ export function metaTools(ctx: AgentToolCtx) {
         "Close every open window. Use sparingly — only when the user explicitly asks for a clean slate.",
       inputSchema: z.object({}),
       execute: async () => {
-        const events: AgentEvent[] = ctx.snapshot.windows.map((w) => ({
-          type: "ui.close_window" as const,
-          room: w.kind as WindowKind,
-        }));
-        return applyAndEmit(ctx, "clear_canvas", {}, events);
+        const events: AgentEvent[] = [{ type: "ui.canvas", action: { type: "clear" } }];
+        return applyAndEmit(ctx, "clear_canvas", {}, events, {
+          message: "Cleared the canvas.",
+        });
       },
     }),
   };
@@ -520,19 +523,6 @@ export function graphTools(ctx: AgentToolCtx) {
 /* ------------------------------------------------------------------ *
  *  helpers
  * ------------------------------------------------------------------ */
-
-function pctRectToPx(
-  rect: { x: number; y: number; w: number; h: number },
-  viewport: { w: number; h: number },
-): { x: number; y: number; w: number; h: number } {
-  const usableH = Math.max(200, viewport.h - 80);
-  return {
-    x: Math.round((rect.x / 100) * viewport.w),
-    y: Math.round((rect.y / 100) * usableH),
-    w: Math.round((rect.w / 100) * viewport.w),
-    h: Math.round((rect.h / 100) * usableH),
-  };
-}
 
 export type MetaToolBag = ReturnType<typeof metaTools>;
 export type V1WorkToolBag = ReturnType<typeof v1WorkTools>;

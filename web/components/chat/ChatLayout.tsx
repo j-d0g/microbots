@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { ChatPanel } from "./ChatPanel";
 import { EmbeddedRoom } from "./EmbeddedRoom";
 import { useAgentStore } from "@/lib/store";
-import { getDummyPayload } from "@/lib/chat-dummy-payloads";
 
 /**
  * Chat mode: split view.
@@ -40,7 +39,7 @@ export function ChatLayout() {
       s.bringToFront(existing.id);
       return;
     }
-    s.openWindow(chatRoom, { payload: getDummyPayload(chatRoom) });
+    s.openWindow(chatRoom);
     // chatRoom is intentionally the only dependency — re-running on
     // window-array changes would loop.
   }, [chatRoom]);

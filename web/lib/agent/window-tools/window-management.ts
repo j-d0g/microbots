@@ -18,10 +18,10 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { applyToolToSnapshot } from "../server-snapshot";
-import type { MountPoint, CanvasSnapshot, RectPct } from "../types";
+import type { CanvasSnapshot, MountPoint } from "../types";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
-import type { AgentToolCtx } from "../tools";
+import { LAYOUT_PRESET, type AgentToolCtx } from "../tools";
 
 /* ------------------------------------------------------------------ *
  *  Zod Schemas for Input Validation
@@ -44,18 +44,6 @@ const MOUNT_POINT = z.enum([
   "br",
   "pip-br",
   "pip-tr",
-]);
-
-/** Layout preset names */
-const LAYOUT_PRESET = z.enum([
-  "focus",
-  "split",
-  "grid",
-  "stack-right",
-  "spotlight",
-  "theater",
-  "reading",
-  "triptych",
 ]);
 
 /** Centre stage arrangement options */
@@ -88,41 +76,6 @@ const RECT_SCHEMA = z.object({
   h: z.number().min(1).max(100),
 });
 
-/** Convert mount point to percent rect (matches server-snapshot.ts logic) */
-function rectForMount(mount: z.infer<typeof MOUNT_POINT>): RectPct {
-  switch (mount) {
-    case "full":         return { x: 0,  y: 0,   w: 100,    h: 100 };
-    case "left-half":    return { x: 0,  y: 0,   w: 50,     h: 100 };
-    case "right-half":   return { x: 50, y: 0,   w: 50,     h: 100 };
-    case "right-wide":   return { x: 40, y: 0,   w: 60,     h: 100 };
-    case "top-half":     return { x: 0,  y: 0,   w: 100,    h: 50 };
-    case "bottom-half":  return { x: 0,  y: 50,  w: 100,    h: 50 };
-    case "left-third":   return { x: 0,  y: 0,   w: 100/3,  h: 100 };
-    case "center-third": return { x: 100/3, y: 0, w: 100/3, h: 100 };
-    case "right-third":  return { x: 200/3, y: 0, w: 100/3, h: 100 };
-    case "tl":           return { x: 0,  y: 0,   w: 50,     h: 50 };
-    case "tr":           return { x: 50, y: 0,   w: 50,     h: 50 };
-    case "bl":           return { x: 0,  y: 50,  w: 50,     h: 50 };
-    case "br":           return { x: 50, y: 50,  w: 50,     h: 50 };
-    case "pip-br":       return { x: 75, y: 70,  w: 25,     h: 30 };
-    case "pip-tr":       return { x: 75, y: 0,   w: 25,     h: 30 };
-  }
-}
-
-/** Convert percent rect to pixel rect for UI events */
-function pctRectToPxWindowMan(
-  rect: RectPct,
-  viewport: { w: number; h: number },
-): { x: number; y: number; w: number; h: number } {
-  const usableH = Math.max(200, viewport.h - 80);
-  return {
-    x: Math.round((rect.x / 100) * viewport.w),
-    y: Math.round((rect.y / 100) * usableH),
-    w: Math.round((rect.w / 100) * viewport.w),
-    h: Math.round((rect.h / 100) * usableH),
-  };
-}
-
 /* ------------------------------------------------------------------ *
  *  Helper Functions
  * ------------------------------------------------------------------ */
@@ -133,13 +86,14 @@ function applyAndEmit(
   toolName: string,
   args: Record<string, unknown>,
   uiEvents: AgentEvent[],
+  options?: { ok?: boolean; message?: string },
 ): string {
   ctx.emit({ type: "agent.tool.start", name: toolName, args });
   for (const e of uiEvents) ctx.emit(e);
-  const result = applyToolToSnapshot(ctx.snapshot, toolName, args);
+  const result = applyToolToSnapshot(ctx.snapshot, toolName, args, options?.ok);
   ctx.snapshot = result.snapshot;
   ctx.emit({ type: "agent.tool.done", name: toolName, ok: (result.ok ?? true) });
-  return result.message;
+  return options?.message ?? result.message;
 }
 
 /** Find a window by id or kind, preferring id if provided */
@@ -149,11 +103,11 @@ function findWindow(
   kind?: WindowKind,
 ): { id: string; kind: WindowKind } | null {
   if (id) {
-    const w = snapshot.windows.find((w) => w.id === id);
+    const w = snapshot.windows.find((w) => w.id === id && !w.minimized);
     if (w) return { id: w.id, kind: w.kind as WindowKind };
   }
   if (kind) {
-    const matching = snapshot.windows.filter((w) => w.kind === kind);
+    const matching = snapshot.windows.filter((w) => w.kind === kind && !w.minimized);
     if (matching.length > 0) {
       const top = matching.reduce((a, b) => (a.zIndex > b.zIndex ? a : b));
       return { id: top.id, kind: top.kind as WindowKind };
@@ -189,17 +143,15 @@ export function windowManagementTools(ctx: AgentToolCtx) {
       execute: async ({ id, kind, mount }) => {
         const target = findWindow(ctx.snapshot, id, kind);
         if (!target) {
-          return applyAndEmit(ctx, "winman_move_to_position", { id, kind, mount }, []);
+          return applyAndEmit(ctx, "winman_move_to_position", { id, kind, mount }, [], {
+            ok: false,
+            message: "No window matched the move request.",
+          });
         }
-        const rect = pctRectToPxWindowMan(rectForMount(mount), ctx.snapshot.viewport);
-        const events: AgentEvent[] = [
-          { type: "ui.room", room: target.kind },
-          {
-            type: "ui.resize",
-            room: target.kind,
-            rect,
-          },
-        ];
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "move", id: target.id, mount: mount as MountPoint },
+        }];
         return applyAndEmit(ctx, "winman_move_to_position", { id: target.id, kind, mount }, events);
       },
     }),
@@ -215,21 +167,12 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         preset: LAYOUT_PRESET,
       }),
       execute: async ({ preset }) => {
-        ctx.emit({ type: "agent.tool.start", name: "winman_arrange_preset", args: { preset } });
-        const result = applyToolToSnapshot(ctx.snapshot, "arrange_windows", { layout: preset });
-        ctx.snapshot = result.snapshot;
-
-        // Emit resize events for all windows
-        for (const w of ctx.snapshot.windows) {
-          ctx.emit({
-            type: "ui.resize",
-            room: w.kind as WindowKind,
-            rect: pctRectToPxWindowMan(w.rect, ctx.snapshot.viewport),
-          });
-        }
-
-        ctx.emit({ type: "agent.tool.done", name: "winman_arrange_preset", ok: (result.ok ?? true) });
-        return `Arranged ${ctx.snapshot.windows.length} windows using ${preset} preset.`;
+        return applyAndEmit(ctx, "winman_arrange_preset", { preset }, [{
+          type: "ui.canvas",
+          action: { type: "arrange", layout: preset },
+        }], {
+          message: `Arranged ${ctx.snapshot.windows.length} windows using ${preset} preset.`,
+        });
       },
     }),
 
@@ -244,15 +187,10 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         arrangement: CENTRE_ARRANGEMENT,
       }),
       execute: async ({ arrangement }) => {
-        const events: AgentEvent[] = [
-          {
-            type: "ui.tool",
-            room: "graph" as WindowKind,
-            tool: "set_centre_arrangement",
-            args: { arrangement },
-          },
-        ];
-        return applyAndEmit(ctx, "winman_set_centre_arrangement", { arrangement }, events);
+        return applyAndEmit(ctx, "winman_set_centre_arrangement", { arrangement }, [], {
+          ok: false,
+          message: "Centre-stage arrangements are unsupported by the canvas reducer.",
+        });
       },
     }),
 
@@ -272,25 +210,15 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         const w1 = findWindow(ctx.snapshot, window1_id, window1_kind);
         const w2 = findWindow(ctx.snapshot, window2_id, window2_kind);
 
-        if (!w1 || !w2) {
-          return applyAndEmit(
-            ctx,
-            "winman_swap_positions",
-            { window1_id, window1_kind, window2_id, window2_kind },
-            [],
-          );
-        }
-
-        const events: AgentEvent[] = [
-          { type: "ui.room", room: w1.kind },
-          { type: "ui.room", room: w2.kind },
-        ];
-
         return applyAndEmit(
           ctx,
           "winman_swap_positions",
-          { window1_id: w1.id, window2_id: w2.id },
-          events,
+          { window1_id: w1?.id ?? window1_id, window1_kind, window2_id: w2?.id ?? window2_id, window2_kind },
+          [],
+          {
+            ok: false,
+            message: "Swapping window positions is unsupported by the canvas reducer.",
+          },
         );
       },
     }),
@@ -312,17 +240,16 @@ export function windowManagementTools(ctx: AgentToolCtx) {
       execute: async ({ id, kind }) => {
         const target = findWindow(ctx.snapshot, id, kind);
         if (!target) {
-          return applyAndEmit(ctx, "winman_pin_window", { id, kind }, []);
+          return applyAndEmit(ctx, "winman_pin_window", { id, kind }, [], {
+            ok: false,
+            message: "No window matched the pin request.",
+          });
         }
 
-        const events: AgentEvent[] = [
-          {
-            type: "ui.tool",
-            room: target.kind,
-            tool: "pin_window",
-            args: { id: target.id },
-          },
-        ];
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "pin", id: target.id, pinned: true },
+        }];
 
         return applyAndEmit(ctx, "winman_pin_window", { id: target.id }, events);
       },
@@ -341,17 +268,16 @@ export function windowManagementTools(ctx: AgentToolCtx) {
       execute: async ({ id, kind }) => {
         const target = findWindow(ctx.snapshot, id, kind);
         if (!target) {
-          return applyAndEmit(ctx, "winman_unpin_window", { id, kind }, []);
+          return applyAndEmit(ctx, "winman_unpin_window", { id, kind }, [], {
+            ok: false,
+            message: "No window matched the unpin request.",
+          });
         }
 
-        const events: AgentEvent[] = [
-          {
-            type: "ui.tool",
-            room: target.kind,
-            tool: "unpin_window",
-            args: { id: target.id },
-          },
-        ];
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "pin", id: target.id, pinned: false },
+        }];
 
         return applyAndEmit(ctx, "winman_unpin_window", { id: target.id }, events);
       },
@@ -375,17 +301,17 @@ export function windowManagementTools(ctx: AgentToolCtx) {
             : null;
 
         if (!target) {
-          return applyAndEmit(ctx, "winman_toggle_pin", { id, kind }, []);
+          return applyAndEmit(ctx, "winman_toggle_pin", { id, kind }, [], {
+            ok: false,
+            message: "No window matched the pin toggle request.",
+          });
         }
 
-        const events: AgentEvent[] = [
-          {
-            type: "ui.tool",
-            room: target.kind,
-            tool: "toggle_pin",
-            args: { id: target.id },
-          },
-        ];
+        const existing = ctx.snapshot.windows.find((window) => window.id === target.id);
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "pin", id: target.id, pinned: !existing?.pinned },
+        }];
 
         return applyAndEmit(ctx, "winman_toggle_pin", { id: target.id }, events);
       },
@@ -400,7 +326,7 @@ export function windowManagementTools(ctx: AgentToolCtx) {
       inputSchema: z.object({}),
       execute: async () => {
         // This is a read-only operation - no UI events needed
-        const pinned = ctx.snapshot.windows.filter((w) => w.zIndex > 100); // Pinned windows have high z-index
+        const pinned = ctx.snapshot.windows.filter((w) => w.pinned);
 
         ctx.emit({ type: "agent.tool.start", name: "winman_read_pinned", args: {} });
         ctx.emit({ type: "agent.tool.done", name: "winman_read_pinned", ok: true });
@@ -431,12 +357,16 @@ export function windowManagementTools(ctx: AgentToolCtx) {
       execute: async ({ id, kind }) => {
         const target = findWindow(ctx.snapshot, id, kind);
         if (!target) {
-          return applyAndEmit(ctx, "winman_bring_to_front", { id, kind }, []);
+          return applyAndEmit(ctx, "winman_bring_to_front", { id, kind }, [], {
+            ok: false,
+            message: "No window matched the focus request.",
+          });
         }
 
-        const events: AgentEvent[] = [
-          { type: "ui.room", room: target.kind },
-        ];
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "focus", id: target.id },
+        }];
 
         return applyAndEmit(ctx, "winman_bring_to_front", { id: target.id }, events);
       },
@@ -453,21 +383,10 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         kind: WINDOW_KIND.optional(),
       }),
       execute: async ({ id, kind }) => {
-        const target = findWindow(ctx.snapshot, id, kind);
-        if (!target) {
-          return applyAndEmit(ctx, "winman_send_to_back", { id, kind }, []);
-        }
-
-        const events: AgentEvent[] = [
-          {
-            type: "ui.tool",
-            room: target.kind,
-            tool: "send_to_back",
-            args: { id: target.id },
-          },
-        ];
-
-        return applyAndEmit(ctx, "winman_send_to_back", { id: target.id }, events);
+        return applyAndEmit(ctx, "winman_send_to_back", { id, kind }, [], {
+          ok: false,
+          message: "Sending a window to the back is unsupported by the canvas reducer.",
+        });
       },
     }),
 
@@ -509,16 +428,16 @@ export function windowManagementTools(ctx: AgentToolCtx) {
       execute: async ({ id, kind, rect }) => {
         const target = findWindow(ctx.snapshot, id, kind);
         if (!target) {
-          return applyAndEmit(ctx, "winman_resize_window", { id, kind, rect }, []);
+          return applyAndEmit(ctx, "winman_resize_window", { id, kind, rect }, [], {
+            ok: false,
+            message: "No window matched the resize request.",
+          });
         }
 
-        const events: AgentEvent[] = [
-          {
-            type: "ui.resize",
-            room: target.kind,
-            rect: pctRectToPxWindowMan(rect, ctx.snapshot.viewport),
-          },
-        ];
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "set_rect", id: target.id, rect },
+        }];
 
         return applyAndEmit(ctx, "winman_resize_window", { id: target.id, rect }, events);
       },
@@ -537,18 +456,16 @@ export function windowManagementTools(ctx: AgentToolCtx) {
       execute: async ({ id, kind }) => {
         const target = findWindow(ctx.snapshot, id, kind);
         if (!target) {
-          return applyAndEmit(ctx, "winman_maximize_window", { id, kind }, []);
+          return applyAndEmit(ctx, "winman_maximize_window", { id, kind }, [], {
+            ok: false,
+            message: "No window matched the maximize request.",
+          });
         }
 
-        const rect = pctRectToPxWindowMan(rectForMount("full"), ctx.snapshot.viewport);
-        const events: AgentEvent[] = [
-          { type: "ui.room", room: target.kind },
-          {
-            type: "ui.resize",
-            room: target.kind,
-            rect,
-          },
-        ];
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "move", id: target.id, mount: "full" },
+        }];
 
         return applyAndEmit(ctx, "winman_maximize_window", { id: target.id }, events);
       },
@@ -567,18 +484,16 @@ export function windowManagementTools(ctx: AgentToolCtx) {
       execute: async ({ id, kind }) => {
         const target = findWindow(ctx.snapshot, id, kind);
         if (!target) {
-          return applyAndEmit(ctx, "winman_minimize_window", { id, kind }, []);
+          return applyAndEmit(ctx, "winman_minimize_window", { id, kind }, [], {
+            ok: false,
+            message: "No window matched the minimize request.",
+          });
         }
 
-        const rect = pctRectToPxWindowMan(rectForMount("pip-br"), ctx.snapshot.viewport);
-        const events: AgentEvent[] = [
-          { type: "ui.room", room: target.kind },
-          {
-            type: "ui.resize",
-            room: target.kind,
-            rect,
-          },
-        ];
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "minimize", id: target.id, minimized: true },
+        }];
 
         return applyAndEmit(ctx, "winman_minimize_window", { id: target.id }, events);
       },
@@ -601,8 +516,8 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         const windowsToClose = ctx.snapshot.windows.filter((w) => !keep_ids.includes(w.id));
 
         const events: AgentEvent[] = windowsToClose.map((w) => ({
-          type: "ui.close_window" as const,
-          room: w.kind as WindowKind,
+          type: "ui.canvas" as const,
+          action: { type: "close" as const, id: w.id },
         }));
 
         return applyAndEmit(ctx, "winman_close_all_except", { keep_ids }, events);
@@ -619,14 +534,18 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         offset: z.number().min(5).max(30).optional().default(10),
       }),
       execute: async ({ offset }) => {
-        const events: AgentEvent[] = [
-          {
-            type: "ui.tool",
-            room: "graph" as WindowKind,
-            tool: "cascade_windows",
-            args: { offset },
+        const events: AgentEvent[] = ctx.snapshot.windows.map((window, index) => ({
+          type: "ui.canvas",
+          action: {
+            type: "set_rect",
+            id: window.id,
+            rect: {
+              ...window.rect,
+              x: Math.min(100 - window.rect.w, window.rect.x + index * offset),
+              y: Math.min(100 - window.rect.h, window.rect.y + index * offset),
+            },
           },
-        ];
+        }));
 
         return applyAndEmit(ctx, "winman_cascade_windows", { offset }, events);
       },
@@ -642,23 +561,13 @@ export function windowManagementTools(ctx: AgentToolCtx) {
         columns: z.number().min(1).max(6).optional(),
       }),
       execute: async ({ columns }) => {
-        // Use the grid preset for actual tiling
-        ctx.emit({ type: "agent.tool.start", name: "winman_tile_windows", args: { columns } });
-
-        const result = applyToolToSnapshot(ctx.snapshot, "arrange_windows", { layout: "grid" });
-        ctx.snapshot = result.snapshot;
-
-        // Emit resize events for all windows
-        for (const w of ctx.snapshot.windows) {
-          ctx.emit({
-            type: "ui.resize",
-            room: w.kind as WindowKind,
-            rect: pctRectToPxWindowMan(w.rect, ctx.snapshot.viewport),
-          });
-        }
-
-        ctx.emit({ type: "agent.tool.done", name: "winman_tile_windows", ok: (result.ok ?? true) });
-        return `Tiled ${ctx.snapshot.windows.length} windows in grid layout.`;
+        void columns;
+        return applyAndEmit(ctx, "winman_tile_windows", { columns }, [{
+          type: "ui.canvas",
+          action: { type: "arrange", layout: "grid" },
+        }], {
+          message: `Tiled ${ctx.snapshot.windows.length} windows in grid layout.`,
+        });
       },
     }),
 
