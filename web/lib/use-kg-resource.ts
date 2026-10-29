@@ -13,8 +13,8 @@
  *   - the caller renders a clear error state when the backend is
  *     unreachable — `BackendError.detail` surfaces directly.
  *
- * No external deps. If caching becomes desirable later, we can swap
- * this to SWR or react-query without touching call sites.
+ * Endpoint responses are shared for a short time so cards and canvases
+ * can reuse the same KG snapshots.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -29,18 +29,53 @@ export interface KgResource<T> {
   /** Last error, or null after a successful reload. Prefer rendering
    *  `error.detail` — that's the server's human-readable message. */
   error: BackendError | null;
-  /** Re-run the fetcher, bypassing any debounce. */
+  /** Re-run the fetcher, bypassing the shared response cache. */
   refetch: () => void;
+}
+
+const CACHE_TTL_MS = 30_000;
+const cache = new Map<string, { value: unknown; expiresAt: number }>();
+const inFlight = new Map<string, Promise<unknown>>();
+const requestVersions = new Map<string, number>();
+
+export function fetchKgResource<T>(
+  url: string,
+  fetcher: (signal: AbortSignal) => Promise<T>,
+  bypassCache = false,
+): Promise<T> {
+  const cached = cache.get(url);
+  if (!bypassCache && cached && cached.expiresAt > Date.now()) {
+    return Promise.resolve(cached.value as T);
+  }
+  const pending = inFlight.get(url);
+  if (!bypassCache && pending) return pending as Promise<T>;
+
+  const version = (requestVersions.get(url) ?? 0) + 1;
+  requestVersions.set(url, version);
+  const request = fetcher(new AbortController().signal);
+  inFlight.set(url, request);
+  return request
+    .then((value) => {
+      if (requestVersions.get(url) === version) {
+        cache.set(url, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+      }
+      return value;
+    })
+    .finally(() => {
+      if (inFlight.get(url) === request) inFlight.delete(url);
+    });
 }
 
 /**
  * @param fetcher - async thunk that returns the resource. Must be
  *   stable across renders (wrap in `useCallback`).
+ * @param url - the URL used to share cached responses.
  * @param initial - optional instant-paint seed (e.g. the agent's
  *   payload snapshot). Ignored once the first fetch resolves.
  */
 export function useKgResource<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
+  url: string,
   initial: T | null = null,
 ): KgResource<T> {
   const [data, setData] = useState<T | null>(initial);
@@ -64,7 +99,7 @@ export function useKgResource<T>(
     const controller = new AbortController();
     controllerRef.current = controller;
     setLoading(true);
-    fetcher(controller.signal)
+    fetchKgResource(url, fetcher, tick > 0)
       .then((next) => {
         if (controller.signal.aborted) return;
         setData(next);
@@ -85,7 +120,7 @@ export function useKgResource<T>(
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [fetcher, tick]);
+  }, [fetcher, tick, url]);
 
   const refetch = useCallback(() => {
     controllerRef.current?.abort();

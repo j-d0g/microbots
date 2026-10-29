@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { CanvasSnapshot } from "@/lib/agent/types";
+import { getHealth } from "@/lib/api/backend";
 import { activeModelSlug, prewarmConnection } from "@/lib/agent/providers/openrouter";
 import { runOrchestrator } from "@/lib/agent/orchestrator";
 import { createToolCtx } from "@/lib/agent/tools";
@@ -37,6 +38,18 @@ export async function POST(req: NextRequest) {
         headers: { "content-type": "application/json" },
       },
     );
+  }
+
+  try {
+    const health = await getHealth(AbortSignal.timeout(2_000));
+    if (health.status !== "ok" || !health.surreal?.ok) {
+      throw new Error("knowledge graph API is unavailable");
+    }
+  } catch {
+    return new Response(JSON.stringify({ error: "knowledge graph API is unavailable" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
   }
 
   const enc = new TextEncoder();

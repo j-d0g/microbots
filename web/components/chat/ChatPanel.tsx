@@ -18,6 +18,12 @@ import { EmptyState } from "./EmptyState";
 export function ChatPanel() {
   const messages = useAgentStore((state) => state.chatMessages);
   const appendChatMessage = useAgentStore((state) => state.appendChatMessage);
+  const setChatMessageStatus = useAgentStore(
+    (state) => state.setChatMessageStatus,
+  );
+  const finalizeLastAgentMessage = useAgentStore(
+    (state) => state.finalizeLastAgentMessage,
+  );
   const clearChatHistory = useAgentStore((state) => state.clearChatHistory);
   const dock = useAgentStore((state) => state.dock);
   const agentStatus = useAgentStore((state) => state.agentStatus);
@@ -27,6 +33,7 @@ export function ChatPanel() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pendingAnswerRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const element = scrollRef.current;
@@ -45,6 +52,11 @@ export function ChatPanel() {
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape" && busy) {
+        event.preventDefault();
+        abortControllerRef.current?.abort();
+        return;
+      }
       if (event.key !== "/") return;
       const target = event.target;
       if (
@@ -57,37 +69,73 @@ export function ChatPanel() {
       event.preventDefault();
       inputRef.current?.focus();
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [busy]);
+
+  useEffect(() => {
+    if (!busy) requestAnimationFrame(() => inputRef.current?.focus());
+  }, [busy]);
 
   const submit = useCallback(
-    async (query: string) => {
+    async (query: string, existingMessageId?: string) => {
       const trimmed = query.trim();
       if (!trimmed || busy) return;
-      appendChatMessage({
-        id: `user-${Date.now()}`,
-        role: "user",
-        text: trimmed,
-        ts: Date.now(),
-        room: useAgentStore.getState().chatRoom,
-        status: "done",
-      });
+      const messageId = existingMessageId ?? `user-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      if (existingMessageId) {
+        setChatMessageStatus(existingMessageId, "done");
+      } else {
+        appendChatMessage({
+          id: messageId,
+          role: "user",
+          text: trimmed,
+          ts: Date.now(),
+          room: useAgentStore.getState().chatRoom,
+          status: "done",
+        });
+        setInput("");
+      }
       setBusy(true);
       const controller = new AbortController();
+      abortControllerRef.current = controller;
       try {
         await sendQuery(trimmed, controller.signal);
+        if (controller.signal.aborted) finalizeLastAgentMessage("stopped");
       } catch (error) {
-        if (controller.signal.aborted) return;
-        console.error("[chat-panel] sendQuery failed:", error);
+        if (controller.signal.aborted) {
+          finalizeLastAgentMessage("stopped");
+        } else {
+          setChatMessageStatus(messageId, "failed");
+          console.warn("[chat-panel] sendQuery failed:", error);
+        }
       } finally {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
         setBusy(false);
-        setInput("");
-        requestAnimationFrame(() => inputRef.current?.focus());
       }
     },
-    [appendChatMessage, busy],
+    [
+      appendChatMessage,
+      busy,
+      finalizeLastAgentMessage,
+      setChatMessageStatus,
+    ],
   );
+
+  const retry = useCallback(
+    (id: string) => {
+      const message = useAgentStore
+        .getState()
+        .chatMessages.find((item) => item.id === id && item.role === "user");
+      if (message) void submit(message.text, message.id);
+    },
+    [submit],
+  );
+
+  const stop = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
 
   const submitAnswer = useCallback(
     (answer: string) => {
@@ -146,6 +194,7 @@ export function ChatPanel() {
                   message={message}
                   busy={busy && message.status === "streaming"}
                   onSubmitAnswer={submitAnswer}
+                  onRetry={retry}
                 />
               </li>
             ))}
@@ -164,6 +213,7 @@ export function ChatPanel() {
         busy={busy}
         onSubmit={handleSubmit}
         onKeyDown={handleKeyDown}
+        onStop={stop}
         agentStatus={agentStatus}
       />
     </aside>

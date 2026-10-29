@@ -42,6 +42,8 @@ type FGRef = {
   zoom: (scale?: number, durationMs?: number) => number | void;
   d3Force: (name: string, force?: unknown) => unknown;
   d3ReheatSimulation: () => void;
+  pauseAnimation: () => void;
+  resumeAnimation: () => void;
 };
 
 interface Props {
@@ -57,6 +59,7 @@ interface Props {
   onBackgroundClick: () => void;
   compact: boolean;
   coUsed: CoUsedEdge[];
+  frozen?: boolean;
 }
 
 function radiusFor(layer: GraphNode["layer"]) {
@@ -142,9 +145,11 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
     onBackgroundClick,
     compact,
     coUsed,
+    frozen = false,
   } = props;
   const fgRef = useRef<FGRef | null>(null);
   const labelIdsRef = useRef<Set<string>>(new Set());
+  const hasSettledRef = useRef(false);
 
   const nodeSetKey = useMemo(
     () => view.nodes.map((node) => node.id).sort().join("\u001e"),
@@ -159,6 +164,13 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
     nodeSetKey,
     view.links.map(linkKey).sort().join("\u001e"),
   ].join("\u001d");
+  useEffect(() => {
+    if (frozen && hasSettledRef.current) fgRef.current?.pauseAnimation();
+    if (!frozen) {
+      hasSettledRef.current = false;
+      fgRef.current?.resumeAnimation();
+    }
+  }, [dataKey, frozen]);
   const previousNodes = new Map(
     (dataRef.current?.data.nodes ?? []).map((node) => [node.id, node]),
   );
@@ -348,9 +360,11 @@ export const GraphCanvas = forwardRef(function GraphCanvas(
     fit(focusSetRef.current ?? undefined, 440);
   }, [fitOnFocusChange, focusKey, fit]);
   const onEngineStop = useCallback(() => {
+    hasSettledRef.current = true;
     configureForces();
     if (fitOnFocusChange) fit(focusSetRef.current ?? undefined, 440);
-  }, [configureForces, fit, fitOnFocusChange]);
+    if (frozen) fgRef.current?.pauseAnimation();
+  }, [configureForces, fit, fitOnFocusChange, frozen]);
 
   const nodeById = useMemo(
     () => new Map(data.nodes.map((node) => [node.id, node])),

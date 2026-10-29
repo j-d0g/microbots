@@ -7,10 +7,11 @@ from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
+from surrealdb import RecordID
 
 from app.services import kg_writes
 from app.services import kg_queries as Q
-from app.services.surreal import q, q_one, session
+from app.services.surreal import jsonify, q, q_one, session
 
 router = APIRouter(prefix="/kg", tags=["knowledge-graph"])
 
@@ -21,6 +22,10 @@ def _name_match_distance(name: str, query: str) -> int | None:
     if query_tokens and query_tokens <= name_tokens:
         return len(name_tokens - query_tokens)
     return None
+
+
+def _record_key(record_id: Any) -> str:
+    return str(jsonify(record_id))
 
 
 @router.get("/integrations")
@@ -48,8 +53,35 @@ async def entity_types() -> list[dict[str, Any]]:
 async def entities_by_type(entity_type: str | None = Query(None, min_length=1)) -> list[dict[str, Any]]:
     async with session() as s:
         if entity_type is None:
-            return await q(s, Q.Q_ENTITIES_ALL)
-        return await q(s, Q.Q_ENTITIES_BY_TYPE, {"entity_type": entity_type})
+            rows = await q(s, Q.Q_ENTITIES_ALL)
+        else:
+            rows = await q(s, Q.Q_ENTITIES_BY_TYPE, {"entity_type": entity_type})
+        if not rows:
+            return rows
+
+        entity_ids = [
+            RecordID(*str(row["id"]).split(":", 1)) for row in rows
+        ]
+        mentions = await q(
+            s, Q.Q_ENTITY_CHAT_MENTIONS, {"ids": entity_ids}
+        )
+        integrations = await q(
+            s, Q.Q_ENTITY_INTEGRATIONS, {"ids": entity_ids}
+        )
+        mention_counts = {
+            _record_key(row["entity_id"]): int(row["chat_mention_count"])
+            for row in mentions
+        }
+        integration_slugs: dict[str, list[str]] = {}
+        for row in integrations:
+            integration_slugs.setdefault(_record_key(row["entity_id"]), []).append(
+                row["integration_slug"]
+            )
+        for row in rows:
+            entity_id = _record_key(row["id"])
+            row["chat_mention_count"] = mention_counts.get(entity_id, 0)
+            row["integration_slugs"] = integration_slugs.get(entity_id, [])
+        return rows
 
 
 @router.get("/entities/{id}")
@@ -68,7 +100,29 @@ async def memories_top(
 ) -> list[dict[str, Any]]:
     order_field = "confidence" if by == "confidence" else "created_at"
     async with session() as s:
-        return await q(s, Q.Q_MEMORIES_TOP.replace("{order_field}", order_field), {"limit": limit})
+        rows = await q(
+            s,
+            Q.Q_MEMORIES_TOP.replace("{order_field}", order_field),
+            {"limit": limit},
+        )
+        if not rows:
+            return rows
+        memory_ids = [
+            RecordID(*str(row["id"]).split(":", 1)) for row in rows
+        ]
+        relations = await q(
+            s, Q.Q_MEMORY_INTEGRATIONS, {"ids": memory_ids}
+        )
+        integration_slugs: dict[str, list[str]] = {}
+        for relation in relations:
+            integration_slugs.setdefault(_record_key(relation["memory_id"]), []).append(
+                relation["integration_slug"]
+            )
+        for row in rows:
+            row["integration_slugs"] = integration_slugs.get(
+                _record_key(row["id"]), []
+            )
+        return rows
 
 
 @router.get("/search")
@@ -298,6 +352,7 @@ class AddChatBody(BaseModel):
     content: str = Field(..., min_length=1)
     source_type: str = Field(..., min_length=1)
     source_id: Optional[str] = None
+    role: Literal["user", "assistant"] | None = None
     title: Optional[str] = None
     summary: Optional[str] = None
     signal_level: str = Field(default="mid", pattern=r"^(low|mid|high)$")

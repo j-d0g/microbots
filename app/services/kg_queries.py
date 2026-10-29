@@ -23,22 +23,29 @@ FROM integration WHERE slug = $slug LIMIT 1
 """
 
 Q_ENTITIES_BY_TYPE = """
-SELECT
-    entity_type, name, id, description, aliases, tags,
-    count(SELECT 1 FROM chat_mentions WHERE out = $parent.id) AS chat_mention_count,
-    (SELECT VALUE out.slug FROM appears_in WHERE in = $parent.id) AS integration_slugs
+SELECT entity_type, name, id, description, aliases, tags
 FROM entity
 WHERE entity_type = $entity_type
 ORDER BY name ASC
 """
 
 Q_ENTITIES_ALL = """
-SELECT
-    entity_type, name, id, description, aliases, tags,
-    count(SELECT 1 FROM chat_mentions WHERE out = $parent.id) AS chat_mention_count,
-    (SELECT VALUE out.slug FROM appears_in WHERE in = $parent.id) AS integration_slugs
+SELECT entity_type, name, id, description, aliases, tags
 FROM entity
 ORDER BY name ASC
+"""
+
+Q_ENTITY_CHAT_MENTIONS = """
+SELECT out AS entity_id, count() AS chat_mention_count
+FROM chat_mentions
+WHERE out IN $ids
+GROUP BY entity_id
+"""
+
+Q_ENTITY_INTEGRATIONS = """
+SELECT in AS entity_id, out.slug AS integration_slug
+FROM appears_in
+WHERE in IN $ids
 """
 
 Q_ENTITY_DETAIL = """
@@ -52,10 +59,13 @@ FROM entity WHERE id = $id LIMIT 1
 """
 
 Q_MEMORIES_TOP = """
-SELECT *,
-    (SELECT VALUE out.slug FROM memory_about
-        WHERE in = $parent.id AND record::tb(out) = 'integration') AS integration_slugs
-FROM memory ORDER BY {order_field} DESC LIMIT $limit
+SELECT * FROM memory ORDER BY {order_field} DESC LIMIT $limit
+"""
+
+Q_MEMORY_INTEGRATIONS = """
+SELECT in AS memory_id, out.slug AS integration_slug
+FROM memory_about
+WHERE in IN $ids AND record::tb(out) = 'integration'
 """
 
 Q_SEARCH_MEMORIES = """

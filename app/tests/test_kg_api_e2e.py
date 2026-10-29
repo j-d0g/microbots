@@ -115,7 +115,8 @@ class TestPostMemory:
 
 class TestMemoryEndpoints:
     async def test_memory_search_is_case_insensitive_and_scoped(self, client: httpx.AsyncClient):
-        content = f"{_uid('search_memory')} UniqueSearchToken"
+        unique_token = f"UniqueSearchToken{_UID}"
+        content = f"{_uid('search_memory')} {unique_token}"
         created = await client.post(
             "/api/kg/memories",
             json={"content": content, "confidence": 0.9},
@@ -124,7 +125,7 @@ class TestMemoryEndpoints:
 
         response = await client.get(
             "/api/kg/search",
-            params={"query": "uniquesearchtoken", "scope": "memories"},
+            params={"query": unique_token.lower(), "scope": "memories"},
         )
 
         assert response.status_code == 200
@@ -778,6 +779,105 @@ class TestRoundTripEntity:
             if isinstance(item, dict)
         )
         assert found, f"Entity '{name}' not found in GET /entities?entity_type={etype}"
+
+
+class TestRelationEnrichment:
+    async def test_entity_and_memory_relations_are_batched_into_response(
+        self, client: httpx.AsyncClient
+    ):
+        entity_name = _uid("batch_entity")
+        memory_content = _uid("batch_memory")
+        integration_slug = _uid("batch_integration")
+        entity_id = ""
+        memory_id = ""
+        chat_id = ""
+
+        try:
+            entity = await client.post(
+                "/api/kg/entities",
+                json={
+                    "name": entity_name,
+                    "entity_type": "person",
+                    "description": "Batched relation test entity.",
+                },
+            )
+            assert entity.status_code == 201
+            entity_id = entity.json()["id"]
+
+            memory = await client.post(
+                "/api/kg/memories",
+                json={"content": memory_content, "confidence": 1.0},
+            )
+            assert memory.status_code == 201
+            memory_id = memory.json()["id"]
+
+            chat = await client.post(
+                "/api/kg/chats",
+                json={
+                    "content": _uid("batch_chat"),
+                    "source_type": "synthetic",
+                    "mentions": [
+                        {"id": entity_id, "mention_type": "subject"},
+                    ],
+                },
+            )
+            assert chat.status_code == 201
+            chat_id = chat.json()["id"]
+
+            from app.services.surreal import session
+
+            entity_key = entity_id.split(":", 1)[1]
+            memory_key = memory_id.split(":", 1)[1]
+            async with session() as db:
+                await db.query(
+                    f"UPSERT integration:{integration_slug} CONTENT "
+                    f"{{ slug: '{integration_slug}', name: '{integration_slug}' }}"
+                )
+                await db.query(
+                    f"RELATE entity:{entity_key}->appears_in"
+                    f"->integration:{integration_slug} SET role = 'member'"
+                )
+                await db.query(
+                    f"RELATE memory:{memory_key}->memory_about"
+                    f"->integration:{integration_slug} SET relevance = 1.0"
+                )
+
+            entities = await client.get(
+                "/api/kg/entities", params={"entity_type": "person"}
+            )
+            entity_row = next(
+                row for row in entities.json() if row["id"] == entity_id
+            )
+            assert entity_row["chat_mention_count"] == 1
+            assert entity_row["integration_slugs"] == [integration_slug]
+
+            memories = await client.get(
+                "/api/kg/memories", params={"by": "confidence", "limit": 200}
+            )
+            memory_row = next(
+                row for row in memories.json() if row["id"] == memory_id
+            )
+            assert memory_row["integration_slugs"] == [integration_slug]
+        finally:
+            from app.services.surreal import session
+
+            async with session() as db:
+                if memory_id:
+                    await db.query(
+                        f"DELETE memory_about WHERE in = {memory_id}"
+                    )
+                    await db.query(f"DELETE {memory_id}")
+                if entity_id:
+                    await db.query(
+                        f"DELETE appears_in WHERE in = {entity_id}"
+                    )
+                    await db.query(
+                        f"DELETE chat_mentions WHERE out = {entity_id}"
+                    )
+                    await db.query(f"DELETE {entity_id}")
+                if chat_id:
+                    await db.query(f"DELETE {chat_id}")
+                await db.query(f"DELETE integration:{integration_slug}")
 
 
 class TestRoundTripSkill:

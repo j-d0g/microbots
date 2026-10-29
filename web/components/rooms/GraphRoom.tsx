@@ -15,8 +15,10 @@ import { useAgentStore } from "@/lib/store";
 
 export function GraphRoom({
   payload,
+  frozen = false,
 }: {
   payload?: Record<string, unknown>;
+  frozen?: boolean;
 }) {
   const roomState = useAgentStore((state) => state.roomStates.graph);
   const pushCard = useAgentStore((state) => state.pushCard);
@@ -118,6 +120,7 @@ export function GraphRoom({
               height={canvasHeight}
               compact={narrow}
               coUsed={coUsed}
+              frozen={frozen}
               onNodeClick={(node) => {
                 setFocusId((current) => (current === node.id ? null : node.id));
                 setPathIds(new Set());

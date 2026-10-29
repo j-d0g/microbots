@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as backend from "@/lib/api/backend";
+import { BASE_URL } from "@/lib/api/backend";
+import { fetchKgResource } from "@/lib/use-kg-resource";
 import { toGraph } from "@/lib/api/kg-to-graph";
 import type { GraphLink, GraphNode } from "./types";
 
@@ -18,7 +20,11 @@ export function useKgGraph(
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
-  const refresh = useCallback(() => setRefreshTick((tick) => tick + 1), []);
+  const bypassCacheRef = useRef(false);
+  const refresh = useCallback(() => {
+    bypassCacheRef.current = true;
+    setRefreshTick((tick) => tick + 1);
+  }, []);
 
   useEffect(() => {
     if (!userId) {
@@ -28,70 +34,70 @@ export function useKgGraph(
       return;
     }
     let cancelled = false;
+    const bypassCache = bypassCacheRef.current;
+    bypassCacheRef.current = false;
     setLoading(true);
     setLoadError(null);
     let rejectedCount = 0;
     const total = composioConfigured ? 7 : 6;
-    const connections = composioConfigured
-      ? backend.getConnections(userId).catch(() => {
-          rejectedCount++;
-          return [];
-        })
-      : Promise.resolve([]);
-    Promise.all([
-      backend.getKgUser(userId).catch(() => {
-        rejectedCount++;
-        return null;
-      }),
-      backend.getKgIntegrations(userId).catch(() => {
-        rejectedCount++;
-        return [];
-      }),
-      backend.getKgEntities(undefined, userId).catch(() => {
-        rejectedCount++;
-        return [];
-      }),
-      backend.getKgMemories({ by: "confidence", limit: 30 }, userId).catch(() => {
-        rejectedCount++;
-        return [];
-      }),
-      backend.getKgSkills({ minStrength: 1 }, userId).catch(() => {
-        rejectedCount++;
-        return [];
-      }),
-      backend.getKgWorkflows(userId).catch(() => {
-        rejectedCount++;
-        return [];
-      }),
-      connections,
-    ])
-      .then(
-        ([user, integrations, entities, memories, skills, workflows, connections]) => {
-          if (cancelled) return;
-          if (rejectedCount === total) {
-            setLoadError("backend offline — your data is safe, retry in a moment.");
-            return;
-          }
-          setGraph(
-            toGraph({
-              user,
-              integrations,
-              entities,
-              memories,
-              skills,
-              workflows,
-              connections,
-            }),
-          );
-        },
-      )
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setLoadError(err instanceof Error ? err.message : "load failed");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const source = {
+      user: null as Awaited<ReturnType<typeof backend.getKgUser>> | null,
+      integrations: [] as Awaited<ReturnType<typeof backend.getKgIntegrations>>,
+      entities: [] as Awaited<ReturnType<typeof backend.getKgEntities>>,
+      memories: [] as Awaited<ReturnType<typeof backend.getKgMemories>>,
+      skills: [] as Awaited<ReturnType<typeof backend.getKgSkills>>,
+      workflows: [] as Awaited<ReturnType<typeof backend.getKgWorkflows>>,
+      connections: [] as Awaited<ReturnType<typeof backend.getConnections>>,
+    };
+    const publish = () => {
+      if (!cancelled) setGraph(toGraph(source));
+    };
+    const load = async <K extends keyof typeof source>(
+      key: K,
+      path: string,
+      fetcher: (signal: AbortSignal) => Promise<(typeof source)[K]>,
+    ) => {
+      try {
+        source[key] = await fetchKgResource(
+          new URL(path, BASE_URL).href,
+          fetcher,
+          bypassCache,
+        );
+        publish();
+      } catch {
+        rejectedCount += 1;
+      }
+    };
+    const requests = [
+      load("user", "/api/kg/user", () => backend.getKgUser(userId)),
+      load("integrations", "/api/kg/integrations", (signal) =>
+        backend.getKgIntegrations(userId, signal),
+      ),
+      load("entities", "/api/kg/entities", (signal) =>
+        backend.getKgEntities(undefined, userId, signal),
+      ),
+      load("memories", "/api/kg/memories?by=confidence&limit=30", (signal) =>
+        backend.getKgMemories({ by: "confidence", limit: 30 }, userId, signal),
+      ),
+      load("skills", "/api/kg/skills?min_strength=1", (signal) =>
+        backend.getKgSkills({ minStrength: 1 }, userId, signal),
+      ),
+      load("workflows", "/api/kg/workflows", (signal) =>
+        backend.getKgWorkflows(userId, signal),
+      ),
+      composioConfigured
+        ? load("connections", "/api/composio/connections", () =>
+            backend.getConnections(userId),
+          )
+        : Promise.resolve(),
+    ];
+    void Promise.all(requests).then(() => {
+      if (cancelled) return;
+      if (rejectedCount === total) {
+        setLoadError("backend offline — retry in a moment.");
+      }
+      setLoading(false);
+    });
     return () => {
       cancelled = true;
     };

@@ -38,12 +38,12 @@ export function ChatHeader({
         <button
           type="button"
           onClick={onClear}
-          aria-label="clear chat"
-          title="clear chat"
+          aria-label="new chat"
+          title="new chat"
           className="ml-0 flex h-7 items-center gap-1.5 rounded-sm px-2 font-mono text-[10px] uppercase tracking-wider text-ink-35 transition-colors hover:bg-paper-1 hover:text-ink-90"
         >
           <Trash2 size={11} strokeWidth={1.6} />
-          clear
+          new chat
         </button>
       )}
     </header>

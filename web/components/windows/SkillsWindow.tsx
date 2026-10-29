@@ -33,7 +33,11 @@ export function SkillsWindow({
     (signal: AbortSignal) => getSkills({ minStrength }, userId, signal),
     [minStrength, userId],
   );
-  const { data, loading, error, refetch } = useKgResource(fetcher, seed);
+  const { data, loading, error, refetch } = useKgResource(
+    fetcher,
+    `/api/kg/skills?min_strength=${minStrength}`,
+    seed,
+  );
 
   const list = useMemo(() => {
     return [...(data ?? [])].sort((a, b) => b.strength - a.strength);

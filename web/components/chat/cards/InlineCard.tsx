@@ -90,10 +90,22 @@ function CardShell({
 }
 
 function GraphCard({ card }: { card: ChatCard }) {
+  const newestGraphCardId = useAgentStore((state) => {
+    let id: string | null = null;
+    for (const message of state.chatMessages) {
+      for (const candidate of message.cards ?? []) {
+        if (candidate.kind === "graph") id = candidate.id;
+      }
+    }
+    return id;
+  });
   return (
     <CardShell card={card} title="knowledge graph">
       <div className="h-[320px] overflow-hidden rounded-sm bg-paper-1">
-        <GraphRoom payload={{ ...card.payload, compact: true }} />
+        <GraphRoom
+          payload={{ ...card.payload, compact: true }}
+          frozen={newestGraphCardId !== card.id}
+        />
       </div>
     </CardShell>
   );
@@ -136,7 +148,10 @@ function TopMemories() {
     (signal: AbortSignal) => getMemories({ by: "confidence", limit: 3 }, userId, signal),
     [userId],
   );
-  const { data, loading } = useKgResource(fetcher);
+  const { data, loading } = useKgResource(
+    fetcher,
+    "/api/kg/memories?by=confidence&limit=3",
+  );
   return (
     loading && !data ? <Loading /> : (
       <ul className="space-y-2">
@@ -154,7 +169,7 @@ function TopMemories() {
 function WorkflowCard({ card }: { card: ChatCard }) {
   const userId = useAgentStore((state) => state.userId);
   const fetcher = useCallback((signal: AbortSignal) => getWorkflows(userId, signal), [userId]);
-  const { data, loading } = useKgResource(fetcher);
+  const { data, loading } = useKgResource(fetcher, "/api/kg/workflows");
   const focus = stringValue(card.payload?.focus).toLowerCase();
   const workflows = data ?? [];
   const selected = workflows.find(
@@ -205,7 +220,10 @@ function EntityCard({ card }: { card: ChatCard }) {
     (signal: AbortSignal) => getEntities(undefined, userId, signal),
     [userId],
   );
-  const { data, loading } = useKgResource(fetcher);
+  const { data, loading } = useKgResource(
+    fetcher,
+    "/api/kg/entities",
+  );
   const focus = stringValue(card.payload?.focus).toLowerCase();
   const entities = data ?? [];
   const selected = entities.find(
@@ -241,7 +259,7 @@ function IntegrationCard({ card }: { card: ChatCard }) {
   const userId = useAgentStore((state) => state.userId);
   const connections = useAgentStore((state) => state.connections);
   const fetcher = useCallback((signal: AbortSignal) => getIntegrations(userId, signal), [userId]);
-  const { data, loading } = useKgResource(fetcher);
+  const { data, loading } = useKgResource(fetcher, "/api/kg/integrations");
   return (
     <CardShell card={card} title="integrations">
       {loading && !data ? <Loading /> : (
@@ -272,7 +290,10 @@ function IntegrationCard({ card }: { card: ChatCard }) {
 function SkillCard({ card }: { card: ChatCard }) {
   const userId = useAgentStore((state) => state.userId);
   const fetcher = useCallback((signal: AbortSignal) => getSkills({}, userId, signal), [userId]);
-  const { data, loading } = useKgResource(fetcher);
+  const { data, loading } = useKgResource(
+    fetcher,
+    "/api/kg/skills?min_strength=1",
+  );
   return (
     <CardShell card={card} title="skills">
       {loading && !data ? <Loading /> : (

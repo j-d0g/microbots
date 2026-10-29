@@ -47,8 +47,16 @@ export function EntitiesWindow({
     [activeType, userId],
   );
 
-  const types = useKgResource(typesFetcher, seedTypes);
-  const rows = useKgResource(rowsFetcher, seedRows);
+  const types = useKgResource(
+    typesFetcher,
+    "/api/kg/entity-types",
+    seedTypes,
+  );
+  const rows = useKgResource(
+    rowsFetcher,
+    `/api/kg/entities?entity_type=${encodeURIComponent(activeType)}`,
+    seedRows,
+  );
 
   // Auto-select the most-populous type when the list lands and we
   // don't yet have a selection.

@@ -307,6 +307,7 @@ async def add_chat(
     content: str,
     source_type: str,
     source_id: Optional[str] = None,
+    role: Optional[str] = None,
     title: Optional[str] = None,
     summary: Optional[str] = None,
     signal_level: str = "mid",
@@ -338,12 +339,13 @@ async def add_chat(
                 await db.query(
                     """UPSERT $c MERGE {
                         title: $title, content: $content, source_type: $stype,
-                        source_id: $sid, signal_level: $sig, summary: $summary,
-                        occurred_at: $occ
+                        source_id: $sid, role: $role, signal_level: $sig,
+                        summary: $summary, occurred_at: $occ
                     }""",
                     {
                         "c": c_rec, "title": title, "content": content,
-                        "stype": source_type, "sid": source_id, "sig": signal_level,
+                        "stype": source_type, "sid": source_id, "role": role,
+                        "sig": signal_level,
                         "summary": summary, "occ": occurred,
                     },
                 )

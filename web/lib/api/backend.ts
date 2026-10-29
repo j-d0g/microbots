@@ -495,6 +495,7 @@ export interface AddChatBody {
   content: string;
   source_type: string;
   source_id?: string;
+  role?: "user" | "assistant";
   title?: string;
   summary?: string;
   signal_level?: "low" | "mid" | "high";
@@ -515,6 +516,7 @@ export interface ChatRow {
   content: string;
   source_type: string;
   source_id?: string;
+  role?: "user" | "assistant";
   title?: string;
   summary?: string;
   signal_level?: "low" | "mid" | "high";
@@ -574,8 +576,8 @@ export async function listToolkits(): Promise<Toolkit[]> {
   return r.toolkits ?? [];
 }
 
-export function getHealth(): Promise<HealthResponse> {
-  return api<HealthResponse>("/api/health");
+export function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
+  return api<HealthResponse>("/api/health", { signal });
 }
 
 /** Cheap health probe that never blocks the UI on failure. */

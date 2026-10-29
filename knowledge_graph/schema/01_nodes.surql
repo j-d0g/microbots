@@ -39,6 +39,7 @@ DEFINE FIELD OVERWRITE title           ON chat TYPE option<string>;
 DEFINE FIELD OVERWRITE content         ON chat TYPE string;
 DEFINE FIELD OVERWRITE source_type     ON chat TYPE string;
 DEFINE FIELD OVERWRITE source_id       ON chat TYPE option<string>;
+DEFINE FIELD OVERWRITE role            ON chat TYPE option<string>;
 DEFINE FIELD OVERWRITE signal_level    ON chat TYPE option<string>;
 DEFINE FIELD OVERWRITE summary         ON chat TYPE option<string>;
 DEFINE FIELD OVERWRITE embedding       ON chat TYPE option<array<float>>;
