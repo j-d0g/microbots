@@ -4,6 +4,7 @@ import { useCallback, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { AskUserCard } from "@/components/windows/AskUserCard";
+import { TodayCard } from "@/components/windows/TodayWindow";
 import { GraphRoom } from "@/components/rooms/GraphRoom";
 import { WINDOW_REGISTRY } from "@/components/windows/registry";
 import {
@@ -42,6 +43,12 @@ export function InlineCard({
       return <IntegrationCard card={card} />;
     case "skills":
       return <SkillCard card={card} />;
+    case "today":
+      return (
+        <CardShell card={card} title="today">
+          <TodayCard card={card} />
+        </CardShell>
+      );
     case "ask_user":
       return <AskUserInlineCard card={card} onSubmitAnswer={onSubmitAnswer} />;
     default:

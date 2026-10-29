@@ -30,13 +30,14 @@ describe("agent tool and canvas contract", () => {
     useAgentStore.setState({ windows: [], chatMessages: [] });
   });
 
-  it("exposes exactly the seven registry tools in the model prompt", () => {
+  it("exposes exactly the eight registry tools in the model prompt", () => {
     const ctx = createToolCtx({ open: null, recentCards: [] }, () => {});
     const names = Object.keys(createAgentTools(ctx));
     expect(names).toEqual([
       "show",
       "close",
       "search",
+      "today",
       "ask_user",
       "remember",
       "upsert_entity",

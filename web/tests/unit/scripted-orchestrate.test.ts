@@ -65,23 +65,37 @@ describe("scripted orchestrator model", () => {
     expect(activeModelSlug()).toBe("scripted");
   });
 
-  it("uses search results and focused cards in the morning brief SSE response", async () => {
+  it("opens Today and summarizes its returned data in the morning brief", async () => {
     vi.stubEnv("MICROBOTS_AGENT_MODEL", "scripted");
     vi.stubEnv("OPENROUTER_API_KEY", "");
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       if (String(input).includes("/api/health")) return healthyBackend();
-      if (String(input).includes("/api/kg/search")) {
+      if (String(input).includes("/api/kg/today")) {
         return Response.json({
-          query: "production deploy",
-          scope: "all",
-          count: 1,
-          results: [{
-            kind: "memories",
-            id: "memory:deploy-checklist",
-            name: "Deploy checklist",
-            snippet: "Post in #deployments before and after every production deploy.",
-            score: 0.9,
+          needs_you: [{
+            id: "automation_candidate:question",
+            title: "Review the release note",
+            status: "open",
+            signal_axes: { kind: "question", risk_tier: 2 },
+            evidence: [],
           }],
+          suggestions: [
+            {
+              id: "automation_candidate:pr",
+              title: "Draft PR review summaries for Bob",
+              status: "open",
+              signal_axes: { kind: "automation", risk_tier: 2 },
+              evidence: [{ type: "chat", id: "chat:github_pr_schema", text: "PR reviews" }],
+            },
+            {
+              id: "automation_candidate:linear",
+              title: "Auto-file Linear tickets from #bugs",
+              status: "open",
+              signal_axes: { kind: "automation", risk_tier: 2 },
+              evidence: [{ type: "chat", id: "chat:linear_ticket_triage", text: "Bug triage" }],
+            },
+          ],
+          recent: [],
         });
       }
       return Response.json([]);
@@ -93,33 +107,27 @@ describe("scripted orchestrator model", () => {
       .toBeLessThan(events.findIndex((event) => event.type === "reply.chunk"));
     expect(events).toContainEqual(expect.objectContaining({
       type: "ui.tool.open",
-      kind: "memories",
-      payload: expect.objectContaining({ query: "production deploy", count: 1 }),
+      kind: "today",
+      payload: expect.objectContaining({
+        suggestions: expect.arrayContaining([
+          expect.objectContaining({ title: "Draft PR review summaries for Bob" }),
+        ]),
+      }),
     }));
-    expect(events).toContainEqual({
-      type: "ui.canvas",
-      action: {
-        type: "open",
-        kind: "workflows",
-        payload: { focus: "Bug Triage" },
-        openedBy: "agent",
-      },
-    });
     expect(events.filter((event) => event.type === "reply.chunk").map((event) =>
       event.type === "reply.chunk" ? event.text : "",
-    ).join("")).toContain("#deployments");
+    ).join("")).toBe("1 thing needs you; 2 automations are worth a look.");
     expect(scriptedResponse("morning brief").toolCalls).toEqual([
-      { name: "search", input: { query: "production deploy", scope: "all" } },
+      { name: "today", input: {} },
     ]);
 
     resetStore();
     for (const event of events) applyAgentEvent(event);
     const morning = buildSnapshot();
-    expect(morning.recentCards.map((card) => card.kind)).toEqual(["memories", "workflows"]);
+    expect(morning.recentCards.map((card) => card.kind)).toEqual(["today"]);
 
     const clearResponse = await POST(request("close", morning));
     const clearEvents = readEvents(await clearResponse.text());
-    expect(clearEvents).toContainEqual({ type: "ui.canvas", action: { type: "close" } });
     expect(clearEvents.filter((event) => event.type === "reply.chunk").map((event) =>
       event.type === "reply.chunk" ? event.text : "",
     ).join("")).toBe("Closed the open card.");
@@ -132,6 +140,41 @@ describe("scripted orchestrator model", () => {
       .map((event) => event.type === "reply.chunk" ? event.text : "").join(""))
       .toBe("Nothing's open.");
   }, 15_000);
+
+  it("saves a remembered fact, opens it in a memories card, and replies saved", async () => {
+    vi.stubEnv("MICROBOTS_AGENT_MODEL", "scripted");
+    vi.stubEnv("OPENROUTER_API_KEY", "");
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/api/health")) return healthyBackend();
+      if (url.pathname.endsWith("/api/kg/memories") && init?.method === "POST") {
+        return Response.json(
+          { id: "memory:carol_release", memory_id: "carol_release" },
+          { status: 201 },
+        );
+      }
+      return Response.json([]);
+    }));
+
+    const response = await POST(request(
+      "remember that Carol owns the release checklist",
+      buildSnapshot(),
+    ));
+    const events = readEvents(await response.text());
+    expect(events).toContainEqual(expect.objectContaining({
+      type: "ui.tool.open",
+      kind: "memories",
+      payload: expect.objectContaining({
+        query: "Carol owns the release checklist",
+        results: [expect.objectContaining({
+          snippet: "Carol owns the release checklist",
+        })],
+      }),
+    }));
+    expect(events.filter((event) => event.type === "reply.chunk")
+      .map((event) => event.type === "reply.chunk" ? event.text : "").join(""))
+      .toBe("Saved.");
+  });
 
   it("opens the top deploy workflow card and answers from its search result", async () => {
     vi.stubEnv("OPENROUTER_API_KEY", "");
@@ -279,7 +322,7 @@ describe("scripted orchestrator model", () => {
 describe("scripted response mappings", () => {
   it.each([
     ["clear", "close"],
-    ["brief", "search"],
+    ["brief", "today"],
     ["please draw a graph", "show"],
     ["close", "close"],
     ["focus memories", "show"],
@@ -288,11 +331,9 @@ describe("scripted response mappings", () => {
     expect(scriptedResponse(query).toolCalls[0]?.name).toBe(toolName);
   });
 
-  it("searches before showing a focused workflow for the morning brief", () => {
+  it("routes the morning brief to Today", () => {
     const brief = scriptedResponse("morning brief");
-    expect(brief.toolCalls).toEqual([
-      { name: "search", input: { query: "production deploy", scope: "all" } },
-    ]);
+    expect(brief.toolCalls).toEqual([{ name: "today", input: {} }]);
     expect(brief.text).toBe("");
   });
 
@@ -323,29 +364,95 @@ describe("scripted response mappings", () => {
     ]);
   });
 
-  it("asks for a choice before automating PR reviews", () => {
-    const response = scriptedResponse("should I automate PR reviews?");
-    expect(response.toolCalls[0].name).toBe("ask_user");
-    expect(response.toolCalls[0].input.options).toHaveLength(3);
-    expect(response.text).toBe("");
+  it("opens Today focused on automation suggestions", () => {
+    expect(scriptedResponse("what should I automate?").toolCalls).toEqual([
+      { name: "today", input: { focus: "suggestions" } },
+    ]);
+    expect(scriptedResponse("what can I automate").toolCalls).toEqual([
+      { name: "today", input: { focus: "suggestions" } },
+    ]);
   });
 
-  it.each([
-    ["Draft review suggestions", "draft review suggestions"],
-    ["Ask before each review", "ask before each review"],
-    ["Keep reviews manual", "keep reviews manual"],
-  ])("acknowledges the PR-review choice %j without claiming automation", (choice, acknowledgement) => {
-    const response = scriptedResponse(choice);
+  it("opens Today focused on items that need the user", () => {
+    expect(scriptedResponse("what needs me today?").toolCalls).toEqual([
+      { name: "today", input: { focus: "needs_you" } },
+    ]);
+  });
 
-    expect(response.toolCalls).toEqual([]);
-    expect(response.text).toContain(acknowledgement);
-    expect(response.text).toContain("Nothing has been automated yet in this demo.");
+  it("names the top suggestion and its evidence count", () => {
+    expect(scriptedResponse("what should I automate?", [{
+      name: "today",
+      output: {
+        ok: true,
+        result: {
+          suggestions: [{
+            title: "Draft PR review summaries for Bob",
+            status: "open",
+            evidence: [{}, {}],
+          }],
+        },
+      },
+    }]).text).toBe("Draft PR review summaries for Bob is worth a look, based on 2 signals.");
+  });
+
+  it("uses capitalized singular and empty-state morning brief copy", () => {
+    expect(scriptedResponse("morning brief", [{
+      name: "today",
+      output: {
+        ok: true,
+        result: {
+          needs_you: [],
+          suggestions: [{ status: "open" }, { status: "open" }],
+        },
+      },
+    }]).text).toBe("Nothing needs you right now; 2 automations are worth a look.");
+    expect(scriptedResponse("morning brief", [{
+      name: "today",
+      output: {
+        ok: true,
+        result: {
+          needs_you: [],
+          suggestions: [{ status: "open" }],
+        },
+      },
+    }]).text).toBe("Nothing needs you right now; 1 automation is worth a look.");
+    expect(scriptedResponse("what needs me today?", [{
+      name: "today",
+      output: { ok: true, result: { needs_you: [], suggestions: [] } },
+    }]).text).toBe("Nothing needs you right now.");
+  });
+
+  it("answers a memory search with the found sentence", () => {
+    expect(scriptedResponse("who owns the release checklist?", [{
+      name: "search",
+      output: {
+        ok: true,
+        result: {
+          results: [{
+            kind: "memories",
+            snippet: "Carol owns the release checklist",
+          }],
+        },
+      },
+    }]).text).toBe("Carol owns the release checklist.");
+  });
+
+  it("routes remember that statements to the real memory tool and says saved", () => {
+    expect(scriptedResponse("remember that Carol owns the release checklist").toolCalls)
+      .toEqual([{
+        name: "remember",
+        input: { text: "Carol owns the release checklist" },
+      }]);
+    expect(scriptedResponse("remember that Carol owns the release checklist", [{
+      name: "remember",
+      output: { ok: true, result: { id: "memory:carol_release" } },
+    }]).text).toBe("Saved.");
   });
 
   it("returns four demo prompts for capability questions", () => {
     expect(scriptedResponse("what can you do?")).toEqual({
       toolCalls: [],
-      text: "I can search your graph, show focused cards, remember facts, and help shape workflows. Try “morning brief”, “what’s connected to Linear?”, “who is Bob?”, or “tell me about deploys”.",
+      text: "I can search your graph, show focused cards, remember facts, and help shape workflows. Try “what needs me today?”, “what’s connected to Linear?”, “who is Bob?”, or “what should I automate?”.",
     });
   });
 

@@ -45,6 +45,7 @@ db-down:
 dev: install db-up
 	$(PYTHON) $(KG)/schema/apply.py
 	$(PYTHON) $(KG)/seed/seed.py
+	$(PYTHON) -m candidates.surface
 	@set -m; \
 		uv run uvicorn app.main:app --port 8001 & api=$$!; \
 		(cd web && npm run dev) & web=$$!; \

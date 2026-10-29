@@ -556,6 +556,53 @@ export interface KnowledgeSearchResponse {
   results: KnowledgeSearchResult[];
 }
 
+export interface CandidateEvidence {
+  type: "chat" | "entity" | "memory";
+  id: string;
+  text: string;
+}
+
+export interface AutomationCandidate {
+  id: string;
+  title: string;
+  story: string;
+  suggested_action: string;
+  signal_axes: Record<string, unknown> & { kind?: string; risk_tier?: number };
+  status: "open" | "suggested" | "accepted" | "dismissed" | "done";
+  time_sensitive_until?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  evidence: CandidateEvidence[];
+}
+
+export interface TodayResponse {
+  needs_you: AutomationCandidate[];
+  suggestions: AutomationCandidate[];
+  recent: Array<{
+    id: string;
+    title: string;
+    source_type: string;
+    occurred_at?: string;
+  }>;
+}
+
+export function getToday(userId?: string | null, signal?: AbortSignal): Promise<TodayResponse> {
+  const query = userId ? `?user_id=${encodeURIComponent(userId)}` : "";
+  return api<TodayResponse>(`/api/kg/today${query}`, { userId, signal });
+}
+
+export function updateCandidateStatus(
+  id: string,
+  status: "open" | "accepted" | "dismissed",
+  userId?: string | null,
+): Promise<AutomationCandidate> {
+  return api<AutomationCandidate>(`/api/kg/candidates/${encodeURIComponent(id)}`, {
+    method: "POST",
+    body: { status },
+    userId,
+  });
+}
+
 export function searchKg(
   query: string,
   scope: SearchScope = "all",

@@ -164,6 +164,39 @@ ORDER BY occurred_at DESC
 LIMIT $limit
 """
 
+Q_TODAY_CANDIDATES = """
+SELECT id, title, story, suggested_action, signal_axes, status,
+       time_sensitive_until, created_at, updated_at
+FROM automation_candidate
+WHERE status IN ['open', 'suggested', 'accepted', 'dismissed']
+"""
+
+Q_TODAY_CHAT_EVIDENCE = """
+SELECT in AS candidate_id, out.id AS id, out.title AS title, out.summary AS summary
+FROM candidate_evidence_chat
+WHERE in IN $ids
+"""
+
+Q_TODAY_ENTITY_EVIDENCE = """
+SELECT in AS candidate_id, out.id AS id, out.name AS name, out.description AS description
+FROM candidate_evidence_entity
+WHERE in IN $ids
+"""
+
+Q_TODAY_MEMORY_EVIDENCE = """
+SELECT in AS candidate_id, out.id AS id, out.content AS content
+FROM candidate_evidence_memory
+WHERE in IN $ids
+"""
+
+Q_TODAY_RECENT = """
+SELECT id, title, summary, content, source_type, occurred_at ?? created_at AS occurred_at
+FROM chat
+WHERE source_type != 'ui_chat'
+ORDER BY occurred_at DESC
+LIMIT 5
+"""
+
 Q_WIKI_PAGE = "SELECT path, content, depth, layer FROM wiki_page WHERE path = $path LIMIT 1"
 
 Q_WIKI_TREE = "SELECT path, depth, layer FROM wiki_page ORDER BY path ASC"

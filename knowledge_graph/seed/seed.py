@@ -2,7 +2,7 @@
 import asyncio
 import os
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from surrealdb import AsyncSurreal
@@ -33,6 +33,60 @@ def now() -> str:
 
 async def _delete_edge(db: AsyncSurreal, table: str, source: str, target: str) -> None:
     await db.query(f"DELETE {table} WHERE in = {source} AND out = {target};")
+
+
+async def _seed_automation_candidates(db: AsyncSurreal) -> None:
+    candidates = [
+        {
+            "id": "automation_candidate:pr_review_summaries",
+            "title": "Draft PR review summaries for Bob",
+            "story": "Bob is the primary reviewer, and review checklists recur across GitHub PRs.",
+            "suggested_action": "Draft a concise review summary for Bob and leave it for human approval.",
+            "signal_axes": {"kind": "automation", "risk_tier": 2},
+            "evidence": [
+                ("candidate_evidence_chat", "chat:github_pr_schema"),
+                ("candidate_evidence_memory", "memory:bob_reviewer"),
+            ],
+        },
+        {
+            "id": "automation_candidate:linear_bug_triage",
+            "title": "Auto-file Linear tickets from #bugs",
+            "story": "Bug reports in Slack recur, and the triage flow already creates Linear tickets.",
+            "suggested_action": "Draft a Linear ticket from each #bugs report for review before filing.",
+            "signal_axes": {"kind": "automation", "risk_tier": 2},
+            "evidence": [
+                ("candidate_evidence_chat", "chat:linear_ticket_triage"),
+            ],
+        },
+        {
+            "id": "automation_candidate:deploy_runbook_owner",
+            "title": "Deploy runbook looks out of date — who owns it now?",
+            "story": "The deploy runbook and recent incident notes need a current owner.",
+            "suggested_action": "Confirm the current owner of the deploy runbook.",
+            "signal_axes": {"kind": "question", "risk_tier": 1},
+            "time_sensitive_until": datetime.now(timezone.utc) + timedelta(days=3),
+            "evidence": [
+                ("candidate_evidence_chat", "chat:slack_deploy_incident"),
+                ("candidate_evidence_chat", "chat:notion_deploy_runbook"),
+            ],
+        },
+    ]
+    for candidate in candidates:
+        record_id = candidate["id"]
+        await db.query(
+            f"UPSERT {record_id} MERGE $payload",
+            {"payload": {
+                "title": candidate["title"],
+                "story": candidate["story"],
+                "suggested_action": candidate["suggested_action"],
+                "signal_axes": candidate["signal_axes"],
+                **({"time_sensitive_until": candidate["time_sensitive_until"]}
+                   if "time_sensitive_until" in candidate else {}),
+            }},
+        )
+        for edge_table, evidence_id in candidate["evidence"]:
+            await _delete_edge(db, edge_table, record_id, evidence_id)
+            await db.query(f"RELATE {record_id}->{edge_table}->{evidence_id};")
 
 
 async def seed(db: AsyncSurreal):
@@ -951,6 +1005,8 @@ async def seed(db: AsyncSurreal):
                 context_window_cost: {cost}
             }};
         """)
+
+    await _seed_automation_candidates(db)
 
     def extract_count(result) -> int:
         try:

@@ -85,6 +85,15 @@ export const WINDOW_REGISTRY: Record<WindowKind, WindowModule> = {
     },
   },
 
+  today: {
+    title: "today",
+    summary: (_s, win) => {
+      const needs = (win?.payload?.needs_you as unknown[])?.length ?? 0;
+      const suggestions = (win?.payload?.suggestions as unknown[])?.length ?? 0;
+      return truncate(`today · ${needs} needs you · ${suggestions} suggestions`);
+    },
+  },
+
   composio_connect: {
     title: "composio_connect",
     summary: (state) => {
@@ -105,6 +114,7 @@ export const WINDOW_LABEL: Record<WindowKind, string> = {
   memories: "memories",
   skills: "skills",
   workflows: "workflows",
+  today: "today",
   composio_connect: "connect integrations",
 };
 
