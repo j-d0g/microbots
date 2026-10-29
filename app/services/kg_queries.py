@@ -5,7 +5,7 @@ from __future__ import annotations
 Q_INTEGRATIONS_OVERVIEW = """
 SELECT
     slug, name, category, frequency, description, user_purpose,
-    (SELECT out.slug FROM co_used_with WHERE in = $parent.id) AS co_used_with_slugs
+    (SELECT out.slug, frequency FROM co_used_with WHERE in = $parent.id) AS co_used_with_slugs
 FROM integration ORDER BY slug ASC
 """
 
@@ -25,7 +25,8 @@ FROM integration WHERE slug = $slug LIMIT 1
 Q_ENTITIES_BY_TYPE = """
 SELECT
     entity_type, name, id, description, aliases, tags,
-    count(SELECT 1 FROM chat_mentions WHERE out = $parent.id) AS chat_mention_count
+    count(SELECT 1 FROM chat_mentions WHERE out = $parent.id) AS chat_mention_count,
+    (SELECT VALUE out.slug FROM appears_in WHERE in = $parent.id) AS integration_slugs
 FROM entity
 WHERE entity_type = $entity_type
 ORDER BY name ASC
@@ -34,7 +35,8 @@ ORDER BY name ASC
 Q_ENTITIES_ALL = """
 SELECT
     entity_type, name, id, description, aliases, tags,
-    count(SELECT 1 FROM chat_mentions WHERE out = $parent.id) AS chat_mention_count
+    count(SELECT 1 FROM chat_mentions WHERE out = $parent.id) AS chat_mention_count,
+    (SELECT VALUE out.slug FROM appears_in WHERE in = $parent.id) AS integration_slugs
 FROM entity
 ORDER BY name ASC
 """
@@ -49,7 +51,12 @@ SELECT
 FROM entity WHERE id = $id LIMIT 1
 """
 
-Q_MEMORIES_TOP = "SELECT * FROM memory ORDER BY {order_field} DESC LIMIT $limit"
+Q_MEMORIES_TOP = """
+SELECT *,
+    (SELECT VALUE out.slug FROM memory_about
+        WHERE in = $parent.id AND record::tb(out) = 'integration') AS integration_slugs
+FROM memory ORDER BY {order_field} DESC LIMIT $limit
+"""
 
 Q_SKILLS_ALL = """
 SELECT

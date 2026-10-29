@@ -471,7 +471,7 @@ export function graphTools(ctx: AgentToolCtx) {
   return {
     graph_focus_node: tool({
       description:
-        "Center the memory graph on a node and zoom in. Pass node_id like 'user-maya', 'ent-product-bugs', 'wf-bug-triage'.",
+        "Center the memory graph on a node and zoom in. Pass a node id ('int-linear', 'skill:triage_incoming_bug', 'workflow:bug_triage', 'entity:alice') or a label like 'Linear'.",
       inputSchema: z.object({ node_id: z.string() }),
       execute: async ({ node_id }) => dispatch("focus_node", { node_id }),
     }),
@@ -482,19 +482,19 @@ export function graphTools(ctx: AgentToolCtx) {
     }),
     graph_select: tool({
       description:
-        "Open the node inspector panel for a node. Pass an empty string to close.",
+        "Open the node inspector for a node id ('int-linear', 'skill:triage_incoming_bug', 'workflow:bug_triage', 'entity:alice') or label like 'Linear'. Pass an empty string to clear focus.",
       inputSchema: z.object({ node_id: z.string() }),
       execute: async ({ node_id }) => dispatch("select", { node_id }),
     }),
     graph_neighbors: tool({
       description:
-        "Highlight a node and its 1-hop neighbors. Other nodes fade.",
+        "Highlight a node id ('int-linear', 'skill:triage_incoming_bug', 'workflow:bug_triage', 'entity:alice') or exact case-insensitive label and its 1-hop neighbors without changing zoom.",
       inputSchema: z.object({ node_id: z.string() }),
       execute: async ({ node_id }) => dispatch("neighbors", { node_id }),
     }),
     graph_highlight: tool({
       description:
-        "Highlight a node and its direct neighbors (no zoom change). Pass empty string to clear.",
+        "Highlight a node id ('int-linear', 'skill:triage_incoming_bug', 'workflow:bug_triage', 'entity:alice') or label like 'Linear' and its direct neighbors without changing zoom. Pass empty string to clear.",
       inputSchema: z.object({ node_id: z.string() }),
       execute: async ({ node_id }) => dispatch("highlight", { node_id }),
     }),
@@ -505,7 +505,8 @@ export function graphTools(ctx: AgentToolCtx) {
       execute: async ({ scale }) => dispatch("zoom_to", { scale }),
     }),
     graph_path: tool({
-      description: "Highlight the shortest path between two nodes.",
+      description:
+        "Highlight the shortest path between two node ids or exact case-insensitive labels.",
       inputSchema: z.object({ from: z.string(), to: z.string() }),
       execute: async ({ from, to }) => dispatch("path", { from, to }),
     }),

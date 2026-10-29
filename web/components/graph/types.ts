@@ -11,12 +11,15 @@ export interface GraphNode {
   y?: number;
   vx?: number;
   vy?: number;
+  fx?: number;
+  fy?: number;
 }
 
 export interface GraphLink {
   source: string | GraphNode;
   target: string | GraphNode;
   relation?: string;
+  weight?: number;
 }
 
 export interface GraphFilter {
@@ -26,23 +29,9 @@ export interface GraphFilter {
 }
 
 export interface GraphController {
-  /* viewport */
-  zoomToFit: (durationMs?: number, padding?: number) => void;
+  fit: (ids?: Set<string>, durationMs?: number) => void;
   zoomTo: (scale: number, durationMs?: number) => void;
-  centerAt: (x: number, y: number, durationMs?: number) => void;
-  focusNode: (id: string, durationMs?: number, scale?: number) => void;
-  /* selection + highlight */
-  selectNode: (id: string | null) => void;
-  highlightNode: (id: string | null) => void;
-  highlightNeighbors: (id: string | null) => void;
-  highlightPath: (sourceId: string, targetId: string) => void;
-  clearHighlight: () => void;
-  /* filter */
-  setFilter: (filter: Partial<GraphFilter>) => void;
-  clearFilters: () => void;
-  /* introspection */
-  getViewport: () => { x: number; y: number; scale: number } | null;
-  getSelectedNode: () => GraphNode | null;
+  zoomBy: (factor: number, durationMs?: number) => void;
 }
 
 export const LAYER_INK: Record<NodeLayer, string> = {

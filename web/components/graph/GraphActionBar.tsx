@@ -8,6 +8,8 @@ interface Props {
   onZoomOut: () => void;
   onClear: () => void;
   hasFocus: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 export function GraphActionBar({
@@ -16,6 +18,8 @@ export function GraphActionBar({
   onZoomOut,
   onClear,
   hasFocus,
+  onRefresh,
+  refreshing = false,
 }: Props) {
   return (
     <div className="pointer-events-auto absolute right-3 top-3 z-10 flex items-center gap-1 rounded-md border border-rule bg-paper-0/85 p-1 backdrop-blur-md shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -48,6 +52,21 @@ export function GraphActionBar({
               clear
             </span>
           </ActionButton>
+        </>
+      )}
+      {onRefresh && (
+        <>
+          <span className="mx-0.5 h-3 w-px bg-rule" />
+          <button
+            type="button"
+            onClick={onRefresh}
+            data-testid="graph-refresh"
+            title="refresh graph"
+            aria-label="refresh graph"
+            className="rounded px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-ink-60 transition-colors hover:bg-paper-2 hover:text-ink-90"
+          >
+            {refreshing ? "…" : "refresh"}
+          </button>
         </>
       )}
     </div>

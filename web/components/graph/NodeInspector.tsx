@@ -17,7 +17,6 @@ interface Props {
   neighbors: NeighborSummary[];
   onClose: () => void;
   onFocus: () => void;
-  onExpandNeighbors: () => void;
   onExplain: () => void;
   onPickNeighbor: (id: string) => void;
   /* layout */
@@ -30,7 +29,6 @@ export function NodeInspector({
   neighbors,
   onClose,
   onFocus,
-  onExpandNeighbors,
   onExplain,
   onPickNeighbor,
   panelWidth,
@@ -94,7 +92,6 @@ export function NodeInspector({
               </p>
               <div className="flex flex-col gap-1">
                 <ActionRow label="focus + zoom" onClick={onFocus} />
-                <ActionRow label="expand 1-hop" onClick={onExpandNeighbors} />
                 <ActionRow label="explain" onClick={onExplain} />
                 <ActionRow label="close" onClick={onClose} />
               </div>
