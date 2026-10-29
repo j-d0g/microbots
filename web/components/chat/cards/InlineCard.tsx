@@ -15,7 +15,7 @@ import {
   type Integration,
   type Skill,
   type Workflow,
-} from "@/lib/kg-client";
+} from "@/lib/api/backend";
 import { useAgentStore, type ChatCard } from "@/lib/store";
 import { useKgResource } from "@/lib/use-kg-resource";
 import { cn } from "@/lib/cn";

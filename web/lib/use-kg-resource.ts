@@ -6,7 +6,7 @@
  * Every new schema-driven window follows the same contract:
  *   - optional agent-pushed `payload` seeds an initial snapshot for
  *     instant paint (no spinner flash on open);
- *   - the window then fetches from `kg-client.ts` on mount + whenever
+ *   - the window then fetches from the backend client on mount + whenever
  *     the fetcher's identity changes (caller stabilises it with
  *     useCallback), reconciling the authoritative server response
  *     over the seed;
@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BackendError } from "./kg-client";
+import { BackendError } from "./api/backend";
 
 export interface KgResource<T> {
   /** Most recent authoritative snapshot, or the agent-pushed seed

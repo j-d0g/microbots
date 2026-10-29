@@ -1,51 +1,21 @@
 import { NextRequest } from "next/server";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { CanvasSnapshot } from "@/lib/agent/types";
-import { isAgentLive, activeModelSlug, prewarmConnection } from "@/lib/agent/providers/openrouter";
+import { activeModelSlug, prewarmConnection } from "@/lib/agent/providers/openrouter";
 import { runOrchestrator } from "@/lib/agent/orchestrator";
 import { createToolCtx } from "@/lib/agent/tools";
-import { detectLeakedToolCall } from "@/lib/agent/leaked-tool-call";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  return Response.json({ live: isAgentLive() });
-}
-
 interface RequestBody {
   query?: string;
   snapshot?: CanvasSnapshot;
+  userId?: string | null;
 }
 
-/**
- * POST /api/agent/orchestrate
- *
- * Body: { query: string, snapshot: CanvasSnapshot }
- *
- * Streams SSE events: ui.* (window mutations), agent.delegate /
- * agent.tool.* (sidecar log), reply.* (streamed text), dock state.
- *
- * No live model configured → 503 + `X-Agent-Fallback: local` header so the client
- * can degrade to the scripted `routeIntent()` fallback.
- */
 export async function POST(req: NextRequest) {
   prewarmConnection();
-  if (!isAgentLive()) {
-    return new Response(
-      JSON.stringify({
-        error: "no agent model configured",
-        fallback: "local",
-      }),
-      {
-        status: 503,
-        headers: {
-          "content-type": "application/json",
-          "x-agent-fallback": "local",
-        },
-      },
-    );
-  }
 
   let body: RequestBody;
   try {
@@ -70,124 +40,45 @@ export async function POST(req: NextRequest) {
   }
 
   const enc = new TextEncoder();
-  const sseEncode = (e: AgentEvent) =>
-    enc.encode(`data: ${JSON.stringify(e)}\n\n`);
+  const sseEncode = (event: AgentEvent) =>
+    enc.encode(`data: ${JSON.stringify(event)}\n\n`);
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (e: AgentEvent) => {
+      const send = (event: AgentEvent) => {
         try {
-          controller.enqueue(sseEncode(e));
+          controller.enqueue(sseEncode(event));
         } catch {
-          // controller closed mid-stream — ignore.
+          // Ignore events after the client disconnects.
         }
       };
 
-      const ctx = createToolCtx(snapshot, send);
+      const ctx = createToolCtx(snapshot, send, body.userId);
       const emit = ctx.emit;
-
       emit({ type: "dock", state: "thinking" });
-      emit({
-        type: "agent.status",
-        status: `${activeModelSlug()} · thinking…`,
-      });
+      emit({ type: "agent.status", status: `${activeModelSlug()} · thinking…` });
+      emit({ type: "reply.start", query });
 
       try {
         const result = runOrchestrator({ ctx, query });
-
-        /* Surface centre-stage selection + tool-bag size to the
-         * browser as a status string. This makes "is the in-window
-         * tool wired up?" trivially observable in the
-         * client status surfaces. */
-        const d = result.diagnostics;
-        emit({
-          type: "agent.status",
-          status: `centre=${d.centreKind ?? "none"} (${d.centreSource}) · ${d.windowToolNames.length} window tools · ${d.totalToolCount} total`,
-        });
-
-        // Two parallel streams from one streamText() result:
-        //   - textStream: orchestrator's reply text (drives reply.chunk)
-        //   - tool calls: handled internally via ctx.emit from tool handlers
-        //
-        // Emit reply.start unconditionally so the client clears any
-        // stale `agentReply` from the previous turn — otherwise tools-
-        // only turns leave chat without an agent message
-        // reply while the canvas mutates. The chat-history slot is
-        // created lazily on first reply.chunk in agent-client.ts so
-        // tools-only turns don't leave empty agent bubbles.
-        emit({ type: "reply.start", query });
         let speaking = false;
-        let buffer = "";
         for await (const chunk of result.textStream) {
           if (!speaking) {
             emit({ type: "dock", state: "speaking" });
             speaking = true;
           }
-          if (chunk.length > 0) {
-            buffer += chunk;
-            emit({ type: "reply.chunk", text: chunk });
-          }
+          if (chunk.length > 0) emit({ type: "reply.chunk", text: chunk });
         }
-
-        /* Recovery for gemini-2.5-flash-lite leaked tool-call syntax.
-         * If the model produced text like `open_window(kind='graph')`
-         * but never actually invoked the tool, parse the leaked text
-         * and synthesize the UI events so the canvas still mutates.
-         * See `web/lib/agent/leaked-tool-call.ts` for scope + rationale. */
-        let realCalls: unknown[] = [];
-        try {
-          realCalls = (await result.toolCalls) ?? [];
-        } catch {
-          /* model errored before tool-call resolution — leave empty */
-        }
-        /* Tell the browser exactly what Gemini called this turn. If
-         * the user reports "in-window tools aren't firing", this is
-         * the line that proves whether the model called nothing,
-         * called the wrong thing, or just leaked text. */
-        const calledNames = realCalls
-          .map((c) => {
-            if (
-              c &&
-              typeof c === "object" &&
-              "toolName" in c &&
-              typeof (c as { toolName: unknown }).toolName === "string"
-            ) {
-              return (c as { toolName: string }).toolName;
-            }
-            return "?";
-          })
-          .filter((n) => n !== "?");
-        emit({
-          type: "agent.status",
-          status:
-            calledNames.length > 0
-              ? `gemini called: ${calledNames.join(", ")}`
-              : `gemini called: (no tools — text only)`,
-        });
-        if (realCalls.length === 0) {
-          const recovered = detectLeakedToolCall(buffer);
-          if (recovered) {
-            emit({
-              type: "agent.status",
-              status: `recovered leaked tool-call from text`,
-            });
-            emit(recovered.marker.start);
-            for (const e of recovered.events) ctx.emit(e);
-            emit(recovered.marker.done);
-          }
-        }
-
         emit({ type: "reply.done" });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        // eslint-disable-next-line no-console
-        console.error("[orchestrate] error:", msg);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[orchestrate] error:", message);
         emit({
           type: "ui.card",
           card: {
             id: `err-${Date.now()}`,
             kind: "toast",
-            data: { text: `agent error · ${msg.slice(0, 80)}` },
+            data: { text: `agent error · ${message.slice(0, 80)}` },
             ttl: 6000,
           },
         });

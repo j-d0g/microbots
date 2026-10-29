@@ -13,7 +13,7 @@
  */
 
 import type { ChatMessage } from "./store";
-import { addChat, getChats } from "./kg-client";
+import { addChat, getChats } from "./api/backend";
 
 /**
  * Persist a single chat message to the backend.

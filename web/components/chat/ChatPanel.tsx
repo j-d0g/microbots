@@ -8,8 +8,7 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { AgentFallback, applyAgentEvent, sendQuery } from "@/lib/agent-client";
-import { routeIntent } from "@/lib/agent-router";
+import { sendQuery } from "@/lib/agent-client";
 import { useAgentStore } from "@/lib/store";
 import { ChatHeader } from "./ChatHeader";
 import { ChatInput } from "./ChatInput";
@@ -80,15 +79,7 @@ export function ChatPanel() {
         await sendQuery(trimmed, controller.signal);
       } catch (error) {
         if (controller.signal.aborted) return;
-        if (error instanceof AgentFallback) {
-          for await (const event of routeIntent(trimmed)) {
-            if (controller.signal.aborted) break;
-            applyAgentEvent(event);
-          }
-        } else {
-          // eslint-disable-next-line no-console
-          console.error("[chat-panel] sendQuery failed:", error);
-        }
+        console.error("[chat-panel] sendQuery failed:", error);
       } finally {
         setBusy(false);
         setInput("");

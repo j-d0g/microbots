@@ -111,6 +111,26 @@ class TestPostMemory:
         assert "id" in data
         assert "memory_id" in data
 
+
+class TestMemoryEndpoints:
+    async def test_memory_search_is_case_insensitive_and_scoped(self, client: httpx.AsyncClient):
+        content = f"{_uid('search_memory')} UniqueSearchToken"
+        created = await client.post(
+            "/api/kg/memories",
+            json={"content": content, "confidence": 0.9},
+        )
+        assert created.status_code == 201
+
+        response = await client.get(
+            "/api/kg/search",
+            params={"query": "uniquesearchtoken", "scope": "memories"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["scope"] == "memories"
+        assert any(item["snippet"] == content for item in data["results"])
+
     async def test_missing_content_returns_422(self, client: httpx.AsyncClient):
         r = await client.post("/api/kg/memories", json={"memory_type": "fact"})
         assert r.status_code == 422

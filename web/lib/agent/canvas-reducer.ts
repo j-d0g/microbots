@@ -101,6 +101,9 @@ export function applyCanvasAction(state: CanvasState, action: CanvasAction): Can
       };
     }
     case "close": {
+      if (!action.id && !action.kind) {
+        return state.windows.length === 0 ? state : { ...state, windows: [] };
+      }
       const target = action.id || action.kind
         ? findCanvasWindow(state, { id: action.id, kind: action.kind })
         : topWindow(state.windows);
@@ -127,15 +130,6 @@ export function canvasActionForEvent(evt: AgentEvent): CanvasAction | null {
   switch (evt.type) {
     case "ui.canvas":
       return evt.action;
-    case "ui.room":
-      return {
-        type: "open",
-        kind: evt.room,
-        payload: evt.payload,
-        openedBy: "agent",
-      };
-    case "ui.close_window":
-      return { type: "close", kind: evt.room };
     case "ui.tool.open":
       return { type: "open", kind: evt.kind, payload: evt.payload, openedBy: "agent" };
     case "ui.tool.update":

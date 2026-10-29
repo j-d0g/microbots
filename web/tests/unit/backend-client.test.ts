@@ -9,8 +9,6 @@ import {
   upsertSkill,
   upsertWorkflow,
   addChat,
-  writeWikiPage,
-  updateUser,
   // Also import existing writes to confirm they still resolve
   addMemory,
   upsertEntity,
@@ -94,49 +92,6 @@ describe("KG write functions", () => {
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toContain("/api/kg/chats");
     expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body)).toEqual(body);
-    expect(result).toEqual(responseBody);
-  });
-
-  it("writeWikiPage sends PUT /api/kg/wiki/{path} with correct body", async () => {
-    const responseBody = { path: "onboarding/setup", revision: 3 };
-    fetchSpy.mockResolvedValueOnce(jsonResponse(responseBody));
-
-    const wikiBody = { content: "# Setup\nDo the thing.", rationale: "initial" };
-    const result = await writeWikiPage("onboarding/setup", wikiBody, "user-1");
-
-    const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toContain("/api/kg/wiki/onboarding%2Fsetup");
-    expect(init.method).toBe("PUT");
-    expect(JSON.parse(init.body)).toEqual(wikiBody);
-    expect(result).toEqual(responseBody);
-  });
-
-  it("updateUser sends PATCH /api/kg/user with correct body", async () => {
-    const responseBody = {
-      id: "user:1",
-      name: "Jordan",
-      role: "dev",
-      goals: ["ship"],
-      preferences: {},
-      context_window: 4096,
-      created_at: "",
-      updated_at: "",
-      chat_count: 0,
-      memory_count: 0,
-      entity_count: 0,
-      skill_count: 0,
-      workflow_count: 0,
-      integration_count: 0,
-    };
-    fetchSpy.mockResolvedValueOnce(jsonResponse(responseBody));
-
-    const body = { name: "Jordan", goals: ["ship"], context_window: 4096 };
-    const result = await updateUser(body, "user-1");
-
-    const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toContain("/api/kg/user");
-    expect(init.method).toBe("PATCH");
     expect(JSON.parse(init.body)).toEqual(body);
     expect(result).toEqual(responseBody);
   });
