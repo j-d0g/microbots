@@ -76,7 +76,6 @@ async def q(s: AsyncSurreal, surql: str, params: Optional[dict] = None) -> list[
     """Run a query, return normalised list of dict rows.
 
     REST layer returns this directly (FastAPI JSON-encodes it).
-    tool return type is ``str``).
     """
     rows = await s.query(surql, params or {})
     if rows is None:

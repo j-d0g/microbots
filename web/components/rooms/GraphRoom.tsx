@@ -33,6 +33,9 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
   const lastVerb = useAgentStore((s) => s.lastVerb);
   const pushCard = useAgentStore((s) => s.pushCard);
   const userId = useAgentStore((s) => s.userId);
+  const composioConfigured = useAgentStore(
+    (s) => s.backendHealth?.composioConfigured ?? false,
+  );
   const openWindow = useAgentStore((s) => s.openWindow);
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -73,7 +76,13 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
     // this, all-failure collapses into the empty-graph branch and the
     // existing loadError overlay + retry button is unreachable.
     let rejectedCount = 0;
-    const total = 7;
+    const total = composioConfigured ? 7 : 6;
+    const connections = composioConfigured
+      ? backend.getConnections(userId).catch(() => {
+          rejectedCount++;
+          return [];
+        })
+      : Promise.resolve([]);
     Promise.all([
       backend.getKgUser(userId).catch(() => {
         rejectedCount++;
@@ -101,10 +110,7 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
         rejectedCount++;
         return [];
       }),
-      backend.getConnections(userId).catch(() => {
-        rejectedCount++;
-        return [];
-      }),
+      connections,
     ])
       .then(
         ([user, integrations, entities, memories, skills, workflows, connections]) => {
@@ -136,7 +142,7 @@ export function GraphRoom(_props: { payload?: Record<string, unknown> }) {
     return () => {
       cancelled = true;
     };
-  }, [userId, refreshTick]);
+  }, [userId, composioConfigured, refreshTick]);
 
   /* container size — drives canvas + responsive layout */
   useEffect(() => {

@@ -48,15 +48,17 @@ const CONNECTIONS_POLL_MS = 30_000;
  *    before the user touches anything.
  *  - Polls /api/health every 30 s so the snapshot agent + settings
  *    badge always reflect live degraded mode.
- *  - Polls /api/composio/connections every 30 s while a userId is set,
+ *  - Polls /api/composio/connections every 30 s while configured,
  *    so integration windows show fresh status without per-window polls.
  */
 export function StoreBridge() {
   const userId = useAgentStore((s) => s.userId);
+  const backendHealth = useAgentStore((s) => s.backendHealth);
   const setUserId = useAgentStore((s) => s.setUserId);
   const setBackendHealth = useAgentStore((s) => s.setBackendHealth);
   const setConnections = useAgentStore((s) => s.setConnections);
   const setToolkits = useAgentStore((s) => s.setToolkits);
+  const composioConfigured = backendHealth?.composioConfigured ?? false;
 
   /* dev/test global */
   useEffect(() => {
@@ -163,6 +165,7 @@ export function StoreBridge() {
         setBackendHealth({
           surrealOk: !!h.surreal?.ok,
           composioOk: !!h.composio?.ok,
+          composioConfigured: !!h.composio?.configured,
           checkedAt: Date.now(),
         });
       } catch {
@@ -170,6 +173,7 @@ export function StoreBridge() {
         setBackendHealth({
           surrealOk: false,
           composioOk: false,
+          composioConfigured: false,
           checkedAt: Date.now(),
         });
       }
@@ -187,6 +191,10 @@ export function StoreBridge() {
   useEffect(() => {
     let cancelled = false;
     const fetch = async () => {
+      if (!composioConfigured) {
+        setToolkits([]);
+        return;
+      }
       try {
         const tks = await backend.listToolkits();
         if (cancelled) return;
@@ -204,7 +212,7 @@ export function StoreBridge() {
     };
     void fetch();
     return () => { cancelled = true; };
-  }, [setToolkits]);
+  }, [composioConfigured, setToolkits]);
 
   /* chat history hydration — once on mount (or when userId changes) */
   useEffect(() => {
@@ -229,7 +237,7 @@ export function StoreBridge() {
 
   /* connections poll — only when userId is set */
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !composioConfigured) {
       setConnections([]);
       return;
     }
@@ -251,7 +259,7 @@ export function StoreBridge() {
       cancelled = true;
       window.clearInterval(tid);
     };
-  }, [userId, setConnections]);
+  }, [userId, composioConfigured, setConnections]);
 
   return null;
 }

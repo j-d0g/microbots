@@ -70,12 +70,14 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
       setBackendHealth({
         surrealOk: !!h.surreal?.ok,
         composioOk: !!h.composio?.ok,
+        composioConfigured: !!h.composio?.configured,
         checkedAt: Date.now(),
       });
     } catch {
       setBackendHealth({
         surrealOk: false,
         composioOk: false,
+        composioConfigured: false,
         checkedAt: Date.now(),
       });
     } finally {

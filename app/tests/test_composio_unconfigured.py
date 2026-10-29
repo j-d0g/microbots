@@ -16,10 +16,13 @@ async def test_composio_toolkits_returns_cors_503_without_key(monkeypatch):
         async with httpx.AsyncClient(
             transport=transport, base_url="http://test"
         ) as client:
+            health = await client.get("/api/health")
             response = await client.get(
                 "/api/composio/toolkits",
                 headers={"Origin": "http://localhost:3000"},
             )
+        assert health.status_code == 200
+        assert health.json()["composio"]["configured"] is False
         assert response.status_code == 503
         assert response.json() == {"error": "composio not configured"}
         assert response.headers["access-control-allow-origin"] == "*"

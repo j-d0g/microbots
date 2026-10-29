@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchLocalIntent } from "../../agent-router";
+import { matchLocalIntent, routeIntent } from "../../agent-router";
 
 describe("matchLocalIntent", () => {
   it.each([
@@ -17,5 +17,14 @@ describe("matchLocalIntent", () => {
       "graph",
       "workflows",
     ]);
+  });
+
+  it("uses the short local-mode reply when no room matches", async () => {
+    const events = [];
+    for await (const event of routeIntent("asdf")) events.push(event);
+    expect(events).toContainEqual({
+      type: "reply.chunk",
+      text: "local mode — try: graph, memories, workflows, skills, wiki, integrations",
+    });
   });
 });

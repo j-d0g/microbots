@@ -157,7 +157,12 @@ export interface HealthResponse {
   status: string;
   service: string;
   surreal: { ok: boolean; table_count?: number };
-  composio: { ok: boolean; toolkit_count?: number };
+  composio: {
+    ok: boolean;
+    configured: boolean;
+    toolkit_count?: number;
+    error?: string;
+  };
 }
 
 /* ============================== errors ============================ */
@@ -471,7 +476,7 @@ export function getHealth(): Promise<HealthResponse> {
 /** Cheap health probe that never blocks the UI on failure. */
 export async function warmUp(): Promise<void> {
   try {
-    await fetch(`${BASE_URL}/health`, { method: "GET" });
+    await fetch(`${BASE_URL}/api/health`, { method: "GET" });
   } catch {
     /* swallow — health poll will surface degraded mode */
   }

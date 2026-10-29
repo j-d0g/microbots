@@ -39,7 +39,7 @@ const INTENTS: ReadonlyArray<{
 ];
 
 const LOCAL_MODE_REPLY =
-  "local mode (no OPENROUTER_API_KEY): I can open graph, memories, workflows, skills, wiki, integrations, entities, chats, profile, settings.";
+  "local mode — try: graph, memories, workflows, skills, wiki, integrations";
 
 export function matchLocalIntent(query: string): RoomKind[] {
   const normalized = query.toLowerCase();

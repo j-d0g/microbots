@@ -18,6 +18,7 @@ Conventions:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import re
@@ -26,6 +27,7 @@ from typing import Any, Optional
 
 from surrealdb import AsyncSurreal
 from surrealdb.data.types.record_id import RecordID
+from surrealdb.errors import InternalError
 
 from app.services.surreal import jsonify, session
 
@@ -330,27 +332,37 @@ async def add_chat(
         except ValueError:
             occurred = None
 
-    async with session() as db:
-        await db.query(
-            """UPSERT $c MERGE {
-                title: $title, content: $content, source_type: $stype,
-                source_id: $sid, signal_level: $sig, summary: $summary,
-                occurred_at: $occ
-            }""",
-            {
-                "c": c_rec, "title": title, "content": content, "stype": source_type,
-                "sid": source_id, "sig": signal_level, "summary": summary, "occ": occurred,
-            },
-        )
-        if from_integration:
-            i_rec = _rec("integration", from_integration.strip().lower())
-            await _relate_unique(db, c_rec, "chat_from", i_rec)
-        for mention in mentions or []:
-            e_rec = _parse_record(mention.get("id", ""))
-            if not e_rec:
-                continue
-            mtype = mention.get("mention_type") or "subject"
-            await _relate_unique(db, c_rec, "chat_mentions", e_rec, {"mention_type": mtype})
+    for attempt in range(4):
+        try:
+            async with session() as db:
+                await db.query(
+                    """UPSERT $c MERGE {
+                        title: $title, content: $content, source_type: $stype,
+                        source_id: $sid, signal_level: $sig, summary: $summary,
+                        occurred_at: $occ
+                    }""",
+                    {
+                        "c": c_rec, "title": title, "content": content,
+                        "stype": source_type, "sid": source_id, "sig": signal_level,
+                        "summary": summary, "occ": occurred,
+                    },
+                )
+                if from_integration:
+                    i_rec = _rec("integration", from_integration.strip().lower())
+                    await _relate_unique(db, c_rec, "chat_from", i_rec)
+                for mention in mentions or []:
+                    e_rec = _parse_record(mention.get("id", ""))
+                    if not e_rec:
+                        continue
+                    mtype = mention.get("mention_type") or "subject"
+                    await _relate_unique(
+                        db, c_rec, "chat_mentions", e_rec, {"mention_type": mtype}
+                    )
+            break
+        except InternalError as exc:
+            if "read or write conflict" not in str(exc) or attempt == 3:
+                raise
+            await asyncio.sleep(0.01 * (2**attempt))
 
     return {"id": str(c_rec)}
 

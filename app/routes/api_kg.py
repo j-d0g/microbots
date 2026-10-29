@@ -36,8 +36,10 @@ async def entity_types() -> list[dict[str, Any]]:
 
 
 @router.get("/entities")
-async def entities_by_type(entity_type: str = Query(..., min_length=1)) -> list[dict[str, Any]]:
+async def entities_by_type(entity_type: str | None = Query(None, min_length=1)) -> list[dict[str, Any]]:
     async with session() as s:
+        if entity_type is None:
+            return await q(s, Q.Q_ENTITIES_ALL)
         return await q(s, Q.Q_ENTITIES_BY_TYPE, {"entity_type": entity_type})
 
 

@@ -215,6 +215,7 @@ export type ConnectionStatus =
 export interface BackendHealthMirror {
   surrealOk: boolean;
   composioOk: boolean;
+  composioConfigured: boolean;
   /** ms since epoch when the probe was checked. */
   checkedAt: number;
 }

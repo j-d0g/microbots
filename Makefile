@@ -37,7 +37,6 @@ db-reset:
 	$(MAKE) db-up
 	$(MAKE) db-schema
 	$(MAKE) db-seed
-	$(MAKE) wiki
 
 # Seed the graph then run the wiki agent to populate every wiki_page row
 ingest-seed: install

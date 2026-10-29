@@ -34,15 +34,23 @@ async def _check_surreal() -> dict[str, Any]:
 
 async def _check_composio() -> dict[str, Any]:
     if not os.getenv("COMPOSIO_API_KEY"):
-        return {"ok": False, "error": "COMPOSIO_API_KEY not set"}
+        return {
+            "ok": False,
+            "configured": False,
+            "error": "COMPOSIO_API_KEY not set",
+        }
     try:
         from app.services.composio import get_composio_service
         svc = get_composio_service()
         toolkits = await svc.list_toolkits()
-        return {"ok": True, "toolkit_count": len(toolkits)}
+        return {"ok": True, "configured": True, "toolkit_count": len(toolkits)}
     except Exception as e:  # noqa: BLE001
         logger.exception("composio health check failed")
-        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+        return {
+            "ok": False,
+            "configured": True,
+            "error": f"{type(e).__name__}: {e}",
+        }
 
 
 @router.get("/health")

@@ -395,6 +395,21 @@ export async function sendQuery(
   query: string,
   signal?: AbortSignal,
 ): Promise<void> {
+  let live = false;
+  try {
+    const status = await fetch("/api/agent/orchestrate", { signal });
+    if (!status.ok) throw new Error(`agent status returned ${status.status}`);
+    const result = (await status.json()) as { live?: unknown };
+    live = result.live === true;
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    if (err instanceof AgentFallback) throw err;
+    throw new AgentFallback(
+      err instanceof Error ? err.message : "agent status unavailable",
+    );
+  }
+  if (!live) throw new AgentFallback("live agent is not configured");
+
   const snapshot = buildSnapshot({ query });
   let res: Response;
   try {

@@ -31,6 +31,14 @@ WHERE entity_type = $entity_type
 ORDER BY name ASC
 """
 
+Q_ENTITIES_ALL = """
+SELECT
+    entity_type, name, id, description, aliases, tags,
+    count(SELECT 1 FROM chat_mentions WHERE out = $parent.id) AS chat_mention_count
+FROM entity
+ORDER BY name ASC
+"""
+
 Q_ENTITY_DETAIL = """
 SELECT
     *,

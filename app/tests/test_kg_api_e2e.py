@@ -9,6 +9,7 @@ Run:
 
 from __future__ import annotations
 
+import asyncio
 import os
 import time
 import uuid
@@ -171,6 +172,23 @@ class TestPostMemory:
 # ===================================================================
 # POST /api/kg/entities
 # ===================================================================
+
+
+class TestGetEntities:
+    async def test_entity_type_is_optional(self, client: httpx.AsyncClient):
+        body = {"name": _uid("get_entity"), "entity_type": "person"}
+        created = await client.post("/api/kg/entities", json=body)
+        assert created.status_code == 201
+
+        all_entities = await client.get("/api/kg/entities")
+        filtered_entities = await client.get(
+            "/api/kg/entities", params={"entity_type": "person"}
+        )
+
+        assert all_entities.status_code == 200
+        assert filtered_entities.status_code == 200
+        assert any(row["id"] == created.json()["id"] for row in all_entities.json())
+        assert any(row["id"] == created.json()["id"] for row in filtered_entities.json())
 
 
 class TestPostEntity:
@@ -429,6 +447,18 @@ class TestPostChat:
         assert r1.status_code == 201
         assert r2.status_code == 201
         assert r1.json()["id"] == r2.json()["id"]
+
+    async def test_concurrent_idempotent_writes(self, client: httpx.AsyncClient):
+        body = {
+            "content": _uid("concurrent_chat"),
+            "source_type": "ui_chat",
+            "source_id": _uid("concurrent_source"),
+        }
+        responses = await asyncio.gather(
+            *(client.post("/api/kg/chats", json=body) for _ in range(20))
+        )
+        assert all(response.status_code == 201 for response in responses)
+        assert len({response.json()["id"] for response in responses}) == 1
 
     async def test_with_mentions(self, client: httpx.AsyncClient):
         # Create an entity to mention
