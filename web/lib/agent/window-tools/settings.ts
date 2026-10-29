@@ -81,7 +81,9 @@ export function settingsWindowTools(ctx: AgentToolCtx) {
         const composioStatus = backend
           ? backend.composioOk
             ? "online"
-            : "offline"
+            : backend.composioConfigured === false
+              ? "not configured"
+              : "offline"
           : "unknown";
 
         const result = applyToolToSnapshot(
@@ -232,6 +234,8 @@ export function settingsWindowTools(ctx: AgentToolCtx) {
         const backend = ctx.snapshot.backend;
         const surrealOk = backend?.surrealOk ?? false;
         const composioOk = backend?.composioOk ?? false;
+        const composioUnconfigured =
+          !composioOk && backend?.composioConfigured === false;
 
         const result = applyToolToSnapshot(
           ctx.snapshot,
@@ -243,10 +247,16 @@ export function settingsWindowTools(ctx: AgentToolCtx) {
         const lines = [
           "Backend health status:",
           `- SurrealDB: ${surrealOk ? "online ✓" : "offline ✗"}`,
-          `- Composio: ${composioOk ? "online ✓" : "offline ✗"}`,
+          `- Composio: ${
+            composioOk
+              ? "online ✓"
+              : composioUnconfigured
+                ? "not configured (COMPOSIO_API_KEY unset)"
+                : "offline ✗"
+          }`,
         ];
 
-        if (!surrealOk || !composioOk) {
+        if (!surrealOk || (!composioOk && !composioUnconfigured)) {
           lines.push("", "Warning: Some backend services are unavailable.");
         }
 

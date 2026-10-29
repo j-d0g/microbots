@@ -922,7 +922,13 @@ export function snapshotToPrompt(
   // Backend health (degraded mode awareness).
   if (snap.backend) {
     lines.push(
-      `backend: surreal=${snap.backend.surrealOk ? "ok" : "DOWN"} composio=${snap.backend.composioOk ? "ok" : "DOWN"}`,
+      `backend: surreal=${snap.backend.surrealOk ? "ok" : "DOWN"} composio=${
+        snap.backend.composioOk
+          ? "ok"
+          : snap.backend.composioConfigured === false
+            ? "not-configured"
+            : "DOWN"
+      }`,
     );
   }
   // Integration connection statuses.

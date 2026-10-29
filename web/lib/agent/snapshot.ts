@@ -135,6 +135,7 @@ export function buildSnapshot(opts?: {
       ? {
           surrealOk: state.backendHealth.surrealOk,
           composioOk: state.backendHealth.composioOk,
+          composioConfigured: state.backendHealth.composioConfigured,
         }
       : undefined,
   };
