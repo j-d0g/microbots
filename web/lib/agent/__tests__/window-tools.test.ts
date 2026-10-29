@@ -438,6 +438,39 @@ describe("Window Tool Factories", () => {
     });
   });
 
+  describe("7b. settings_check_health wording", () => {
+    async function checkHealth(backend: CanvasSnapshot["backend"]) {
+      const ctx = createMockCtx();
+      ctx.snapshot = { ...ctx.snapshot, backend };
+      const tool = settingsWindowTools(ctx)
+        .settings_check_health as unknown as {
+        execute: (args: Record<string, never>) => Promise<string>;
+      };
+      return tool.execute({});
+    }
+
+    it("reports an unconfigured Composio as not configured, without a warning", async () => {
+      const out = await checkHealth({
+        surrealOk: true,
+        composioOk: false,
+        composioConfigured: false,
+      });
+      expect(out).toContain("Composio: not configured");
+      expect(out).not.toContain("offline");
+      expect(out).not.toContain("Warning");
+    });
+
+    it("still warns when a configured Composio is down", async () => {
+      const out = await checkHealth({
+        surrealOk: true,
+        composioOk: false,
+        composioConfigured: true,
+      });
+      expect(out).toContain("Composio: offline");
+      expect(out).toContain("Warning");
+    });
+  });
+
   describe("8. Factory Isolation", () => {
     it("each factory should create independent tool instances", () => {
       const ctx1 = createMockCtx();

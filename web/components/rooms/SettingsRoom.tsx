@@ -169,7 +169,6 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
     : "checking…";
   const surrealOk = backendHealth?.surrealOk ?? null;
   const composioOk = backendHealth?.composioOk ?? null;
-  const composioConfigured = backendHealth?.composioConfigured ?? null;
 
   return (
     <RoomStateOverlay room="settings" state={roomState}>
@@ -316,7 +315,7 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
             <HealthRow
               label="composio"
               ok={composioOk}
-              configured={composioConfigured}
+              configured={backendHealth?.composioConfigured ?? true}
             />
           </ul>
 
@@ -337,28 +336,35 @@ function HealthRow({
 }: {
   label: string;
   ok: boolean | null;
-  configured?: boolean | null;
+  configured?: boolean;
 }) {
-  const status =
-    ok === null ? "checking" : ok ? "ok" : configured === false ? "unconfigured" : "down";
-  const tone = status === "ok" ? "high" : status === "down" ? "low" : "neutral";
+  const unconfigured = ok === false && !configured;
+  const tone =
+    ok === null || unconfigured ? "neutral" : ok ? "high" : "low";
   const text =
-    status === "checking"
+    ok === null
       ? "checking…"
-      : status === "unconfigured"
+      : unconfigured
         ? "not configured"
-        : status;
+        : ok
+          ? "ok"
+          : "down";
   return (
     <li
       data-testid={`settings-health-${label}`}
-      data-status={status}
       className={cn(
         "flex items-center justify-between gap-3 rounded-sm border px-3 py-2",
         "border-rule bg-paper-0",
       )}
     >
       <span className="font-mono text-[12px] text-ink-90">{label}</span>
-      <Chip tone={tone}>{text}</Chip>
+      <Chip
+        tone={
+          tone === "high" ? "high" : tone === "low" ? "low" : "neutral"
+        }
+      >
+        {text}
+      </Chip>
     </li>
   );
 }
