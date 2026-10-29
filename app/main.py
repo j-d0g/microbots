@@ -1,33 +1,28 @@
-"""Unified FastAPI app — MCP + REST + Composio OAuth at one URL.
+"""FastAPI app for the SurrealDB-backed knowledge graph and Composio API.
 
-Replaces the standalone `app/services/kg_mcp/` deployable. Serves:
-
-    /mcp                     KG FastMCP streamable-HTTP transport (13 tools)
     /api/health              liveness + downstream status (surreal, composio)
     /api/composio/*          OAuth flow for the frontend (connect/connections/toolkits)
-    /api/kg/*                REST mirror of the KG MCP tools for non-LLM clients
+    /api/kg/*                knowledge graph API
 
-Deployed via `app/deploy.py` → `render_sdk` as a single Render web service.
 """
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import os
-from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(REPO_ROOT / ".env")
 
-from app.mcp import build_mcp_asgi  # noqa: E402  (env must load first)
-from app.routes import api_composio, api_health, api_kg, api_logfire
+from app.routes import api_composio, api_health, api_kg
+from app.services.composio import ComposioNotConfigured
 from microbots import (  # noqa: E402  (env must load first)
     instrument_fastapi,
     instrument_httpx,
@@ -45,29 +40,21 @@ logger = logging.getLogger("microbots")
 
 
 def create_app() -> FastAPI:
-    """Build the unified FastAPI application.
-
-    The KG MCP sub-app has its own lifespan (starts the streamable-HTTP session
-    manager). We forward it via ``AsyncExitStack`` so the mount stays live for
-    the duration of the parent app.
-    """
-    kg_mcp_asgi = build_mcp_asgi()
-
-    @asynccontextmanager
-    async def lifespan(_: FastAPI):
-        async with contextlib.AsyncExitStack() as stack:
-            await stack.enter_async_context(kg_mcp_asgi.router.lifespan_context(_))
-            yield
-
+    """Build the knowledge graph and Composio API."""
     app = FastAPI(
         title="microbots",
         version="1.0.0",
-        description=(
-            "Unified backend: knowledge-graph MCP + REST + per-user Composio OAuth. "
-            "See /docs for the REST API; /mcp for the MCP streamable-HTTP endpoint."
-        ),
-        lifespan=lifespan,
+        description="SurrealDB-backed knowledge graph and Composio OAuth API.",
     )
+
+    @app.exception_handler(ComposioNotConfigured)
+    async def composio_not_configured(
+        _: Request, __: ComposioNotConfigured
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "composio not configured"},
+        )
 
     # CORS — open for the hackathon so any frontend dev can hit it.
     app.add_middleware(
@@ -78,24 +65,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Top-level /health for Render's deploy probe (cheap, no downstream checks).
-    # Rich liveness with surreal/composio sub-status lives at /api/health.
-    @app.get("/health", include_in_schema=False)
-    async def _render_health() -> dict[str, str]:
-        return {"status": "ok", "service": "microbots"}
-
-    # Mount KG MCP.
-    app.mount("/mcp", kg_mcp_asgi)
-
     # Register REST routers.
     app.include_router(api_health.router, prefix="/api")
     app.include_router(api_composio.router, prefix="/api")
     app.include_router(api_kg.router, prefix="/api")
-    app.include_router(api_logfire.router, prefix="/api")
 
-    # Logfire HTTP-level instrumentation — every request becomes a span
-    # with route, status, duration, and is correlated to any downstream
-    # spans (KG MCP, Composio, etc.) emitted from inside handlers.
     instrument_fastapi(app)
 
     return app

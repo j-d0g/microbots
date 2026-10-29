@@ -5,6 +5,8 @@ import { useAgentStore, type WindowKind, type RoomKind, type VerbPayload, type C
 import { callRoomTool } from "./room-tools";
 import { buildSnapshot } from "./agent/snapshot";
 import { addChat } from "./kg-client";
+import { canvasActionForEvent } from "./agent/canvas-reducer";
+import type { MountPoint } from "./agent/types";
 
 /* IDs of chat messages already persisted so retries (eg. duplicate
  * `reply.done` events from an upstream proxy) don't write twice. */
@@ -72,7 +74,7 @@ export type AgentEvent =
       room: RoomKind;
       slug?: string;
       payload?: Record<string, unknown>;
-      rect?: { x?: number; y?: number; w?: number; h?: number };
+      mount?: MountPoint;
     }
   | { type: "ui.verb"; verb: VerbPayload["verb"]; args: Record<string, unknown> }
   | {
@@ -84,13 +86,8 @@ export type AgentEvent =
         ttl?: number;
       };
     }
-  | { type: "ui.arrange"; layout: "focus" | "split" | "grid" | "stack-right" }
   | { type: "ui.close_window"; room?: RoomKind }
-  | {
-      type: "ui.resize";
-      room?: RoomKind;
-      rect: { x?: number; y?: number; w?: number; h?: number };
-    }
+  | { type: "ui.canvas"; action: import("./agent/canvas-reducer").CanvasAction }
   | {
       type: "ui.tool";
       room: RoomKind;
@@ -143,101 +140,27 @@ export type AgentEvent =
   | { type: "agent.tool.retry"; bonus: number; effectiveCap: number };
 
 export function applyAgentEvent(evt: AgentEvent): void {
-  // Log EVERY event received
-  console.log("[agent-client] Event received:", evt.type, evt);
-  
   const s = useAgentStore.getState();
-  const chat = s.uiMode === "chat";
+  const canvasAction = canvasActionForEvent(evt);
+  if (canvasAction) s.dispatchCanvas(canvasAction);
   switch (evt.type) {
     case "ui.room":
-      console.log("[agent-client] ui.room - opening:", evt.room, "chat mode:", chat);
-      if (chat) {
-        // Chat mode: swap the focused room AND ensure a window of
-        // that kind exists so EmbeddedRoom renders with the agent's
-        // payload (not the dummy fallback). Resize is intentionally
-        // ignored — chat mode is single-focal, the right pane fills
-        // the available space regardless.
-        s.setChatRoom(evt.room);
-        s.openWindow(evt.room, { payload: evt.payload });
-      } else {
-        s.openWindow(evt.room, { rect: evt.rect, payload: evt.payload });
-      }
       if (evt.slug) s.setRoomSlug(evt.slug);
       else s.setRoomSlug(null);
-      console.log("[agent-client] ui.room - completed, current windows:", s.windows.map(w => w.kind));
       break;
-    case "ui.arrange":
-      // Layout presets are windowed-only.
-      if (!chat) s.arrangeWindows(evt.layout);
-      break;
-    case "ui.close_window": {
-      // No close in chat mode — there's always a room shown.
-      if (chat) break;
-      if (evt.room) {
-        const target = s.windows.find((w) => w.kind === evt.room);
-        if (target) s.closeWindow(target.id);
-      } else {
-        s.closeTopWindow();
-      }
-      break;
-    }
-    case "ui.resize": {
-      // Resize is windowed-only.
-      if (chat) break;
-      const target = evt.room
-        ? s.windows.find((w) => w.kind === evt.room && !w.minimized)
-        : [...s.windows].filter((w) => !w.minimized).sort((a, b) => b.zIndex - a.zIndex)[0];
-      if (target) s.updateWindowRect(target.id, evt.rect);
-      break;
-    }
     case "ui.tool": {
       // In-window tools work in BOTH modes.
       // Fire-and-forget; agents don't await tool side-effects in the event stream.
       void callRoomTool(evt.room, evt.tool, evt.args ?? {});
       break;
     }
-    /* ── V1 tool-window events ── */
-    case "ui.tool.open": {
-      // Open the tool's window with payload (or update if already open).
-      s.openWindow(evt.kind, { payload: evt.payload });
-      // In chat mode the right pane shows whichever kind is the
-      // active `chatRoom`; surface this newly-opened window there
-      // so the user actually sees what the agent just pulled up.
-      if (chat) s.setChatRoom(evt.kind);
-      break;
-    }
-    case "ui.tool.update": {
-      // Update an existing tool window's payload. Find and re-open.
-      const target = s.windows.find((w) => w.kind === evt.kind);
-      if (target) {
-        s.openWindow(evt.kind, { payload: { ...target.payload, ...evt.payload } });
-      }
-      break;
-    }
-    case "ui.tool.done": {
-      // Mark the tool window as done by merging status into payload.
-      const target = s.windows.find((w) => w.kind === evt.kind);
-      if (target) {
-        s.openWindow(evt.kind, { payload: { ...target.payload, ...evt.payload, status: "done" } });
-      }
-      break;
-    }
-    case "ui.ask": {
-      // Open ask_user as a modal window with the question + options.
-      s.openWindow("ask_user", {
-        payload: { question: evt.question, options: evt.options },
-      });
-      break;
-    }
     case "ui.confirm": {
       // Stage a confirm gate.
-      console.log("[agent-client] ui.confirm - staging intent:", evt.intent.id);
       s.stageConfirm(evt.intent);
       break;
     }
     case "ui.confirm.resolved": {
       // Resolve a pending confirm gate.
-      console.log("[agent-client] ui.confirm.resolved - id:", evt.id, "approved:", evt.approved);
       s.resolveConfirm(evt.id, evt.approved);
       break;
     }
@@ -322,8 +245,7 @@ export function applyAgentEvent(evt: AgentEvent): void {
       break;
     }
     case "agent.delegate":
-      // Mirror into the recent-actions ring so the SnapshotInspector
-      // reflects the delegation; sidecar UI will read this too.
+      // Mirror into the recent-actions ring for UI access.
       s.pushAction({
         t: Date.now(),
         tool: `delegate_${evt.to}`,
@@ -396,6 +318,21 @@ export async function sendQuery(
   query: string,
   signal?: AbortSignal,
 ): Promise<void> {
+  let live = false;
+  try {
+    const status = await fetch("/api/agent/orchestrate", { signal });
+    if (!status.ok) throw new Error(`agent status returned ${status.status}`);
+    const result = (await status.json()) as { live?: unknown };
+    live = result.live === true;
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    if (err instanceof AgentFallback) throw err;
+    throw new AgentFallback(
+      err instanceof Error ? err.message : "agent status unavailable",
+    );
+  }
+  if (!live) throw new AgentFallback("live agent is not configured");
+
   const snapshot = buildSnapshot({ query });
   let res: Response;
   try {

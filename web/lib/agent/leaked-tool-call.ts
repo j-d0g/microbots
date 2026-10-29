@@ -2,7 +2,7 @@
  * Recovery for leaked tool-call syntax in streamed model text.
  *
  * Gemini-2.5-flash-lite (our policy-locked production model — see
- * `web/agent-evals/AGENTS.md`) intermittently emits a tool call as
+ * the tool-call protocol intermittently emits a tool call as
  * plain text instead of using the structured tool-call channel. When
  * that happens, the stream looks like:
  *
@@ -22,8 +22,6 @@
 
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
-import type { CanvasSnapshot } from "./types";
-import { applyToolToSnapshot } from "./server-snapshot";
 
 const KNOWN_KINDS: ReadonlySet<WindowKind> = new Set<WindowKind>([
   "graph",
@@ -79,7 +77,10 @@ export function detectLeakedToolCall(text: string): LeakedToolCall | null {
       return {
         name: "open_window",
         args: { kind },
-        events: [{ type: "ui.room", room: kind }],
+        events: [{
+          type: "ui.canvas",
+          action: { type: "open", kind, openedBy: "agent" },
+        }],
         marker: {
           start: {
             type: "agent.tool.start",
@@ -98,7 +99,7 @@ export function detectLeakedToolCall(text: string): LeakedToolCall | null {
       return {
         name: "close_window",
         args: { kind },
-        events: [{ type: "ui.close_window", room: kind }],
+        events: [{ type: "ui.canvas", action: { type: "close", kind } }],
         marker: {
           start: {
             type: "agent.tool.start",
@@ -117,7 +118,7 @@ export function detectLeakedToolCall(text: string): LeakedToolCall | null {
       return {
         name: "focus_window",
         args: { kind },
-        events: [{ type: "ui.room", room: kind }],
+        events: [{ type: "ui.canvas", action: { type: "focus", kind } }],
         marker: {
           start: {
             type: "agent.tool.start",
@@ -130,15 +131,4 @@ export function detectLeakedToolCall(text: string): LeakedToolCall | null {
     }
   }
   return null;
-}
-
-/** Apply a recovered tool call to the server-side snapshot mirror so
- *  subsequent prompt frames in the same turn (none today, but harmless)
- *  see the new state. */
-export function applyRecoveredToolCall(
-  snapshot: CanvasSnapshot,
-  call: LeakedToolCall,
-): CanvasSnapshot {
-  const result = applyToolToSnapshot(snapshot, call.name, call.args);
-  return result.snapshot;
 }

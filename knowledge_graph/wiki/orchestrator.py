@@ -74,6 +74,7 @@ async def _run_one(
     agent,
     slice_rows: list[dict],
     existing_content: str,
+    offline: bool = False,
 ) -> WikiUpdate | None:
     """Run the agent for a single wiki page."""
     user_prompt = render_user_prompt(
@@ -84,7 +85,8 @@ async def _run_one(
         parent_path=node.parent_path,
     )
     try:
-        result = await agent.run(user_prompt, deps=deps)
+        from offline import model, wiki
+        result = await agent.run(user_prompt, deps=deps, model=model(wiki(node, slice_rows)) if offline else None)
         return result.output
     except Exception as e:
         log.error("wiki agent failed for %s: %s", node.path, e)
@@ -98,7 +100,7 @@ async def run_wiki(config: Config) -> WikiResult:
     batches of `config.wiki.max_concurrent`; depths 2 and 1 run sequentially.
     """
     wiki_cfg = config.wiki
-    agent = build_wiki_agent(wiki_cfg)
+    agent = build_wiki_agent(wiki_cfg, offline=config.offline)
     result = WikiResult()
 
     async with microbots_session(config) as db:
@@ -122,7 +124,7 @@ async def run_wiki(config: Config) -> WikiResult:
             page = await db.get_wiki_page(node.path)
             existing = page.content if page else ""
 
-            upd = await _run_one(node, deps, agent, slice_rows, existing)
+            upd = await _run_one(node, deps, agent, slice_rows, existing, config.offline)
             if upd is None:
                 result.failed += 1
                 result.details.append({"path": node.path, "status": "failed"})
@@ -138,12 +140,17 @@ async def run_wiki(config: Config) -> WikiResult:
                 and page_after.content == upd.content
             )
 
+            if agent_wrote and upd.content == existing:
+                result.unchanged += 1
+                result.details.append({"path": node.path, "status": "unchanged"})
+                return
+
             if not agent_wrote and upd.content and not wiki_cfg.write_dry_run:
                 try:
                     write_res = await db.write_wiki_page(
                         path=node.path,
                         content=upd.content,
-                        written_by="wiki_agent",
+                        written_by="offline_demo" if config.offline else "wiki_agent",
                         rationale=upd.rationale,
                     )
                     log.info(

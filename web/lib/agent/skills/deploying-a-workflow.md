@@ -24,7 +24,7 @@ save_workflow, run_workflow, deploy, shadow, promote, "save it", "run it",
 
 ## voice shortcuts
 
-- "save it as bug-triage" → save_workflow(name="bug-triage", code=<last run_code output>)
+- "save it as bug-triage" → save_workflow(name="bug-triage", code=<code provided by Jordan>)
 - "run it" → run_workflow(name=<last saved or viewed workflow>)
 - "run bug-triage with channel=#ops" → run_workflow(name="bug-triage", args={channel:"#ops"})
 

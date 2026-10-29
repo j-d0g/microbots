@@ -413,14 +413,11 @@ describe("Window Tool Factories", () => {
       const expectedTools = [
         "winman_move_to_position",
         "winman_arrange_preset",
-        "winman_set_centre_arrangement",
-        "winman_swap_positions",
         "winman_pin_window",
         "winman_unpin_window",
         "winman_toggle_pin",
         "winman_read_pinned",
         "winman_bring_to_front",
-        "winman_send_to_back",
         "winman_read_focused",
         "winman_resize_window",
         "winman_maximize_window",
@@ -435,6 +432,39 @@ describe("Window Tool Factories", () => {
       for (const toolName of expectedTools) {
         expect(tools, `window_management should have ${toolName}`).toHaveProperty(toolName);
       }
+    });
+  });
+
+  describe("7b. settings_check_health wording", () => {
+    async function checkHealth(backend: CanvasSnapshot["backend"]) {
+      const ctx = createMockCtx();
+      ctx.snapshot = { ...ctx.snapshot, backend };
+      const tool = settingsWindowTools(ctx)
+        .settings_check_health as unknown as {
+        execute: (args: Record<string, never>) => Promise<string>;
+      };
+      return tool.execute({});
+    }
+
+    it("reports an unconfigured Composio as not configured, without a warning", async () => {
+      const out = await checkHealth({
+        surrealOk: true,
+        composioOk: false,
+        composioConfigured: false,
+      });
+      expect(out).toContain("Composio: not configured");
+      expect(out).not.toContain("offline");
+      expect(out).not.toContain("Warning");
+    });
+
+    it("still warns when a configured Composio is down", async () => {
+      const out = await checkHealth({
+        surrealOk: true,
+        composioOk: false,
+        composioConfigured: true,
+      });
+      expect(out).toContain("Composio: offline");
+      expect(out).toContain("Warning");
     });
   });
 

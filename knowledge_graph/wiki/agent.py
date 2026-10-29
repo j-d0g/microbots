@@ -86,9 +86,10 @@ def _resolve_model(config: WikiConfig) -> Union[OpenAIChatModel, AnthropicModel,
     return config.model
 
 
-def build_wiki_agent(config: WikiConfig) -> Agent[WikiDeps, WikiUpdate]:
+def build_wiki_agent(config: WikiConfig, *, offline: bool = False) -> Agent[WikiDeps, WikiUpdate]:
     """Construct the WikiAgent with all tools registered."""
-    model = _resolve_model(config)
+    from offline import model as demo_model
+    model = demo_model() if offline else _resolve_model(config)
 
     # Cap max_tokens to fit OpenRouter's free-tier per-request budget.
     # See enrich/llm.py:enrich_model_settings for rationale.

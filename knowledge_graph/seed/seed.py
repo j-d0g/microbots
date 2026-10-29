@@ -31,6 +31,10 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+async def _delete_edge(db: AsyncSurreal, table: str, source: str, target: str) -> None:
+    await db.query(f"DELETE {table} WHERE in = {source} AND out = {target};")
+
+
 async def seed(db: AsyncSurreal):
     log.info("seeding user_profile")
     await db.query("""
@@ -618,6 +622,7 @@ async def seed(db: AsyncSurreal):
             "notion": "documentation and architecture specs",
             "perplexity": "web-grounded research and async Sonar deep-dive reports",
         }
+        await _delete_edge(db, "uses_integration", "user_profile:default", f"integration:{slug}")
         await db.query(f"""
             RELATE user_profile:default->uses_integration->integration:{slug} CONTENT {{
                 primary_use: "{primary_uses[slug]}",
@@ -650,6 +655,7 @@ async def seed(db: AsyncSurreal):
         ("entity:repo_microbots", "integration:perplexity", "microbots", "repo", "SurrealDB and vector index research in context of this repo"),
     ]
     for entity_id, intg_id, handle, role, context in appears_in_edges:
+        await _delete_edge(db, "appears_in", entity_id, intg_id)
         await db.query(f"""
             RELATE {entity_id}->appears_in->{intg_id} CONTENT {{
                 handle: "{handle}",
@@ -670,6 +676,7 @@ async def seed(db: AsyncSurreal):
         ("integration:perplexity", "integration:notion", 20, "citations", "Perplexity findings cited in Notion ADRs and specs"),
     ]
     for from_id, to_id, freq, context, desc in co_used_edges:
+        await _delete_edge(db, "co_used_with", from_id, to_id)
         await db.query(f"""
             RELATE {from_id}->co_used_with->{to_id} CONTENT {{
                 frequency: {freq},
@@ -689,6 +696,7 @@ async def seed(db: AsyncSurreal):
         ("entity:project_agent_memory", "entity:repo_microbots", "tracks", "Agent Memory project tracks microbots repo work"),
     ]
     for from_id, to_id, rel_type, context in related_edges:
+        await _delete_edge(db, "related_to_entity", from_id, to_id)
         await db.query(f"""
             RELATE {from_id}->related_to_entity->{to_id} CONTENT {{
                 relationship_type: "{rel_type}",
@@ -706,6 +714,7 @@ async def seed(db: AsyncSurreal):
         ("chat:perplexity_sonar_research", "integration:perplexity"),
     ]
     for chat_id, intg_id in chat_from_edges:
+        await _delete_edge(db, "chat_from", chat_id, intg_id)
         await db.query(f"RELATE {chat_id}->chat_from->{intg_id};")
 
     # chat_mentions: chat → entity
@@ -726,6 +735,7 @@ async def seed(db: AsyncSurreal):
         ("chat:perplexity_sonar_research", "entity:bob", "mentioned"),
     ]
     for chat_id, entity_id, mention_type in chat_mention_edges:
+        await _delete_edge(db, "chat_mentions", chat_id, entity_id)
         await db.query(f"""
             RELATE {chat_id}->chat_mentions->{entity_id} CONTENT {{
                 mention_type: "{mention_type}"
@@ -744,6 +754,7 @@ async def seed(db: AsyncSurreal):
         ("chat:perplexity_sonar_research", "memory:surrealdb_hnsw", 0.93),
     ]
     for chat_id, mem_id, confidence in chat_yields_edges:
+        await _delete_edge(db, "chat_yields", chat_id, mem_id)
         await db.query(f"""
             RELATE {chat_id}->chat_yields->{mem_id} CONTENT {{
                 confidence: {confidence},
@@ -763,6 +774,7 @@ async def seed(db: AsyncSurreal):
         ("memory:surrealdb_hnsw", "integration:perplexity", 0.65),
     ]
     for mem_id, target_id, relevance in memory_about_edges:
+        await _delete_edge(db, "memory_about", mem_id, target_id)
         await db.query(f"""
             RELATE {mem_id}->memory_about->{target_id} CONTENT {{
                 relevance: {relevance}
@@ -780,6 +792,7 @@ async def seed(db: AsyncSurreal):
         ("skill:review_pr_checklist", "chat:slack_code_style"),
     ]
     for skill_id, chat_id in skill_derived_edges:
+        await _delete_edge(db, "skill_derived_from", skill_id, chat_id)
         await db.query(f"RELATE {skill_id}->skill_derived_from->{chat_id};")
 
     # skill_uses: skill → integration
@@ -795,6 +808,7 @@ async def seed(db: AsyncSurreal):
         ("skill:review_pr_checklist", "integration:perplexity"),
     ]
     for skill_id, intg_id in skill_uses_edges:
+        await _delete_edge(db, "skill_uses", skill_id, intg_id)
         await db.query(f"RELATE {skill_id}->skill_uses->{intg_id};")
 
     # workflow_contains_skill: workflow → skill (ordered)
@@ -808,6 +822,7 @@ async def seed(db: AsyncSurreal):
         ("workflow:pr_review_cycle", "skill:create_linear_from_slack", 2, False),
     ]
     for wf_id, skill_id, step, optional in workflow_skill_edges:
+        await _delete_edge(db, "workflow_contains_skill", wf_id, skill_id)
         await db.query(f"""
             RELATE {wf_id}->workflow_contains_skill->{skill_id} CONTENT {{
                 step_order: {step},
@@ -828,6 +843,7 @@ async def seed(db: AsyncSurreal):
         ("workflow:pr_review_cycle", "integration:perplexity"),
     ]
     for wf_id, intg_id in workflow_uses_edges:
+        await _delete_edge(db, "workflow_uses", wf_id, intg_id)
         await db.query(f"RELATE {wf_id}->workflow_uses->{intg_id};")
 
     # workflow_involves: workflow → entity
@@ -841,6 +857,7 @@ async def seed(db: AsyncSurreal):
         ("workflow:pr_review_cycle", "entity:repo_microbots", "target_repo"),
     ]
     for wf_id, entity_id, role in workflow_involves_edges:
+        await _delete_edge(db, "workflow_involves", wf_id, entity_id)
         await db.query(f"""
             RELATE {wf_id}->workflow_involves->{entity_id} CONTENT {{
                 role: "{role}"
@@ -859,6 +876,7 @@ async def seed(db: AsyncSurreal):
         ("memory:surrealdb_hnsw", "skill:review_pr_checklist"),
     ]
     for mem_id, target_id in memory_informs_edges:
+        await _delete_edge(db, "memory_informs", mem_id, target_id)
         await db.query(f"RELATE {mem_id}->memory_informs->{target_id};")
 
     # indexed_by: nodes → layer_index
@@ -907,6 +925,7 @@ async def seed(db: AsyncSurreal):
         ("workflow:pr_review_cycle", "layer_index:workflows"),
     ]
     for node_id, li_id in indexed_by_edges:
+        await _delete_edge(db, "indexed_by", node_id, li_id)
         await db.query(f"RELATE {node_id}->indexed_by->{li_id};")
 
     # drills_into: layer_index hierarchy
@@ -925,6 +944,7 @@ async def seed(db: AsyncSurreal):
         ("layer_index:integrations", "layer_index:integrations_perplexity", 2, 200),
     ]
     for from_li, to_li, depth, cost in drills_into_edges:
+        await _delete_edge(db, "drills_into", from_li, to_li)
         await db.query(f"""
             RELATE {from_li}->drills_into->{to_li} CONTENT {{
                 depth: {depth},

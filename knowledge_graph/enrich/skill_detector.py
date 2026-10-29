@@ -108,7 +108,8 @@ async def _pass1_integration(
     agent = _build_pass1_agent(config, integration)
 
     try:
-        result = await agent.run(user)
+        from offline import model, skills
+        result = await agent.run(user, model=model(skills(batch, integration)) if config.offline else None)
         output = result.output.model_dump()
     except Exception as e:  # noqa: BLE001
         log.warning("skill_pass1/%s failed: %s", integration, e)
@@ -159,7 +160,9 @@ async def detect_skills(
     agent2 = _build_pass2_agent(config)
 
     try:
-        result = await agent2.run(user)
+        from offline import model
+        demo_skills = [skill for entry in synthesis_input for skill in entry.get("skills", [])]
+        result = await agent2.run(user, model=model({"skills": demo_skills}) if config.offline else None)
         final_skills = [s.model_dump() for s in result.output.skills]
     except Exception as e:  # noqa: BLE001
         log.warning("Skill synthesis (Pass 2) failed: %s, falling back to Pass 1 results", e)

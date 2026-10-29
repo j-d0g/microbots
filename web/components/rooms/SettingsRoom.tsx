@@ -4,9 +4,8 @@
  * SettingsRoom — minimal scope for the live windowed UI.
  *
  *   1. user_id     — single source of truth for the Composio namespace
- *                    + X-User-Id header. Persisted to localStorage by
- *                    StoreBridge. Required before integrations or graph
- *                    can do anything useful.
+ *                    + X-User-Id header. Defaults to "default" and can
+ *                    be changed here.
  *   2. backend     — read-only health row (surreal + composio status,
  *                    last-checked timestamp + manual refresh).
  *
@@ -71,12 +70,14 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
       setBackendHealth({
         surrealOk: !!h.surreal?.ok,
         composioOk: !!h.composio?.ok,
+        composioConfigured: !!h.composio?.configured,
         checkedAt: Date.now(),
       });
     } catch {
       setBackendHealth({
         surrealOk: false,
         composioOk: false,
+        composioConfigured: false,
         checkedAt: Date.now(),
       });
     } finally {
@@ -311,7 +312,11 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
 
           <ul className="grid grid-cols-2 gap-3">
             <HealthRow label="surrealdb" ok={surrealOk} />
-            <HealthRow label="composio" ok={composioOk} />
+            <HealthRow
+              label="composio"
+              ok={composioOk}
+              configured={backendHealth?.composioConfigured ?? true}
+            />
           </ul>
 
           <p className="mt-4 font-mono text-[10px] leading-relaxed text-ink-35">
@@ -324,9 +329,26 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
   );
 }
 
-function HealthRow({ label, ok }: { label: string; ok: boolean | null }) {
-  const tone = ok === null ? "neutral" : ok ? "high" : "low";
-  const text = ok === null ? "checking…" : ok ? "ok" : "down";
+function HealthRow({
+  label,
+  ok,
+  configured = true,
+}: {
+  label: string;
+  ok: boolean | null;
+  configured?: boolean;
+}) {
+  const unconfigured = ok === false && !configured;
+  const tone =
+    ok === null || unconfigured ? "neutral" : ok ? "high" : "low";
+  const text =
+    ok === null
+      ? "checking…"
+      : unconfigured
+        ? "not configured"
+        : ok
+          ? "ok"
+          : "down";
   return (
     <li
       data-testid={`settings-health-${label}`}

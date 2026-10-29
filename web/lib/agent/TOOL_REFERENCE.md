@@ -121,7 +121,6 @@ Tools for managing the visual layout of windows.
 |------|-------------|-------------|
 | `winman_move_to_position` | Move to mount point | Positioning window precisely |
 | `winman_arrange_preset` | Apply layout template | "Arrange windows for focus" |
-| `winman_swap_positions` | Swap two windows | Reordering side-by-side views |
 | `winman_pin_window` | Pin to left sideline | Keeping window accessible |
 | `winman_bring_to_front` | Focus window | Making window prominent |
 | `winman_maximize_window` | Full-screen window | Deep focus on single content |
@@ -524,7 +523,7 @@ Wiki page CRUD, navigation, and revision history.
 
 ---
 
-### 14. window-management.ts (18 tools)
+### 14. window-management.ts (16 tools)
 
 Window positioning, pinning, sizing, and layout presets.
 
@@ -533,9 +532,6 @@ Window positioning, pinning, sizing, and layout presets.
 |------|-------------|-------------|
 | `winman_move_to_position` | Move to mount point | Precise positioning |
 | `winman_arrange_preset` | Apply layout template | Quick arrangements |
-| `winman_set_centre_arrangement` | Set center stage layout | Multi-window focus |
-| `winman_swap_positions` | Exchange two windows | Reordering |
-
 **Pinning:**
 | Tool | Description | When to Use |
 | `winman_pin_window` | Pin to left sideline | Protect from eviction |
@@ -546,7 +542,6 @@ Window positioning, pinning, sizing, and layout presets.
 **Focus & Z-Index:**
 | Tool | Description | When to Use |
 | `winman_bring_to_front` | Highest z-index | Focus window |
-| `winman_send_to_back` | Lowest z-index | Background window |
 | `winman_read_focused` | Get focused window info | Checking focus |
 
 **Size & Resize:**
@@ -569,9 +564,7 @@ Window positioning, pinning, sizing, and layout presets.
 **Params:**
 - `winman_move_to_position`: `id` (string, optional), `kind` (WindowKind, optional), `mount` ("full"|"left-half"|"right-half"|"right-wide"|"top-half"|"bottom-half"|"left-third"|"center-third"|"right-third"|"tl"|"tr"|"bl"|"br"|"pip-br"|"pip-tr") [REQUIRED]
 - `winman_arrange_preset`: `preset` ("focus"|"split"|"grid"|"stack-right"|"spotlight"|"theater"|"reading"|"triptych") [REQUIRED]
-- `winman_set_centre_arrangement`: `arrangement` ("solo"|"split-2"|"split-3"|"grid-4") [REQUIRED]
-- `winman_swap_positions`: `window1_id` (string, optional), `window1_kind` (WindowKind, optional), `window2_id` (string, optional), `window2_kind` (WindowKind, optional)
-- `winman_pin_window`, `winman_unpin_window`, `winman_bring_to_front`, `winman_send_to_back`, `winman_maximize_window`, `winman_minimize_window`: `id` (string, optional), `kind` (WindowKind, optional)
+- `winman_pin_window`, `winman_unpin_window`, `winman_bring_to_front`, `winman_maximize_window`, `winman_minimize_window`: `id` (string, optional), `kind` (WindowKind, optional)
 - `winman_resize_window`: `id` (optional), `kind` (optional), `rect` ({x,y,w,h} 0-100%) [REQUIRED]
 - `winman_close_all_except`: `keep_ids` (string[], default [])
 - `winman_cascade_windows`: `offset` (number, 5-30, default 10)

@@ -17,7 +17,6 @@ export function Desktop() {
   const closeTopWindow = useAgentStore((s) => s.closeTopWindow);
   const openWindow = useAgentStore((s) => s.openWindow);
   const arrangeWindows = useAgentStore((s) => s.arrangeWindows);
-  const updateWindowRect = useAgentStore((s) => s.updateWindowRect);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -52,26 +51,6 @@ export function Desktop() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
-
-  /* Re-clamp every window on browser-resize. The windows agent's
-     `updateWindowRect` runs through clampToBounds so passing the
-     current rect through is enough — overflowing windows shrink/shift
-     back into bounds, others are no-ops. Debounced via rAF. */
-  useEffect(() => {
-    let raf = 0;
-    const onResize = () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const live = useAgentStore.getState().windows;
-        for (const w of live) updateWindowRect(w.id, w.rect);
-      });
-    };
-    window.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [updateWindowRect]);
 
   return (
     <>

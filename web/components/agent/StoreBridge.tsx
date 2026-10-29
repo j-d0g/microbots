@@ -7,7 +7,7 @@ import * as backend from "@/lib/api/backend";
 import { hydrateChatHistory } from "@/lib/chat-persistence";
 
 /* Every window can be the target of a window-management `ui.tool`
- * event (`pin_window`, `unpin_window`, `toggle_pin`, `send_to_back`)
+ * event (`pin_window`, `unpin_window`, `toggle_pin`)
  * because the orchestrator emits those into `target.kind`. Rather
  * than make every window component duplicate the same handler set,
  * we register a shared meta tool bag for every WindowKind here.
@@ -44,19 +44,21 @@ const CONNECTIONS_POLL_MS = 30_000;
  *  - Hydrates `userId` from localStorage on first mount and keeps the
  *    browser tab in sync via a `storage` event listener so settings
  *    edits in another tab propagate.
- *  - Fires a one-shot `warmUp()` on mount to wake the Render free-tier
- *    backend before the user touches anything.
+ *  - Fires a one-shot `warmUp()` on mount so the local API is ready
+ *    before the user touches anything.
  *  - Polls /api/health every 30 s so the snapshot agent + settings
  *    badge always reflect live degraded mode.
- *  - Polls /api/composio/connections every 30 s while a userId is set,
+ *  - Polls /api/composio/connections every 30 s while configured,
  *    so integration windows show fresh status without per-window polls.
  */
 export function StoreBridge() {
   const userId = useAgentStore((s) => s.userId);
+  const backendHealth = useAgentStore((s) => s.backendHealth);
   const setUserId = useAgentStore((s) => s.setUserId);
   const setBackendHealth = useAgentStore((s) => s.setBackendHealth);
   const setConnections = useAgentStore((s) => s.setConnections);
   const setToolkits = useAgentStore((s) => s.setToolkits);
+  const composioConfigured = backendHealth?.composioConfigured ?? false;
 
   /* dev/test global */
   useEffect(() => {
@@ -68,7 +70,7 @@ export function StoreBridge() {
 
   /* Meta window-management tools registered for every WindowKind so
    * any centre-staged window can receive `pin_window` / `unpin_window`
-   * / `toggle_pin` / `send_to_back` from the orchestrator (those
+   * / `toggle_pin` from the orchestrator (those
    * events are dispatched to `target.kind` by `window-management.ts`,
    * which can be any of the ~14 kinds). */
   useEffect(() => {
@@ -110,24 +112,6 @@ export function StoreBridge() {
             }
           },
         },
-        {
-          name: "send_to_back",
-          description:
-            "Demote the targeted window to the lowest z-index in the stack.",
-          args: { id: "string" },
-          run: (args) => {
-            const id = typeof args.id === "string" ? args.id : "";
-            if (!id) return;
-            const wins = useAgentStore.getState().windows;
-            if (!wins.some((w) => w.id === id)) return;
-            const minZ = Math.min(0, ...wins.map((w) => w.zIndex)) - 1;
-            useAgentStore.setState({
-              windows: wins.map((w) =>
-                w.id === id ? { ...w, zIndex: minZ } : w,
-              ),
-            });
-          },
-        },
       ]),
     );
     return () => offs.forEach((off) => off());
@@ -138,13 +122,15 @@ export function StoreBridge() {
     if (typeof window === "undefined") return;
     try {
       const stored = localStorage.getItem(USER_ID_STORAGE_KEY);
-      if (stored && stored.trim()) setUserId(stored.trim());
+      const userId = stored?.trim() || "default";
+      if (stored !== userId) localStorage.setItem(USER_ID_STORAGE_KEY, userId);
+      setUserId(userId);
     } catch {
       /* private browsing — ignore */
     }
     const onStorage = (ev: StorageEvent) => {
       if (ev.key !== USER_ID_STORAGE_KEY) return;
-      const next = ev.newValue?.trim() || null;
+      const next = ev.newValue?.trim() || "default";
       setUserId(next);
     };
     window.addEventListener("storage", onStorage);
@@ -161,6 +147,7 @@ export function StoreBridge() {
         setBackendHealth({
           surrealOk: !!h.surreal?.ok,
           composioOk: !!h.composio?.ok,
+          composioConfigured: !!h.composio?.configured,
           checkedAt: Date.now(),
         });
       } catch {
@@ -168,6 +155,7 @@ export function StoreBridge() {
         setBackendHealth({
           surrealOk: false,
           composioOk: false,
+          composioConfigured: false,
           checkedAt: Date.now(),
         });
       }
@@ -185,6 +173,10 @@ export function StoreBridge() {
   useEffect(() => {
     let cancelled = false;
     const fetch = async () => {
+      if (!composioConfigured) {
+        setToolkits([]);
+        return;
+      }
       try {
         const tks = await backend.listToolkits();
         if (cancelled) return;
@@ -202,7 +194,7 @@ export function StoreBridge() {
     };
     void fetch();
     return () => { cancelled = true; };
-  }, [setToolkits]);
+  }, [composioConfigured, setToolkits]);
 
   /* chat history hydration — once on mount (or when userId changes) */
   useEffect(() => {
@@ -227,7 +219,7 @@ export function StoreBridge() {
 
   /* connections poll — only when userId is set */
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !composioConfigured) {
       setConnections([]);
       return;
     }
@@ -249,7 +241,7 @@ export function StoreBridge() {
       cancelled = true;
       window.clearInterval(tid);
     };
-  }, [userId, setConnections]);
+  }, [userId, composioConfigured, setConnections]);
 
   return null;
 }

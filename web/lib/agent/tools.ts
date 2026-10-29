@@ -3,9 +3,8 @@
  *
  * Three buckets:
  *   - META TOOLS — window management (open/close/focus/arrange/clear).
- *   - V1 WORK TOOLS — the 8 harness tools. Each opens/updates its own
- *     window via `ui.tool.open` events. Mock-first; swap URL to live
- *     MCP harness when ready.
+ *   - V1 WORK TOOLS — lightweight workflow actions that open their own
+ *     windows via `ui.tool.open` events.
  *   - GRAPH TOOLS — per-window tools for the graph canvas.
  *
  * Each tool's `execute()` receives a shared `AgentToolCtx` that owns the
@@ -15,10 +14,11 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { applyToolToSnapshot } from "./server-snapshot";
-import { callHarnessTool, hasHarnessMcpConfig } from "./harness-mcp";
+import { applyCanvasToSnapshot, applyToolToSnapshot } from "./server-snapshot";
+import { canvasActionForEvent, LAYOUT_PRESET_NAMES } from "./canvas-reducer";
+import type { LayoutPreset } from "./canvas-reducer";
 import { getKgWorkflows, getKgMemories } from "@/lib/api/backend";
-import type { MountPoint } from "./types";
+import type { CanvasSnapshot, MountPoint } from "./types";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
 
@@ -33,8 +33,23 @@ import type { WindowKind } from "@/lib/store";
  *  browser the moment a tool fires, with no buffering. Tools must NOT
  *  touch the underlying controller — `emit` keeps that boundary clean. */
 export interface AgentToolCtx {
-  snapshot: import("./types").CanvasSnapshot;
+  snapshot: CanvasSnapshot;
   emit: (event: AgentEvent) => void;
+}
+
+export function createToolCtx(
+  snapshot: CanvasSnapshot,
+  send: (event: AgentEvent) => void,
+): AgentToolCtx {
+  const ctx: AgentToolCtx = {
+    snapshot,
+    emit: (event) => {
+      const action = canvasActionForEvent(event);
+      if (action) ctx.snapshot = applyCanvasToSnapshot(ctx.snapshot, action);
+      send(event);
+    },
+  };
+  return ctx;
 }
 
 /** Helper that emits the tool-start chip, the underlying UI events,
@@ -46,13 +61,14 @@ function applyAndEmit(
   toolName: string,
   args: Record<string, unknown>,
   uiEvents: AgentEvent[],
+  resultOptions?: { ok?: boolean; message?: string },
 ): string {
   ctx.emit({ type: "agent.tool.start", name: toolName, args });
   for (const e of uiEvents) ctx.emit(e);
-  const result = applyToolToSnapshot(ctx.snapshot, toolName, args);
+  const result = applyToolToSnapshot(ctx.snapshot, toolName, args, resultOptions?.ok);
   ctx.snapshot = result.snapshot;
   ctx.emit({ type: "agent.tool.done", name: toolName, ok: (result.ok ?? true) });
-  return result.message;
+  return resultOptions?.message ?? result.message;
 }
 
 /* ------------------------------------------------------------------ *
@@ -95,19 +111,7 @@ export const MOUNT_POINT = z.enum([
   "pip-tr",
 ]);
 
-/** Layout preset names — kept in sync with `LAYOUT_PRESET_NAMES` in
- *  `server-snapshot.ts`. The simulator owns the geometry; this enum
- *  is just the wire shape the agent sees. */
-export const LAYOUT_PRESET = z.enum([
-  "focus",
-  "split",
-  "grid",
-  "stack-right",
-  "spotlight",
-  "theater",
-  "reading",
-  "triptych",
-]);
+export const LAYOUT_PRESET = z.enum(LAYOUT_PRESET_NAMES);
 
 /* ------------------------------------------------------------------ *
  *  Meta tools (window management)
@@ -117,16 +121,19 @@ export function metaTools(ctx: AgentToolCtx) {
   return {
     open_window: tool({
       description:
-        "Open a window of a given kind. If already open, brings it forward. Primarily for graph and settings; V1 work tools (run_code, etc.) open their own windows automatically.",
+        "Open a window of a given kind. If already open, brings it forward.",
       inputSchema: z.object({
         kind: WINDOW_KIND,
         mount: MOUNT_POINT.optional().default("full"),
       }),
       execute: async ({ kind, mount }) => {
-        const events: AgentEvent[] = [
-          { type: "ui.room", room: kind as WindowKind },
-        ];
-        return applyAndEmit(ctx, "open_window", { kind, mount }, events);
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "open", kind: kind as WindowKind, mount: mount as MountPoint, openedBy: "agent" },
+        }];
+        return applyAndEmit(ctx, "open_window", { kind, mount }, events, {
+          message: `Opened ${kind} at ${mount}.`,
+        });
       },
     }),
 
@@ -138,10 +145,19 @@ export function metaTools(ctx: AgentToolCtx) {
         kind: WINDOW_KIND.optional(),
       }),
       execute: async ({ id, kind }) => {
-        const events: AgentEvent[] = [
-          { type: "ui.close_window", room: kind as WindowKind | undefined },
-        ];
-        return applyAndEmit(ctx, "close_window", { id, kind }, events);
+        const matches = ctx.snapshot.windows.some((window) =>
+          id ? window.id === id : kind ? window.kind === kind : window.id === ctx.snapshot.focusedId,
+        );
+        const events: AgentEvent[] = matches
+          ? [{ type: "ui.canvas", action: { type: "close", id, kind } }]
+          : [];
+        return applyAndEmit(
+          ctx,
+          "close_window",
+          { id, kind },
+          events,
+          matches ? undefined : { ok: false, message: "No window matched the close request." },
+        );
       },
     }),
 
@@ -153,10 +169,13 @@ export function metaTools(ctx: AgentToolCtx) {
         kind: WINDOW_KIND.optional(),
       }),
       execute: async ({ id, kind }) => {
-        const events: AgentEvent[] = kind
-          ? [{ type: "ui.room", room: kind as WindowKind }]
-          : [];
-        return applyAndEmit(ctx, "focus_window", { id, kind }, events);
+        const events: AgentEvent[] = [{
+          type: "ui.canvas",
+          action: { type: "focus", id, kind: kind as WindowKind | undefined },
+        }];
+        return applyAndEmit(ctx, "focus_window", { id, kind }, events, {
+          message: `Focused ${kind ?? id ?? "window"}.`,
+        });
       },
     }),
 
@@ -165,28 +184,12 @@ export function metaTools(ctx: AgentToolCtx) {
         "Tile every open window using a named preset. Rare — stage-manager auto-positions. Presets: focus | split | grid | stack-right | spotlight | theater | reading | triptych.",
       inputSchema: z.object({ layout: LAYOUT_PRESET }),
       execute: async ({ layout }) => {
-        ctx.emit({
-          type: "agent.tool.start",
-          name: "arrange_windows",
-          args: { layout },
+        return applyAndEmit(ctx, "arrange_windows", { layout }, [{
+          type: "ui.canvas",
+          action: { type: "arrange", layout: layout as LayoutPreset },
+        }], {
+          message: `Arranged ${ctx.snapshot.windows.length} windows as ${layout}.`,
         });
-        const result = applyToolToSnapshot(ctx.snapshot, "arrange_windows", {
-          layout,
-        });
-        ctx.snapshot = result.snapshot;
-        for (const w of ctx.snapshot.windows) {
-          ctx.emit({
-            type: "ui.resize",
-            room: w.kind as WindowKind,
-            rect: pctRectToPx(w.rect, ctx.snapshot.viewport),
-          });
-        }
-        ctx.emit({
-          type: "agent.tool.done",
-          name: "arrange_windows",
-          ok: (result.ok ?? true),
-        });
-        return result.message;
       },
     }),
 
@@ -195,22 +198,20 @@ export function metaTools(ctx: AgentToolCtx) {
         "Close every open window. Use sparingly — only when the user explicitly asks for a clean slate.",
       inputSchema: z.object({}),
       execute: async () => {
-        const events: AgentEvent[] = ctx.snapshot.windows.map((w) => ({
-          type: "ui.close_window" as const,
-          room: w.kind as WindowKind,
-        }));
-        return applyAndEmit(ctx, "clear_canvas", {}, events);
+        const events: AgentEvent[] = [{ type: "ui.canvas", action: { type: "clear" } }];
+        return applyAndEmit(ctx, "clear_canvas", {}, events, {
+          message: "Cleared the canvas.",
+        });
       },
     }),
   };
 }
 
 /* ------------------------------------------------------------------ *
- *  V1 Work tools — the 8 harness tools
+ *  V1 Work tools
  *
  *  Each tool opens/updates its corresponding window via `ui.tool.open`
- *  events. Mock-first: tools return deterministic results. Swap
- *  TOOL_BASE_URL to live MCP harness when ready.
+ *  events.
  * ------------------------------------------------------------------ */
 
 export function v1WorkTools(ctx: AgentToolCtx) {
@@ -231,46 +232,6 @@ export function v1WorkTools(ctx: AgentToolCtx) {
   }
 
   return {
-    run_code: tool({
-      description:
-        "Execute Python in the harness Render Workflows runner. Opens the run_code window showing code + stdout/stderr/result. Pre-imports httpx, requests, beautifulsoup4. Cold start ~5s, warm ~3s. Print values you want to see in stdout.",
-      inputSchema: z.object({
-        code: z.string().min(1),
-        args: z.record(z.string(), z.unknown()).optional(),
-      }),
-      execute: async ({ code, args: codeArgs }) => {
-        // Bridge to the harness MCP server. On any failure (env missing,
-        // SSE drop, runner timeout) we still emit the window with an
-        // error envelope so the UI shows what happened.
-        const input = { code, args: codeArgs ?? {} };
-        let harnessResult: Record<string, unknown>;
-        try {
-          if (!hasHarnessMcpConfig()) {
-            throw new Error(
-              "harness MCP not configured (HARNESS_MCP_URL / HARNESS_MCP_TOKEN)",
-            );
-          }
-          harnessResult = await callHarnessTool("run_code", input);
-        } catch (err) {
-          harnessResult = {
-            result: null,
-            stdout: "",
-            stderr: "",
-            error: err instanceof Error ? err.message : String(err),
-          };
-        }
-        const payload = {
-          code,
-          args: codeArgs ?? {},
-          result: harnessResult.result ?? null,
-          stdout: (harnessResult.stdout as string) ?? "",
-          stderr: (harnessResult.stderr as string) ?? "",
-          error: (harnessResult.error as string | null) ?? null,
-        };
-        return emitToolWindow("run_code", input, payload);
-      },
-    }),
-
     save_workflow: tool({
       description:
         "Save code as a named workflow. Confirm-gated — stages a confirm before executing. Opens save_workflow window.",
@@ -563,19 +524,6 @@ export function graphTools(ctx: AgentToolCtx) {
 /* ------------------------------------------------------------------ *
  *  helpers
  * ------------------------------------------------------------------ */
-
-function pctRectToPx(
-  rect: { x: number; y: number; w: number; h: number },
-  viewport: { w: number; h: number },
-): { x: number; y: number; w: number; h: number } {
-  const usableH = Math.max(200, viewport.h - 80);
-  return {
-    x: Math.round((rect.x / 100) * viewport.w),
-    y: Math.round((rect.y / 100) * usableH),
-    w: Math.round((rect.w / 100) * viewport.w),
-    h: Math.round((rect.h / 100) * usableH),
-  };
-}
 
 export type MetaToolBag = ReturnType<typeof metaTools>;
 export type V1WorkToolBag = ReturnType<typeof v1WorkTools>;

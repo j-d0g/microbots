@@ -1,69 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
+import { OPENAI_BASE, notConfigured } from "../voice/openai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Proxies TTS synthesis to Cartesia (preferred) or ElevenLabs. Expects
- *  { text: string, voice?: string } and returns audio/mpeg. Returns 501
- *  when no provider is configured so the UI can fall back to silent
- *  ink-only responses. */
 export async function POST(req: NextRequest) {
-  const { text, voice } = (await req.json()) as {
-    text: string;
-    voice?: string;
-  };
-  if (!text) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return notConfigured();
+
+  const body = (await req.json()) as { text?: unknown };
+  const text = typeof body.text === "string" ? body.text : "";
+  if (!text.trim()) {
     return NextResponse.json({ error: "text required" }, { status: 400 });
   }
 
-  const cartesia = process.env.CARTESIA_API_KEY;
-  const cartesiaVoice = voice ?? process.env.CARTESIA_VOICE_ID;
-  if (cartesia && cartesiaVoice) {
-    const upstream = await fetch("https://api.cartesia.ai/tts/bytes", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "X-API-Key": cartesia,
-        "Cartesia-Version": "2024-06-10",
-      },
-      body: JSON.stringify({
-        model_id: "sonic-english",
-        transcript: text,
-        voice: { mode: "id", id: cartesiaVoice },
-        output_format: {
-          container: "mp3",
-          encoding: "mp3",
-          sample_rate: 44100,
-        },
-      }),
-    });
-    return new Response(upstream.body, {
-      headers: { "content-type": "audio/mpeg" },
-    });
+  const upstream = await fetch(`${OPENAI_BASE}/audio/speech`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${key}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini-tts",
+      input: text.slice(0, 4096),
+      voice: process.env.OPENAI_TTS_VOICE || "alloy",
+      response_format: "mp3",
+    }),
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    const error = upstream.ok
+      ? "openai tts response body is empty"
+      : `openai tts ${upstream.status}: ${(await upstream.text()).slice(0, 200)}`;
+    return NextResponse.json({ error }, { status: 502 });
   }
 
-  const eleven = process.env.ELEVENLABS_API_KEY;
-  const elevenVoice = voice ?? process.env.ELEVENLABS_VOICE_ID;
-  if (eleven && elevenVoice) {
-    const upstream = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${elevenVoice}`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "xi-api-key": eleven,
-          accept: "audio/mpeg",
-        },
-        body: JSON.stringify({ text, model_id: "eleven_turbo_v2" }),
-      },
-    );
-    return new Response(upstream.body, {
-      headers: { "content-type": "audio/mpeg" },
-    });
-  }
-
-  return NextResponse.json(
-    { error: "no TTS provider configured — UI will stay silent." },
-    { status: 501 },
-  );
+  return new Response(upstream.body, {
+    headers: { "content-type": "audio/mpeg" },
+  });
 }

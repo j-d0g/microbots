@@ -59,6 +59,10 @@ export function ComposioConnectWindow({
   payload?: Record<string, unknown>;
 }) {
   const userId = useAgentStore((s) => s.userId);
+  const backendHealth = useAgentStore((s) => s.backendHealth);
+  const composioConfigured = useAgentStore(
+    (s) => s.backendHealth?.composioConfigured ?? false,
+  );
   const connections = useAgentStore((s) => s.connections);
   const setConnections = useAgentStore((s) => s.setConnections);
   const toolkits = useAgentStore((s) => s.toolkits);
@@ -77,6 +81,7 @@ export function ComposioConnectWindow({
   }, [connections]);
 
   const fetchToolkits = useCallback(async () => {
+    if (!composioConfigured) return;
     if (toolkits.length > 0) return;
     try {
       const tks = await backend.listToolkits();
@@ -91,10 +96,10 @@ export function ComposioConnectWindow({
     } catch {
       /* swallow — StoreBridge already polls this */
     }
-  }, [toolkits.length, setToolkits]);
+  }, [composioConfigured, toolkits.length, setToolkits]);
 
   const pollConnections = useCallback(async () => {
-    if (!userId) {
+    if (!userId || !composioConfigured) {
       setConnections([]);
       return;
     }
@@ -112,7 +117,7 @@ export function ComposioConnectWindow({
     } finally {
       setLoading(false);
     }
-  }, [userId, setConnections]);
+  }, [userId, composioConfigured, setConnections]);
 
   // Initial load
   useEffect(() => {
@@ -206,6 +211,9 @@ export function ComposioConnectWindow({
   }, [toolkits]);
 
   const activeCount = connections.filter((c) => c.status === "ACTIVE").length;
+  const composioNotConfigured =
+    (backendHealth !== null && !composioConfigured) ||
+    (error?.status === 503 && error.message.toLowerCase().includes("composio"));
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -232,7 +240,18 @@ export function ComposioConnectWindow({
       />
 
       <div className="muji-scroll min-h-0 flex-1 overflow-y-auto p-3">
-        {!userId ? (
+        {composioNotConfigured ? (
+          <div
+            role="status"
+            className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"
+          >
+            <Plug size={18} strokeWidth={1.25} className="text-ink-35" />
+            <p className="max-w-[280px] font-mono text-[12px] text-ink-60">
+              Composio not configured — set{" "}
+              <code className="text-ink-90">COMPOSIO_API_KEY</code>
+            </p>
+          </div>
+        ) : !userId ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
             <Plug size={18} strokeWidth={1.25} className="text-ink-35" />
             <p className="max-w-[280px] font-mono text-[12px] text-ink-60">

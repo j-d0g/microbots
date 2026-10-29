@@ -100,7 +100,8 @@ async def compose_workflows(
     agent = build_workflow_agent(config)
 
     try:
-        result = await agent.run(user)
+        from offline import model, workflows
+        result = await agent.run(user, model=model(workflows(all_skills)) if config.offline else None)
         composition = result.output
     except Exception as e:  # noqa: BLE001
         log.warning("Workflow composition failed: %s", e)

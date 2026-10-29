@@ -20,7 +20,6 @@ import { WikiWindow } from "@/components/windows/WikiWindow";
 import { ChatsSummaryWindow } from "@/components/windows/ChatsSummaryWindow";
 import { ComposioConnectWindow } from "@/components/windows/ComposioConnectWindow";
 import { WINDOW_LABEL } from "@/components/stage/window-labels";
-import { getDummyPayload } from "@/lib/chat-dummy-payloads";
 import { cn } from "@/lib/cn";
 
 const ROOM_COMPONENTS: Record<
@@ -66,13 +65,11 @@ export function EmbeddedRoom() {
   const closeWindow = useAgentStore((s) => s.closeWindow);
 
   // Topmost visible window of the active room kind. The same kind
-  // can appear multiple times across the windowed canvas (e.g. two
-  // run_code windows for two tasks); chat mode collapses that to the
+  // can appear multiple times across the windowed canvas; chat mode collapses that to the
   // most recently focused one.
   const activeWindow = useMemo<WindowState | null>(() => {
     let best: WindowState | null = null;
     for (const w of windows) {
-      if (w.minimized) continue;
       if (w.kind !== chatRoom) continue;
       if (!best || w.zIndex > best.zIndex) best = w;
     }
@@ -80,7 +77,7 @@ export function EmbeddedRoom() {
   }, [windows, chatRoom]);
 
   const Room = ROOM_COMPONENTS[chatRoom];
-  const payload = activeWindow?.payload ?? getDummyPayload(chatRoom);
+  const payload = activeWindow?.payload ?? {};
   const isAgentOpened = activeWindow?.openedBy === "agent";
 
   return (

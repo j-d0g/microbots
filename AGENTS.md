@@ -1,14 +1,9 @@
-This is a collaborative repo across 3 members for a hackathon.
+# Repository guide
 
-agent/ covers Jordan's minimal coding-agent harness work: `agent/scratchpad/` for notes/plans, `agent/harness/` for implementation code.
-knowledge_graph/ and everything else here covers the scope of Desmond's knowledge-graph using Composio, PydanticAI, Logfire, and SurrealDB.
+Microbots is a local-first knowledge graph with a FastAPI backend and a Next.js client.
 
-UI agent improvement plan (capability sprints, eval-gated): see
-`web/agent-evals/AGENTS.md`. Devin Cloud reads that file at the start
-of every session and updates the sprint log on every PR.
-
-Local setup/run notes learned 2026-04-25:
-- First-run setup: `cp .env.example .env`, then `make db-up`.
-- If path-script commands cannot import `microbots`, run them with `PYTHONPATH=$PWD:$PWD/knowledge_graph` from the repo root.
-- `make db-schema` applies schema successfully on current SurrealDB client, but `knowledge_graph/schema/apply.py` may exit with `KeyError: 0` because `db.query("INFO FOR DB;")` returns a dict rather than a list.
-- Local seed verification command: `PYTHONPATH=$PWD:$PWD/knowledge_graph uv run python knowledge_graph/seed/wiki_from_seed.py --skip-seed --dry-run` still needs an LLM provider key before constructing the wiki agent. Without secrets, verify DB state with `PYTHONPATH=$PWD:$PWD/knowledge_graph uv run python knowledge_graph/seed/wiki_cat.py tree` and `make test`.
+- First run: `cp .env.example .env`, `cp web/.env.example web/.env.local`, then `make dev`.
+- Python is pinned to 3.13. Use `uv sync` and `uv run pytest -q`.
+- Web checks: `cd web && npm run typecheck && npm test && npm run build`.
+- Root Makefile Python commands set `PYTHONPATH` for the repository and `knowledge_graph/`.
+- See `README.md` for the local no-key demo and `docs/` for API and KG contracts.

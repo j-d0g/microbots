@@ -1,16 +1,17 @@
 import { NextRequest } from "next/server";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { CanvasSnapshot } from "@/lib/agent/types";
-import { hasOpenRouterKey, activeModelSlug, prewarmConnection } from "@/lib/agent/providers/openrouter";
+import { isAgentLive, activeModelSlug, prewarmConnection } from "@/lib/agent/providers/openrouter";
 import { runOrchestrator } from "@/lib/agent/orchestrator";
-import type { AgentToolCtx } from "@/lib/agent/tools";
-import {
-  detectLeakedToolCall,
-  applyRecoveredToolCall,
-} from "@/lib/agent/leaked-tool-call";
+import { createToolCtx } from "@/lib/agent/tools";
+import { detectLeakedToolCall } from "@/lib/agent/leaked-tool-call";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function GET() {
+  return Response.json({ live: isAgentLive() });
+}
 
 interface RequestBody {
   query?: string;
@@ -25,15 +26,15 @@ interface RequestBody {
  * Streams SSE events: ui.* (window mutations), agent.delegate /
  * agent.tool.* (sidecar log), reply.* (streamed text), dock state.
  *
- * No key set → 503 + `X-Agent-Fallback: local` header so the client
+ * No live model configured → 503 + `X-Agent-Fallback: local` header so the client
  * can degrade to the scripted `routeIntent()` fallback.
  */
 export async function POST(req: NextRequest) {
   prewarmConnection();
-  if (!hasOpenRouterKey()) {
+  if (!isAgentLive()) {
     return new Response(
       JSON.stringify({
-        error: "missing OPENROUTER_API_KEY",
+        error: "no agent model configured",
         fallback: "local",
       }),
       {
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const emit = (e: AgentEvent) => {
+      const send = (e: AgentEvent) => {
         try {
           controller.enqueue(sseEncode(e));
         } catch {
@@ -82,7 +83,8 @@ export async function POST(req: NextRequest) {
         }
       };
 
-      const ctx: AgentToolCtx = { snapshot, emit };
+      const ctx = createToolCtx(snapshot, send);
+      const emit = ctx.emit;
 
       emit({ type: "dock", state: "thinking" });
       emit({
@@ -96,7 +98,7 @@ export async function POST(req: NextRequest) {
         /* Surface centre-stage selection + tool-bag size to the
          * browser as a status string. This makes "is the in-window
          * tool wired up?" trivially observable in the
-         * ConversationDebugger panel and in the dock status. */
+         * client status surfaces. */
         const d = result.diagnostics;
         emit({
           type: "agent.status",
@@ -170,8 +172,7 @@ export async function POST(req: NextRequest) {
               status: `recovered leaked tool-call from text`,
             });
             emit(recovered.marker.start);
-            for (const e of recovered.events) emit(e);
-            ctx.snapshot = applyRecoveredToolCall(ctx.snapshot, recovered);
+            for (const e of recovered.events) ctx.emit(e);
             emit(recovered.marker.done);
           }
         }
