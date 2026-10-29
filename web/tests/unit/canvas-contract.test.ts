@@ -113,14 +113,24 @@ describe("shared canvas reducer contract", () => {
       { tool: "winman_bring_to_front", input: { kind: "graph" } },
     ]);
     expect(browser.focusedId).toBe("win-graph");
-    const minimized = await runScenario("windowed", [
+    const pipMoved = await runScenario("windowed", [
       { tool: "open_window", input: { kind: "memories", mount: "full" } },
       { tool: "open_window", input: { kind: "workflows", mount: "full" } },
       { tool: "winman_minimize_window", input: { kind: "workflows" } },
-      { tool: "open_window", input: { kind: "workflows", mount: "full" } },
     ]);
-    expect(minimized.browser.windows.find((window) => window.kind === "workflows")?.id)
-      .toBe("win-workflows");
+    expect(pipMoved.browser.windows.find((window) => window.kind === "workflows")?.mount)
+      .toBe("pip-br");
+
+    const closed = await runScenario("windowed", [
+      { tool: "open_window", input: { kind: "memories", mount: "full" } },
+      { tool: "open_window", input: { kind: "workflows", mount: "full" } },
+      { tool: "winman_minimize_window", input: { kind: "workflows" } },
+      {
+        tool: "winman_close_all_except",
+        input: { keep_ids: ["win-memories"] },
+      },
+    ]);
+    expect(closed.browser.windows.map((window) => window.id)).toEqual(["win-memories"]);
   });
 
   it("keeps only the focal window in chat mode and ignores arrange", async () => {
@@ -147,5 +157,39 @@ describe("shared canvas reducer contract", () => {
     const two = applyCanvasAction(duplicate, { type: "open", kind: "memories", at: 2 });
     const chat = applyCanvasAction(two, { type: "set_mode", mode: "chat" });
     expect(chat.windows.map((window) => window.kind)).toEqual(["memories"]);
+  });
+
+  it("preserves a window's rect on reopen unless a mount is supplied", () => {
+    const initial: CanvasState = {
+      windows: [],
+      mode: "windowed",
+      viewport: { w: 1440, h: 900 },
+    };
+    const opened = applyCanvasAction(initial, {
+      type: "open",
+      kind: "graph",
+      mount: "left-half",
+    });
+    const rect = { x: 12, y: 18, w: 42, h: 56 };
+    const positioned = applyCanvasAction(opened, {
+      type: "set_rect",
+      id: "win-graph",
+      rect,
+    });
+
+    const reopened = applyCanvasAction(positioned, {
+      type: "open",
+      kind: "graph",
+    });
+    expect(reopened.windows[0].rect).toEqual(rect);
+    expect(reopened.windows[0].mount).toBe("freeform");
+
+    const remounted = applyCanvasAction(reopened, {
+      type: "open",
+      kind: "graph",
+      mount: "right-half",
+    });
+    expect(remounted.windows[0].mount).toBe("right-half");
+    expect(remounted.windows[0].rect).not.toEqual(rect);
   });
 });

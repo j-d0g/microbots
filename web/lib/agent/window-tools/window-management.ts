@@ -100,11 +100,11 @@ function findWindow(
   kind?: WindowKind,
 ): { id: string; kind: WindowKind } | null {
   if (id) {
-    const w = snapshot.windows.find((w) => w.id === id && !w.minimized);
+    const w = snapshot.windows.find((w) => w.id === id);
     if (w) return { id: w.id, kind: w.kind as WindowKind };
   }
   if (kind) {
-    const matching = snapshot.windows.filter((w) => w.kind === kind && !w.minimized);
+    const matching = snapshot.windows.filter((w) => w.kind === kind);
     if (matching.length > 0) {
       const top = matching.reduce((a, b) => (a.zIndex > b.zIndex ? a : b));
       return { id: top.id, kind: top.kind as WindowKind };
@@ -404,11 +404,11 @@ export function windowManagementTools(ctx: AgentToolCtx) {
     }),
 
     /**
-     * Minimize window to small floating view.
+     * Move a window to the picture-in-picture mount.
      */
     winman_minimize_window: tool({
       description:
-        "Minimize a window to a small floating view (picture-in-picture bottom-right). Use id or kind to identify the window.",
+        "Move a window to the small picture-in-picture mount in the bottom-right. Use id or kind to identify the window.",
       inputSchema: z.object({
         id: z.string().optional(),
         kind: WINDOW_KIND.optional(),
@@ -424,7 +424,7 @@ export function windowManagementTools(ctx: AgentToolCtx) {
 
         const events: AgentEvent[] = [{
           type: "ui.canvas",
-          action: { type: "minimize", id: target.id, minimized: true },
+          action: { type: "move", id: target.id, mount: "pip-br" },
         }];
 
         return applyAndEmit(ctx, "winman_minimize_window", { id: target.id }, events);

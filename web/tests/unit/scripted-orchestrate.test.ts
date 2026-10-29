@@ -104,6 +104,7 @@ describe("scripted orchestrator model", () => {
 describe("scripted response mappings", () => {
   it.each([
     ["clear", "clear_canvas"],
+    ["clear graph filters", "graph_clear"],
     ["brief", "open_window"],
     ["please draw a graph", "open_window"],
     ["close memories", "close_window"],

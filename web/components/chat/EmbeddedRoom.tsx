@@ -70,7 +70,6 @@ export function EmbeddedRoom() {
   const activeWindow = useMemo<WindowState | null>(() => {
     let best: WindowState | null = null;
     for (const w of windows) {
-      if (w.minimized) continue;
       if (w.kind !== chatRoom) continue;
       if (!best || w.zIndex > best.zIndex) best = w;
     }

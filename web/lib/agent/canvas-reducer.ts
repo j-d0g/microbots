@@ -10,7 +10,6 @@ export interface CanvasWindow {
   rect: RectPct;
   zIndex: number;
   pinned: boolean;
-  minimized?: boolean;
   openedAt: number;
   openedBy?: "agent" | "user";
   payload?: Record<string, unknown>;
@@ -41,7 +40,6 @@ export type CanvasAction =
   | { type: "set_rect"; id?: string; kind?: WindowKind; rect: RectPct }
   | { type: "arrange"; layout: LayoutPreset }
   | { type: "pin"; id?: string; kind?: WindowKind; pinned: boolean }
-  | { type: "minimize"; id: string; minimized: boolean }
   | { type: "clear" }
   | { type: "set_mode"; mode: "windowed" | "chat" };
 
@@ -214,8 +212,7 @@ export function windowIdForKind(kind: WindowKind): string {
 }
 
 export function topWindow(windows: readonly CanvasWindow[]): CanvasWindow | null {
-  const visible = windows.filter((window) => !window.minimized);
-  return visible.reduce<CanvasWindow | null>(
+  return windows.reduce<CanvasWindow | null>(
     (top, window) => (!top || window.zIndex > top.zIndex ? window : top),
     null,
   );
@@ -229,11 +226,11 @@ export function findCanvasWindow(
     ? stateOrWindows
     : (stateOrWindows as CanvasState).windows;
   if (selector.id) {
-    return windows.find((window) => window.id === selector.id && !window.minimized) ?? null;
+    return windows.find((window) => window.id === selector.id) ?? null;
   }
   if (selector.kind) {
     return windows
-      .filter((window) => window.kind === selector.kind && !window.minimized)
+      .filter((window) => window.kind === selector.kind)
       .reduce<CanvasWindow | null>(
         (top, window) => (!top || window.zIndex > top.zIndex ? window : top),
         null,
@@ -266,7 +263,6 @@ export function applyCanvasAction(state: CanvasState, action: CanvasAction): Can
               ? {
                   ...window,
                   ...(action.payload ? { payload: { ...window.payload, ...action.payload } } : {}),
-                  minimized: false,
                   zIndex,
                   ...(mount ? { mount, rect: resolvedRect(mount, state.viewport) } : {}),
                   ...(action.openedBy ? { openedBy: action.openedBy } : {}),
@@ -287,7 +283,6 @@ export function applyCanvasAction(state: CanvasState, action: CanvasAction): Can
             rect: resolvedRect(newMount, state.viewport),
             zIndex,
             pinned: false,
-            minimized: false,
             openedAt: action.at ?? 0,
             ...(action.openedBy ? { openedBy: action.openedBy } : {}),
             ...(action.payload ? { payload: action.payload } : {}),
@@ -351,11 +346,10 @@ export function applyCanvasAction(state: CanvasState, action: CanvasAction): Can
     }
     case "arrange": {
       if (state.mode === "chat") return state;
-      const visible = state.windows.filter((window) => !window.minimized);
       const preset = PRESETS[action.layout];
-      if (!preset || visible.length === 0) return state;
-      const rects = preset(visible.length);
-      const ordered = [...visible].sort((a, b) => b.zIndex - a.zIndex);
+      if (!preset || state.windows.length === 0) return state;
+      const rects = preset(state.windows.length);
+      const ordered = [...state.windows].sort((a, b) => b.zIndex - a.zIndex);
       const rectById = new Map(ordered.map((window, index) => [window.id, rects[index]]));
       return {
         ...state,
@@ -372,16 +366,6 @@ export function applyCanvasAction(state: CanvasState, action: CanvasAction): Can
         ...state,
         windows: state.windows.map((window) =>
           window.id === target.id ? { ...window, pinned: action.pinned } : window,
-        ),
-      };
-    }
-    case "minimize": {
-      const target = state.windows.find((window) => window.id === action.id);
-      if (!target) return state;
-      return {
-        ...state,
-        windows: state.windows.map((window) =>
-          window.id === action.id ? { ...window, minimized: action.minimized } : window,
         ),
       };
     }

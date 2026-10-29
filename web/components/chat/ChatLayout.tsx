@@ -32,9 +32,7 @@ export function ChatLayout() {
    * the same dummy data the room tabs use. */
   useEffect(() => {
     const s = useAgentStore.getState();
-    const existing = s.windows.find(
-      (w) => w.kind === chatRoom && !w.minimized,
-    );
+    const existing = s.windows.find((w) => w.kind === chatRoom);
     if (existing) {
       s.bringToFront(existing.id);
       return;

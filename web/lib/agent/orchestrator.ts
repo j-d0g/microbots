@@ -313,7 +313,7 @@ const WINDOW_TOOL_FACTORIES: Record<
 function getCentreStageWindowKind(
   ctx: AgentToolCtx,
 ): { kind: WindowKind | null; source: "centre" | "focused" | "none" } {
-  const wins = ctx.snapshot.windows.filter((w) => !w.minimized).map((w) => ({
+  const wins = ctx.snapshot.windows.map((w) => ({
     id: w.id,
     kind: w.kind,
     zIndex: w.zIndex,
@@ -326,7 +326,7 @@ function getCentreStageWindowKind(
     const centre = ctx.snapshot.windows.find((w) => w.id === centreId);
     if (centre) return { kind: centre.kind as WindowKind, source: "centre" };
   }
-  const focused = ctx.snapshot.windows.find((w) => w.focused && !w.minimized);
+  const focused = ctx.snapshot.windows.find((w) => w.focused);
   if (focused) return { kind: focused.kind as WindowKind, source: "focused" };
   return { kind: null, source: "none" };
 }

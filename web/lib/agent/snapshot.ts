@@ -82,19 +82,16 @@ export function buildSnapshot(opts?: {
       ? { w: window.innerWidth, h: window.innerHeight }
       : { w: 1440, h: 900 });
 
-  const visible = state.windows.filter((w) => !w.minimized);
   const focusedId = topWindow(state.windows)?.id ?? null;
 
   const t0 = state.canvasT0 ?? CANVAS_T0;
   const windows: WindowSnapshot[] = state.windows.map((w) => {
     const snap = snapshotWindow(w, state, focusedId);
     snap.openedAt = Math.round(((w.openedAt ?? nowMs()) - t0));
-    if (w.minimized) snap.minimized = true;
     return snap;
   });
 
-  const visibleSnapshots = windows.filter((window) => !window.minimized);
-  const grid = renderGrid(visibleSnapshots);
+  const grid = renderGrid(windows);
 
   const recentActions = (state.recentActions ?? []).map((a) => ({
     ...a,

@@ -21,7 +21,6 @@ export function applyCanvasToSnapshot(
       rect: window.rect,
       zIndex: window.zIndex,
       pinned: window.pinned,
-      minimized: window.minimized ?? false,
       openedAt: window.openedAt,
     })),
     mode: snap.ui?.mode ?? "windowed",
@@ -45,7 +44,6 @@ export function applyCanvasToSnapshot(
         zIndex: window.zIndex,
         focused: window.id === focused?.id,
         pinned: window.pinned,
-        ...(window.minimized ? { minimized: true } : {}),
         openedAt: window.openedAt,
         summary: old?.summary ?? window.kind,
       };
@@ -120,7 +118,6 @@ export function snapshotToPrompt(
     for (const w of snap.windows) {
       lines.push(
         `  - id=${w.id} kind=${w.kind}${w.slug ? ` slug=${w.slug}` : ""} mount=${w.mount} z=${w.zIndex} focused=${w.focused}` +
-          (w.minimized ? " minimized=true" : "") +
           (w.summary ? ` summary="${w.summary}"` : ""),
       );
     }

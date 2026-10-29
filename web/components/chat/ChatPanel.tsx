@@ -66,7 +66,7 @@ export function ChatPanel() {
       setChatRoom(kind);
       const existing = useAgentStore
         .getState()
-        .windows.find((w) => w.kind === kind && !w.minimized);
+        .windows.find((w) => w.kind === kind);
       if (existing) {
         useAgentStore.getState().bringToFront(existing.id);
         return;

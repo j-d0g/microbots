@@ -11,7 +11,6 @@ import {
   type LayoutPreset,
 } from "./agent/canvas-reducer";
 import type { RectPct } from "./agent/types";
-import { WINDOW_REGISTRY } from "@/components/stage/window-registry";
 
 /**
  * Window kinds, schema-driven (v2).
@@ -231,8 +230,6 @@ export interface AgentStoreState {
   openWindow: (kind: RoomKind, opts?: { mount?: CanvasWindow["mount"]; payload?: Record<string, unknown>; openedBy?: CanvasWindow["openedBy"]; at?: number }) => string;
   closeWindow: (id: string) => void;
   bringToFront: (id: string) => void;
-  minimizeWindow: (id: string) => void;
-  restoreWindow: (id: string) => void;
   arrangeWindows: (layout: LayoutPreset) => void;
   closeTopWindow: () => void;
   updateWindowRect: (id: string, rect: RectPct) => void;
@@ -313,7 +310,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   setUiMode: (mode) => {
     const state = get();
     const hasChatWindow = state.windows.some(
-      (window) => window.kind === state.chatRoom && !window.minimized,
+      (window) => window.kind === state.chatRoom,
     );
     get().dispatchCanvas({ type: "set_mode", mode });
     if (mode === "windowed" && !hasChatWindow) {
@@ -566,7 +563,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     get().dispatchCanvas({
       type: "open",
       kind,
-      mount: opts?.mount ?? WINDOW_REGISTRY[kind]?.defaultMount ?? "full",
+      ...(opts?.mount ? { mount: opts.mount } : {}),
       payload,
       openedBy: opts?.openedBy ?? (payload?.openedBy as "agent" | "user") ?? "user",
       at: opts?.at ?? now,
@@ -576,11 +573,6 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
 
   closeWindow: (id) => get().dispatchCanvas({ type: "close", id }),
   bringToFront: (id) => get().dispatchCanvas({ type: "focus", id }),
-  minimizeWindow: (id) => get().dispatchCanvas({ type: "minimize", id, minimized: true }),
-  restoreWindow: (id) => {
-    get().dispatchCanvas({ type: "minimize", id, minimized: false });
-    get().dispatchCanvas({ type: "focus", id });
-  },
   arrangeWindows: (layout) => get().dispatchCanvas({ type: "arrange", layout }),
   closeTopWindow: () => get().dispatchCanvas({ type: "close" }),
   updateWindowRect: (id, rect) => get().dispatchCanvas({ type: "set_rect", id, rect }),

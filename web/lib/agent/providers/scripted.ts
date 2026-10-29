@@ -37,6 +37,9 @@ export function scriptedResponse(query: string): {
   text: string;
 } {
   const normalized = query.toLowerCase();
+  if (/\b(?:clear|reset)\b.*\b(?:graph\s+)?filters?\b/.test(normalized)) {
+    return { toolCalls: [{ name: "graph_clear", input: {} }], text: "cleared the graph filters." };
+  }
   if (/\bclose everything\b|\bclear\b/.test(normalized)) {
     return { toolCalls: [{ name: "clear_canvas", input: {} }], text: "cleared the canvas." };
   }

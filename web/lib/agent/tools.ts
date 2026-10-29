@@ -16,8 +16,9 @@ import { tool } from "ai";
 import { z } from "zod";
 import { applyCanvasToSnapshot, applyToolToSnapshot } from "./server-snapshot";
 import { canvasActionForEvent, LAYOUT_PRESET_NAMES } from "./canvas-reducer";
+import type { LayoutPreset } from "./canvas-reducer";
 import { getKgWorkflows, getKgMemories } from "@/lib/api/backend";
-import type { MountPoint } from "./types";
+import type { CanvasSnapshot, MountPoint } from "./types";
 import type { AgentEvent } from "@/lib/agent-client";
 import type { WindowKind } from "@/lib/store";
 
@@ -32,12 +33,12 @@ import type { WindowKind } from "@/lib/store";
  *  browser the moment a tool fires, with no buffering. Tools must NOT
  *  touch the underlying controller — `emit` keeps that boundary clean. */
 export interface AgentToolCtx {
-  snapshot: import("./types").CanvasSnapshot;
+  snapshot: CanvasSnapshot;
   emit: (event: AgentEvent) => void;
 }
 
 export function createToolCtx(
-  snapshot: import("./types").CanvasSnapshot,
+  snapshot: CanvasSnapshot,
   send: (event: AgentEvent) => void,
 ): AgentToolCtx {
   const ctx: AgentToolCtx = {
@@ -145,7 +146,7 @@ export function metaTools(ctx: AgentToolCtx) {
       }),
       execute: async ({ id, kind }) => {
         const matches = ctx.snapshot.windows.some((window) =>
-          !window.minimized && (id ? window.id === id : kind ? window.kind === kind : window.id === ctx.snapshot.focusedId),
+          id ? window.id === id : kind ? window.kind === kind : window.id === ctx.snapshot.focusedId,
         );
         const events: AgentEvent[] = matches
           ? [{ type: "ui.canvas", action: { type: "close", id, kind } }]
@@ -185,7 +186,7 @@ export function metaTools(ctx: AgentToolCtx) {
       execute: async ({ layout }) => {
         return applyAndEmit(ctx, "arrange_windows", { layout }, [{
           type: "ui.canvas",
-          action: { type: "arrange", layout: layout as import("./canvas-reducer").LayoutPreset },
+          action: { type: "arrange", layout: layout as LayoutPreset },
         }], {
           message: `Arranged ${ctx.snapshot.windows.length} windows as ${layout}.`,
         });
