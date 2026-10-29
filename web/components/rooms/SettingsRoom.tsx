@@ -169,6 +169,7 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
     : "checking…";
   const surrealOk = backendHealth?.surrealOk ?? null;
   const composioOk = backendHealth?.composioOk ?? null;
+  const composioConfigured = backendHealth?.composioConfigured ?? null;
 
   return (
     <RoomStateOverlay room="settings" state={roomState}>
@@ -312,7 +313,11 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
 
           <ul className="grid grid-cols-2 gap-3">
             <HealthRow label="surrealdb" ok={surrealOk} />
-            <HealthRow label="composio" ok={composioOk} />
+            <HealthRow
+              label="composio"
+              ok={composioOk}
+              configured={composioConfigured}
+            />
           </ul>
 
           <p className="mt-4 font-mono text-[10px] leading-relaxed text-ink-35">
@@ -325,25 +330,35 @@ export function SettingsRoom(_props: { payload?: Record<string, unknown> }) {
   );
 }
 
-function HealthRow({ label, ok }: { label: string; ok: boolean | null }) {
-  const tone = ok === null ? "neutral" : ok ? "high" : "low";
-  const text = ok === null ? "checking…" : ok ? "ok" : "down";
+function HealthRow({
+  label,
+  ok,
+  configured = true,
+}: {
+  label: string;
+  ok: boolean | null;
+  configured?: boolean | null;
+}) {
+  const status =
+    ok === null ? "checking" : ok ? "ok" : configured === false ? "unconfigured" : "down";
+  const tone = status === "ok" ? "high" : status === "down" ? "low" : "neutral";
+  const text =
+    status === "checking"
+      ? "checking…"
+      : status === "unconfigured"
+        ? "not configured"
+        : status;
   return (
     <li
       data-testid={`settings-health-${label}`}
+      data-status={status}
       className={cn(
         "flex items-center justify-between gap-3 rounded-sm border px-3 py-2",
         "border-rule bg-paper-0",
       )}
     >
       <span className="font-mono text-[12px] text-ink-90">{label}</span>
-      <Chip
-        tone={
-          tone === "high" ? "high" : tone === "low" ? "low" : "neutral"
-        }
-      >
-        {text}
-      </Chip>
+      <Chip tone={tone}>{text}</Chip>
     </li>
   );
 }
