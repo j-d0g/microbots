@@ -1,12 +1,4 @@
-"""/api/kg/* — REST mirror of the MCP tools.
-
-The MCP server (mounted at ``/mcp``) is ideal for LLM agents but awkward for
-vanilla JS / curl. This module exposes the same queries as plain JSON so a
-frontend dev can hit them with ``fetch`` and never think about MCP framing.
-
-Every handler re-uses ``app.services.surreal.q`` so the REST and MCP layers
-always return the exact same data.
-"""
+"""/api/kg/* — REST endpoints for the knowledge graph."""
 
 from __future__ import annotations
 
@@ -15,8 +7,8 @@ from typing import Any, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.mcp import queries as Q
 from app.services import kg_writes
+from app.services import kg_queries as Q
 from app.services.surreal import q, q_one, session
 
 router = APIRouter(prefix="/kg", tags=["knowledge-graph"])

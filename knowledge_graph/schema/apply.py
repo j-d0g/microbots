@@ -41,7 +41,8 @@ async def apply_schema():
                     log.info("schema file applied {filename}", filename=path.name)
 
             result = await db.query("INFO FOR DB;")
-            tables = list(result[0].get("tables", {}).keys())
+            info = result[0] if isinstance(result, list) and result else result
+            tables = list((info or {}).get("tables", {}).keys())
             log.info(
                 "schema applied — {table_count} tables defined",
                 table_count=len(tables),

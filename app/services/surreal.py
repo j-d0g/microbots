@@ -1,7 +1,6 @@
 """Shared SurrealDB session helper + JSON normaliser.
 
-Used by both the MCP tool layer (`app/mcp/*`) and the REST route layer
-(`app/routes/api_kg.py`). Keeping the session helper and the JSON-normalisation
+Used by the REST route layer (`app/routes/api_kg.py`). Keeping the session helper and the JSON-normalisation
 logic in one place means we only need to maintain one set of SurrealDB quirks.
 """
 
@@ -76,8 +75,7 @@ def jsonify(obj: Any) -> Any:
 async def q(s: AsyncSurreal, surql: str, params: Optional[dict] = None) -> list[dict[str, Any]]:
     """Run a query, return normalised list of dict rows.
 
-    Used by both REST and MCP layers. REST layer returns this directly
-    (FastAPI JSON-encodes it). MCP layer wraps with ``json.dumps`` (FastMCP
+    REST layer returns this directly (FastAPI JSON-encodes it).
     tool return type is ``str``).
     """
     rows = await s.query(surql, params or {})

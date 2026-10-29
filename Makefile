@@ -1,10 +1,10 @@
 include .env
 export
 
-PYTHON := uv run python
+PYTHON := PYTHONPATH=$(PWD):$(PWD)/knowledge_graph uv run python
 KG     := knowledge_graph
 
-.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export ingest-seed wiki-reset wiki-cat ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report surface snapshot restore-demo daemon-cycle scrub
+.PHONY: install db-up db-down db-schema db-seed db-reset db-query db-export dev ingest-seed wiki-reset wiki-cat ingest composio-ingest composio-auth wiki test e2e synth-corpus rerecord-goldens eval eval-report surface snapshot restore-demo daemon-cycle scrub
 
 install:
 	uv sync
@@ -25,6 +25,12 @@ db-schema:
 
 db-seed:
 	$(PYTHON) $(KG)/seed/seed.py
+
+dev: db-up db-schema db-seed
+	@trap 'kill 0' EXIT; \
+		uv run uvicorn app.main:app --port 8001 & \
+		(cd web && npm run dev) & \
+		wait
 
 db-reset:
 	docker compose down -v

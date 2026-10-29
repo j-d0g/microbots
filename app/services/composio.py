@@ -28,6 +28,10 @@ from composio_client import Composio as ComposioClient
 logger = logging.getLogger(__name__)
 
 
+class ComposioNotConfigured(RuntimeError):
+    pass
+
+
 @dataclass
 class Toolkit:
     slug: str
@@ -60,7 +64,7 @@ class ComposioService:
     def __init__(self, api_key: Optional[str] = None) -> None:
         self._api_key = api_key or os.environ.get("COMPOSIO_API_KEY") or ""
         if not self._api_key:
-            raise RuntimeError("COMPOSIO_API_KEY is not set")
+            raise ComposioNotConfigured("COMPOSIO_API_KEY is not set")
         # `composio_client` is the low-level REST/listing client.
         self._client = ComposioClient(api_key=self._api_key)
         # `composio` is the higher-level SDK with connected_accounts.initiate().
