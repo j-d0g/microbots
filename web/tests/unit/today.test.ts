@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  isQuestion,
+  questionOptions,
   relativeTime,
   setCandidateStatus,
   todaySectionsForFocus,
@@ -72,6 +74,65 @@ describe("Today candidate decisions", () => {
     expect(changes.map((value) => value.suggestions[0].status))
       .toEqual(["dismissed", "open"]);
     expect(updated).toBe(today);
+  });
+});
+
+describe("Today question answers", () => {
+  const question: AutomationCandidate = {
+    ...candidate,
+    id: "automation_candidate:deploy_runbook_owner",
+    title: "Deploy runbook looks out of date — who owns it now?",
+    signal_axes: { kind: "question", risk_tier: 1, options: ["Desmond", "Jordan", ""] },
+  };
+  const questionToday: TodayResponse = { needs_you: [question], suggestions: [], recent: [] };
+
+  it("recognises question candidates and their non-empty options", () => {
+    expect(isQuestion(question)).toBe(true);
+    expect(isQuestion(candidate)).toBe(false);
+    expect(questionOptions(question)).toEqual(["Desmond", "Jordan"]);
+    expect(questionOptions(candidate)).toEqual([]);
+  });
+
+  it("posts the answer with status done and keeps it on the row", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({
+      ...question,
+      status: "done",
+      answer: "Desmond",
+      updated_at: "2026-01-01T00:00:00Z",
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const changes: TodayResponse[] = [];
+
+    const updated = await setCandidateStatus(
+      questionToday,
+      question.id,
+      "done",
+      "default",
+      (value) => changes.push(value),
+      "Desmond",
+    );
+
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body)))
+      .toEqual({ status: "done", answer: "Desmond" });
+    expect(changes[0].needs_you[0]).toMatchObject({ status: "done", answer: "Desmond" });
+    expect(updated.needs_you[0]).toMatchObject({ status: "done", answer: "Desmond" });
+  });
+
+  it("clears the answer optimistically when the decision is undone", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({
+      ...question,
+      status: "open",
+      answer: null,
+    })));
+    const answered: TodayResponse = {
+      ...questionToday,
+      needs_you: [{ ...question, status: "done", answer: "Desmond" }],
+    };
+    const changes: TodayResponse[] = [];
+
+    await setCandidateStatus(answered, question.id, "open", "default", (value) => changes.push(value));
+
+    expect(changes[0].needs_you[0]).toMatchObject({ status: "open", answer: null });
   });
 });
 

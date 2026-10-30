@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getToday, updateCandidateStatus, type AutomationCandidate, type TodayResponse } from "@/lib/api/backend";
+import {
+  getToday,
+  updateCandidateStatus,
+  type AutomationCandidate,
+  type CandidateStatus,
+  type TodayResponse,
+} from "@/lib/api/backend";
 import { useAgentStore, type ChatCard } from "@/lib/store";
 
 const EMPTY_TODAY: TodayResponse = { needs_you: [], suggestions: [], recent: [] };
@@ -50,17 +56,38 @@ export function replaceCandidate(
   };
 }
 
+export type CandidateDecision = Exclude<CandidateStatus, "suggested">;
+
+export function isQuestion(candidate: AutomationCandidate): boolean {
+  return candidate.signal_axes?.kind === "question";
+}
+
+export function questionOptions(candidate: AutomationCandidate): string[] {
+  const options = candidate.signal_axes?.options;
+  return Array.isArray(options)
+    ? options.filter((option): option is string => typeof option === "string" && option.trim() !== "")
+    : [];
+}
+
+export function isResolved(candidate: AutomationCandidate): boolean {
+  return candidate.status === "accepted" || candidate.status === "dismissed" || candidate.status === "done";
+}
+
 export async function setCandidateStatus(
   today: TodayResponse,
   id: string,
-  status: "open" | "accepted" | "dismissed",
+  status: CandidateDecision,
   userId: string,
   onChange: (value: TodayResponse) => void,
+  answer?: string,
 ): Promise<TodayResponse> {
-  const optimistic = replaceCandidate(today, id, { status });
+  const optimistic = replaceCandidate(today, id, {
+    status,
+    answer: status === "done" ? answer ?? null : null,
+  });
   onChange(optimistic);
   try {
-    const saved = await updateCandidateStatus(id, status, userId);
+    const saved = await updateCandidateStatus(id, status, userId, answer);
     return replaceCandidate(optimistic, id, saved);
   } catch {
     onChange(today);
@@ -116,7 +143,8 @@ function TodayContent({
 
   const decide = useCallback(async (
     candidate: AutomationCandidate,
-    status: "accepted" | "dismissed" | "open",
+    status: CandidateDecision,
+    answer?: string,
   ) => {
     const before = today;
     setErrors((current) => ({ ...current, [candidate.id]: "" }));
@@ -126,6 +154,7 @@ function TodayContent({
       status,
       userId,
       setToday,
+      answer,
     );
     setToday(updated);
     if (updated === before) {
@@ -154,16 +183,37 @@ function TodayContent({
           <ul className="space-y-2">
             {needsYou.map((candidate) => (
               <li key={candidate.id} className="border-l border-confidence-low/40 pl-2">
-                {candidate.status === "accepted" || candidate.status === "dismissed" ? (
+                {isResolved(candidate) ? (
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[12px] text-ink-60">{candidate.title}</span>
+                    <span className="min-w-0 truncate text-[12px] text-ink-60">
+                      {candidate.title}
+                      {candidate.status === "done" && candidate.answer && (
+                        <span className="text-ink-90"> · {candidate.answer}</span>
+                      )}
+                    </span>
                     <span className="flex shrink-0 items-center gap-2 font-mono text-[9px] uppercase text-ink-35">
-                      {candidate.status}
+                      {candidate.status === "done" ? "answered" : candidate.status}
                       <button type="button" onClick={() => void decide(candidate, "open")} className="text-accent-indigo hover:underline">
                         undo
                       </button>
                     </span>
                   </div>
+                ) : isQuestion(candidate) ? (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-[12px] font-medium text-ink-90">{candidate.title}</h3>
+                        <p className="text-[10px] leading-relaxed text-ink-60">{candidate.story}</p>
+                      </div>
+                      <button type="button" onClick={() => void decide(candidate, "dismissed")} className="shrink-0 font-mono text-[9px] uppercase text-ink-35 hover:underline">
+                        dismiss
+                      </button>
+                    </div>
+                    <QuestionAnswer
+                      candidate={candidate}
+                      onAnswer={(answer) => void decide(candidate, "done", answer)}
+                    />
+                  </>
                 ) : (
                   <>
                     <div className="flex items-start justify-between gap-3">
@@ -239,6 +289,58 @@ function TodayContent({
           </ul>
         </section>
       )}
+    </div>
+  );
+}
+
+function QuestionAnswer({
+  candidate,
+  onAnswer,
+}: {
+  candidate: AutomationCandidate;
+  onAnswer: (answer: string) => void;
+}) {
+  const [text, setText] = useState("");
+  const options = questionOptions(candidate);
+  const trimmed = text.trim();
+  return (
+    <div className="mt-1.5 space-y-1.5" data-testid="needs-you-question">
+      {options.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onAnswer(option)}
+              className="rounded-full border border-rule bg-paper-0 px-2.5 py-0.5 font-mono text-[10px] text-ink-60 transition-colors hover:border-accent-indigo/60 hover:text-ink-90"
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (trimmed) onAnswer(trimmed);
+        }}
+      >
+        <input
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder={options.length > 0 ? "or type an answer…" : "type an answer…"}
+          aria-label={`Answer: ${candidate.title}`}
+          className="min-w-0 flex-1 rounded-sm border border-rule bg-paper-0 px-2 py-1 text-[11px] text-ink-90 outline-none placeholder:text-ink-35 focus:border-accent-indigo/50"
+        />
+        <button
+          type="submit"
+          disabled={!trimmed}
+          className="font-mono text-[9px] uppercase text-accent-indigo hover:underline disabled:text-ink-35 disabled:no-underline"
+        >
+          answer
+        </button>
+      </form>
     </div>
   );
 }

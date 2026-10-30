@@ -63,7 +63,11 @@ async def _seed_automation_candidates(db: AsyncSurreal) -> None:
             "title": "Deploy runbook looks out of date — who owns it now?",
             "story": "The deploy runbook and recent incident notes need a current owner.",
             "suggested_action": "Confirm the current owner of the deploy runbook.",
-            "signal_axes": {"kind": "question", "risk_tier": 1},
+            "signal_axes": {
+                "kind": "question",
+                "risk_tier": 1,
+                "options": ["Desmond", "Jordan", "Ask in #deploys"],
+            },
             "time_sensitive_until": datetime.now(timezone.utc) + timedelta(days=3),
             "evidence": [
                 ("candidate_evidence_chat", "chat:slack_deploy_incident"),
