@@ -7,6 +7,7 @@ import { buildSnapshot } from "@/lib/agent/snapshot";
 import { useAgentStore, type ChatMessage } from "@/lib/store";
 import { scriptedResponse } from "@/lib/agent/providers/scripted";
 import { memoryCardSearchDisplay } from "@/components/chat/cards/memory-card-data";
+import { formatTokens } from "@/components/chat/ChatMessage";
 
 function readEvents(body: string): AgentEvent[] {
   return body
@@ -623,5 +624,37 @@ describe("memory card search results", () => {
     expect(memoryCardSearchDisplay({ query: "nothing", count: 0, results: [] }))
       .toEqual({ query: "nothing", count: 0, snippets: [] });
     expect(memoryCardSearchDisplay({ query: "nothing" })).toBeNull();
+  });
+});
+
+describe("reply token usage", () => {
+  it("omits usage on reply.done when the model reports no tokens", async () => {
+    vi.stubEnv("MICROBOTS_AGENT_MODEL", "scripted");
+    vi.stubGlobal("fetch", vi.fn(async () => healthyBackend()));
+
+    const response = await POST(request("what can you do?", buildSnapshot()));
+    const events = readEvents(await response.text());
+    const done = events.find((event) => event.type === "reply.done");
+
+    expect(done).toBeDefined();
+    expect(done && "usage" in done ? done.usage : undefined).toBeUndefined();
+  });
+
+  it("stores the usage reported with reply.done on the finished agent message", () => {
+    applyAgentEvent({ type: "reply.start", query: "who is Bob?" });
+    applyAgentEvent({ type: "reply.chunk", text: "bob reviews PRs." });
+    applyAgentEvent({ type: "reply.done", usage: { inputTokens: 1200, outputTokens: 48 } });
+
+    const last = useAgentStore.getState().chatMessages.at(-1) as ChatMessage;
+    expect(last.role).toBe("agent");
+    expect(last.status).toBe("done");
+    expect(last.usage).toEqual({ inputTokens: 1200, outputTokens: 48 });
+  });
+
+  it("formats token counts compactly", () => {
+    expect(formatTokens(812)).toBe("812");
+    expect(formatTokens(1248)).toBe("1.2k");
+    expect(formatTokens(2000)).toBe("2k");
+    expect(formatTokens(15800)).toBe("16k");
   });
 });
