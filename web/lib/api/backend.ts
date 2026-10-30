@@ -567,8 +567,15 @@ export interface AutomationCandidate {
   title: string;
   story: string;
   suggested_action: string;
-  signal_axes: Record<string, unknown> & { kind?: string; risk_tier?: number };
-  status: "open" | "suggested" | "accepted" | "dismissed" | "done";
+  signal_axes: Record<string, unknown> & {
+    kind?: string;
+    risk_tier?: number;
+    /** answer choices for `kind: "question"` candidates; free text is always allowed */
+    options?: string[];
+  };
+  status: CandidateStatus;
+  /** the user's answer when a question candidate was resolved (`status: "done"`) */
+  answer?: string | null;
   time_sensitive_until?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -591,14 +598,17 @@ export function getToday(userId?: string | null, signal?: AbortSignal): Promise<
   return api<TodayResponse>(`/api/kg/today${query}`, { userId, signal });
 }
 
+export type CandidateStatus = "open" | "suggested" | "accepted" | "dismissed" | "done";
+
 export function updateCandidateStatus(
   id: string,
-  status: "open" | "accepted" | "dismissed",
+  status: Exclude<CandidateStatus, "suggested">,
   userId?: string | null,
+  answer?: string,
 ): Promise<AutomationCandidate> {
   return api<AutomationCandidate>(`/api/kg/candidates/${encodeURIComponent(id)}`, {
     method: "POST",
-    body: { status },
+    body: answer === undefined ? { status } : { status, answer },
     userId,
   });
 }

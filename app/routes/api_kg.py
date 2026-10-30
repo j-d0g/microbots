@@ -334,8 +334,9 @@ async def today(user_id: Optional[str] = Query(None)) -> dict[str, list[dict[str
 
 
 class CandidateStatusBody(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    status: Literal["open", "accepted", "dismissed"]
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    status: Literal["open", "accepted", "dismissed", "done"]
+    answer: Optional[str] = Field(None, min_length=1, max_length=1000)
 
 
 @router.post("/candidates/{candidate_id}")
@@ -346,16 +347,27 @@ async def update_candidate_status(
     table, separator, record_key = candidate_id.partition(":")
     if not separator or table != "automation_candidate" or not record_key:
         raise HTTPException(status_code=404, detail="automation candidate not found")
+    if body.answer is not None and body.status != "done":
+        raise HTTPException(status_code=422, detail="an answer requires status 'done'")
     async with session() as s:
         row = await q_one(s, """
-            UPDATE $id SET status = $status, updated_at = time::now()
+            UPDATE $id SET status = $status, answer = $answer, updated_at = time::now()
             RETURN AFTER
         """, {
             "id": RecordID(table, record_key),
             "status": body.status,
+            "answer": body.answer,
         })
     if not row:
         raise HTTPException(status_code=404, detail="automation candidate not found")
+    if body.answer is not None:
+        await kg_writes.add_memory(
+            content=f"{row.get('title') or record_key}: {body.answer}",
+            memory_type="decision",
+            confidence=0.9,
+            source="today",
+            tags=["decision", "needs_you"],
+        )
     return row
 
 
