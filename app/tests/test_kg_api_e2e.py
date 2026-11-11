@@ -1079,6 +1079,76 @@ class TestToday:
                 for record_id in [pr_id, linear_id, github_chat, linear_chat, bob_memory]:
                     await db.query("DELETE $id", {"id": record_id})
 
+    async def test_answering_a_question_candidate_marks_it_done_and_remembers(
+        self, client: httpx.AsyncClient
+    ):
+        record = RecordID("automation_candidate", _uid("today_answer"))
+        title = f"Who owns the deploy runbook now? {record.id}"
+        from app.services.surreal import session
+
+        async with session() as db:
+            await db.query(
+                "UPSERT $id CONTENT $candidate",
+                {
+                    "id": record,
+                    "candidate": {
+                        "title": title,
+                        "story": "The runbook needs a current owner.",
+                        "suggested_action": "Confirm the owner.",
+                        "signal_axes": {
+                            "kind": "question",
+                            "risk_tier": 1,
+                            "options": ["Desmond", "Jordan"],
+                        },
+                        "status": "open",
+                    },
+                },
+            )
+        try:
+            rejected = await client.post(
+                f"/api/kg/candidates/{record}",
+                json={"status": "accepted", "answer": "Desmond"},
+            )
+            assert rejected.status_code == 422
+
+            answered = await client.post(
+                f"/api/kg/candidates/{record}",
+                json={"status": "done", "answer": "  Desmond  "},
+            )
+            assert answered.status_code == 200
+            assert answered.json()["status"] == "done"
+            assert answered.json()["answer"] == "Desmond"
+
+            today = await client.get("/api/kg/today")
+            assert today.status_code == 200
+            assert all(
+                row["id"] != str(record) for row in today.json()["needs_you"]
+            ), "answered questions should leave needs_you"
+
+            memories = await client.get(
+                "/api/kg/memories", params={"by": "recency", "limit": 100}
+            )
+            assert memories.status_code == 200
+            decision = next(
+                row for row in memories.json()
+                if row["content"] == f"{title}: Desmond"
+            )
+            assert decision["memory_type"] == "decision"
+
+            undone = await client.post(
+                f"/api/kg/candidates/{record}",
+                json={"status": "open"},
+            )
+            assert undone.status_code == 200
+            assert undone.json().get("answer") is None
+        finally:
+            async with session() as db:
+                await db.query("DELETE $id", {"id": record})
+                await db.query(
+                    "DELETE memory WHERE content = $content",
+                    {"content": f"{title}: Desmond"},
+                )
+
     async def test_today_prioritizes_soon_candidates_and_surfaces_questions(
         self, client: httpx.AsyncClient
     ):

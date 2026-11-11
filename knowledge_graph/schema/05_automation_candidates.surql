@@ -7,6 +7,7 @@ DEFINE FIELD OVERWRITE suggested_action ON automation_candidate TYPE string;
 DEFINE FIELD OVERWRITE signal_axes ON automation_candidate FLEXIBLE TYPE object DEFAULT {};
 DEFINE FIELD OVERWRITE status ON automation_candidate TYPE string DEFAULT 'open' ASSERT $value INSIDE ['open','suggested','accepted','dismissed','done'];
 DEFINE FIELD OVERWRITE time_sensitive_until ON automation_candidate TYPE option<datetime>;
+DEFINE FIELD OVERWRITE answer ON automation_candidate TYPE option<string>;
 DEFINE FIELD OVERWRITE created_at ON automation_candidate TYPE datetime DEFAULT time::now();
 DEFINE FIELD OVERWRITE updated_at ON automation_candidate TYPE datetime DEFAULT time::now();
 

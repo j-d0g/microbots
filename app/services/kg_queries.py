@@ -165,10 +165,10 @@ LIMIT $limit
 """
 
 Q_TODAY_CANDIDATES = """
-SELECT id, title, story, suggested_action, signal_axes, status,
+SELECT id, title, story, suggested_action, signal_axes, status, answer,
        time_sensitive_until, created_at, updated_at
 FROM automation_candidate
-WHERE status IN ['open', 'suggested', 'accepted', 'dismissed']
+WHERE status IN ['open', 'suggested', 'accepted', 'dismissed', 'done']
 """
 
 Q_TODAY_CHAT_EVIDENCE = """
