@@ -5,6 +5,12 @@ import { useAgentStore, type WindowKind } from "./store";
 import { buildSnapshot } from "./agent/snapshot";
 import { canvasActionForEvent } from "./agent/canvas-reducer";
 
+/** Token usage for one agent reply, summed over all steps. */
+export interface ReplyUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export type AgentEvent =
   | {
       type: "ui.card";
@@ -41,7 +47,7 @@ export type AgentEvent =
   | { type: "dock"; state: "idle" | "listening" | "thinking" | "speaking" | "hidden" }
   | { type: "reply.start"; query: string }
   | { type: "reply.chunk"; text: string }
-  | { type: "reply.done" }
+  | { type: "reply.done"; usage?: ReplyUsage }
   /** Orchestrator handed off to a sub-agent. The sidecar renders a chip. */
   | { type: "agent.delegate"; to: "layout" | "content"; intent: string }
   /** A tool was called. The sidecar pushes a live row. */
@@ -111,7 +117,7 @@ export function applyAgentEvent(evt: AgentEvent): void {
       const state = useAgentStore.getState();
       const last = state.chatMessages.at(-1);
       if (last?.role === "agent" && last.status === "streaming") {
-        s.finalizeLastAgentMessage();
+        s.finalizeLastAgentMessage("done", evt.usage);
       }
       break;
     }

@@ -39,6 +39,14 @@ export function ChatMessage({
           {isUser ? "you" : "agent"}
         </span>
         <span className="ml-auto font-mono text-[10px] tabular-nums text-ink-35">
+          {message.usage && (
+            <span
+              title={`${message.usage.inputTokens} in · ${message.usage.outputTokens} out`}
+              data-testid="chat-msg-usage"
+            >
+              {formatTokens(message.usage.inputTokens + message.usage.outputTokens)} tok ·{" "}
+            </span>
+          )}
           {formatTs(message.ts)}
         </span>
       </header>
@@ -199,4 +207,10 @@ function formatTs(ts: number): string {
   } catch {
     return "";
   }
+}
+
+export function formatTokens(count: number): string {
+  if (count < 1000) return String(count);
+  const thousands = count / 1000;
+  return `${thousands >= 10 ? Math.round(thousands) : thousands.toFixed(1).replace(/\.0$/, "")}k`;
 }

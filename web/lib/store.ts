@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReplyUsage } from "./agent-client";
 import { create } from "zustand";
 import {
   applyCanvasAction,
@@ -108,6 +109,8 @@ export interface ChatMessage {
   status?: "streaming" | "done" | "failed" | "stopped";
   cards?: ChatCard[];
   tools?: ToolTrace[];
+  /** Tokens spent on this agent reply (all steps); absent for user messages and scripted runs. */
+  usage?: ReplyUsage;
 }
 
 export interface AgentStoreState {
@@ -156,7 +159,7 @@ export interface AgentStoreState {
   answerChatCard: (cardId: string, answer: string) => void;
   startChatToolTrace: (name: string, args?: Record<string, unknown>) => void;
   finishChatToolTrace: (name: string, ok: boolean) => void;
-  finalizeLastAgentMessage: (status?: "done" | "stopped") => void;
+  finalizeLastAgentMessage: (status?: "done" | "stopped", usage?: ReplyUsage) => void;
   clearChatHistory: () => void;
 
   /* --- canvas cards --- */
@@ -411,14 +414,14 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       }),
     }));
   },
-  finalizeLastAgentMessage: (status = "done") => {
+  finalizeLastAgentMessage: (status = "done", usage) => {
     let finalised: ChatMessage | null = null;
     set((s) => {
       const list = s.chatMessages;
       for (let i = list.length - 1; i >= 0; i--) {
         if (list[i].role === "agent" && list[i].status === "streaming") {
           const next = list.slice();
-          next[i] = { ...list[i], status };
+          next[i] = usage ? { ...list[i], status, usage } : { ...list[i], status };
           finalised = next[i];
           return { chatMessages: next };
         }

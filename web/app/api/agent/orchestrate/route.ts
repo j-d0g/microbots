@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import type { AgentEvent } from "@/lib/agent-client";
+import type { AgentEvent, ReplyUsage } from "@/lib/agent-client";
 import type { CanvasSnapshot } from "@/lib/agent/types";
 import { getHealth } from "@/lib/api/backend";
 import { activeModelSlug, prewarmConnection } from "@/lib/agent/providers/openrouter";
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
           }
           if (chunk.length > 0) emit({ type: "reply.chunk", text: chunk });
         }
-        emit({ type: "reply.done" });
+        emit({ type: "reply.done", usage: await replyUsage(result.totalUsage) });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error("[orchestrate] error:", message);
@@ -111,4 +111,19 @@ export async function POST(req: NextRequest) {
       "x-agent-model": activeModelSlug(),
     },
   });
+}
+
+/** Sum the run's token usage into a compact shape; undefined when the provider reports nothing. */
+async function replyUsage(
+  totalUsage: PromiseLike<{ inputTokens?: number; outputTokens?: number }>,
+): Promise<ReplyUsage | undefined> {
+  try {
+    const usage = await totalUsage;
+    const inputTokens = usage.inputTokens ?? 0;
+    const outputTokens = usage.outputTokens ?? 0;
+    if (inputTokens + outputTokens === 0) return undefined;
+    return { inputTokens, outputTokens };
+  } catch {
+    return undefined;
+  }
 }
